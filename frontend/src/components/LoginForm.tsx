@@ -25,13 +25,6 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
   return (
     <form className={className} onSubmit={handleSubmit(loginSubmit)} {...props}>
-      {/* <Input
-        className="h-[5.22rem] w-132.5 rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 text-xl opacity-60 placeholder:font-normal placeholder:text-xl sm:w-[90%]"
-        placeholder="E-mail ou CPF"
-        type="text"
-        {...register("identifier")}
-        error={errors.identifier?.message}
-      /> */}
       <Input
         className="h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl"
         placeholder="E-mail ou CPF"
