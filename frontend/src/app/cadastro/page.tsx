@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
+import {Select} from "@/components/Select"
 
 export default function Cadastro(){
 
@@ -27,20 +28,20 @@ export default function Cadastro(){
                 {checkbox && (
                     <div className="flex flex-col gap-4">
                         <Input type="number" className="border rounded-lg p-2" placeholder="RGM"/>
-                        <select className="border rounded-lg p-2">
+                        <Select className="border rounded-lg p-2">
                             <option value="Administração">Administração</option>
                             <option value="Análise e Desenvolvimento de Sistemas">Análise e Desenvolvimento de Sistemas</option>
                             <option value="Ciência da Computação">Ciência da Computação</option>
-                        </select>
+                        </Select>
                         </div>
                 )}
                     
                 <label htmlFor="">Selecione o curso:</label>
-                <select className="border rounded-lg p-2">
+                <Select className="border rounded-lg p-2">
                     <option value="">Selecione</option>
                     <option value="">Gestão de RH</option>
                     <option value="">Empreendedorismo</option>
-                </select>
+                </Select>
 
                 <Button type="submit" className="bg-brand-dark text-white p-2 rounded-lg">Cadastrar</Button>
 
