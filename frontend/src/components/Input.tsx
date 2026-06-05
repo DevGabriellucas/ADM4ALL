@@ -7,7 +7,7 @@ interface InputProps extends ComponentProps<"input"> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ error, className, ...props }, ref) => {
     return (
-      <div className="flex flex-col gap-y-2">
+      <div className="flex w-full flex-col items-center gap-y-2 px-2">
         <input ref={ref} className={className} {...props} />
 
         {error && (

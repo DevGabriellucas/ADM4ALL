@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { useForm } from "react-hook-form";
-import { Input } from "@/components/Input"; // Importando o seu componente
+import { Input } from "@/components/Input";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { Button } from "./Button";
 
