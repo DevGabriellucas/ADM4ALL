@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import {Select} from "@/components/Select"
+import { Select } from "@/components/Select"
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -15,31 +15,52 @@ import {
 
 export default function Cadastro(){
 
-    const[checkbox,setCheckbox] =useState(true) //Se o checkbox constar marcado aparece os inputs internos, else nao aparece
+    const[checkbox, setCheckbox] = useState(true);
 
     const {
         register,
         handleSubmit,
+        reset,
         formState: { errors }
     } = useForm<CadastroFormData>({
         resolver: zodResolver(cadastroFormDataSchema)
     });
 
-    const cadastroSubmit = (data: CadastroFormData) => {
-        console.log(data);
+    const cadastroSubmit = async (data: CadastroFormData) => {
+        try {
+            const response = await fetch("http://localhost:8000/alunos", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data), 
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.erro || "Erro ao realizar o cadastro.");
+            }
+
+            alert(`🎉 Sucesso: ${result.mensagem}`);
+            reset();
+        } catch (error: any) {
+            alert(`❌ Falha no Cadastro: ${error.message}`);
+        }
     };
 
     return (
         <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-16 bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 font-poppins xl:flex-row xl:gap-x-20 xl:gap-y-0">
             <h1 className="flex items-center justify-center text-2xl font-bold">Cadastro</h1>
-                <form onSubmit={handleSubmit(cadastroSubmit)} 
-                    className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-[#9FA3C7E5]/60 px-6 py-9">
+            
+            <form onSubmit={handleSubmit(cadastroSubmit)} 
+                  className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-[#9FA3C7E5]/60 px-6 py-9">
+                
                 <Input type="text" className="rounded-lg p-2" placeholder="Nome" {...register("nome")} error={errors.nome?.message}/>
-                <Input type="text" className="rounded-lg p-2" placeholder="CPF" {...register("cpf")}error={errors.cpf?.message}/>
+                <Input type="text" className="rounded-lg p-2" placeholder="CPF" {...register("cpf")} error={errors.cpf?.message}/>
                 <Input type="tel" className="rounded-lg p-2" placeholder="Telefone" {...register("telefone")} error={errors.telefone?.message}/>
-                <Input type="date" className="rounded-lg p-2" {...register("dataNascimento")}/>
+                <Input type="date" className="rounded-lg p-2" {...register("dataNascimento")} error={errors.dataNascimento?.message}/>
                 <Input type="email" className="rounded-lg p-2" placeholder="email" {...register("email")} error={errors.email?.message}/>
-                <Input type="password" className="rounded-lg p-2" placeholder="Senha"/>
+
+                <Input type="password" className="rounded-lg p-2" placeholder="Senha" {...register("senha")} error={errors.senha?.message}/>
         
                 <div className="flex items-center gap-3">
                     <Input type="checkbox" checked={checkbox} {...register("isAlunoUnipe")} onChange={() => setCheckbox(!checkbox)}/>
@@ -48,7 +69,8 @@ export default function Cadastro(){
                     
                 {checkbox && (
                     <div className="flex flex-col gap-4">
-                        <Input type="number" className="rounded-lg p-2" placeholder="RGM"/>
+                        <Input type="number" className="rounded-lg p-2" placeholder="RGM" {...register("rgm")} error={errors.rgm?.message}/>
+                        
                         <Select className="w-full max-w-full rounded-lg p-2" {...register("cursoUnipe")}>
                             <option value="ADM">ADM</option>
                             <option value="ADS">ADS</option>
@@ -57,8 +79,8 @@ export default function Cadastro(){
                     </div>
                 )}
                     
-                <label htmlFor="">Selecione o treinamento:</label>
-                <Select className="w-full max-w-full rounded-lg p-2">
+                <label htmlFor="treinamento">Selecione o treinamento:</label>
+                <Select id="treinamento" className="w-full max-w-full rounded-lg p-2" {...register("treinamento")}>
                     <option value="RH">Gestão de RH</option>
                     <option value="Emp">Empreendedorismo</option>
                 </Select>
@@ -67,10 +89,7 @@ export default function Cadastro(){
 
                 <p className="mt-auto pt-6 text-center text-base text-slate-800">
                     Deseja voltar?{" "}
-                    <Link
-                        href="/"
-                        className="font-bold text-[#524ABF] underline underline-offset-2 transition-colors duration-200 hover:brightness-125"
-                    >
+                    <Link href="/" className="font-bold text-[#524ABF] underline underline-offset-2 transition-colors duration-200 hover:brightness-125">
                         Voltar
                     </Link>
                 </p>
