@@ -5,33 +5,37 @@ import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 export interface CadastrarAlunoInput {
   nome: string;
-  cpf: string; 
+  cpf: string;
   telefone: string;
   email: string;
   dataNascimento: Date;
   isAlunoUnipe: boolean;
   cursoUnipe?: string;
+  senha: string;        
+  treinamento: string;   
+  rgm?: string;          
 }
 
 export class AlunoUseCase {
   constructor(private alunoRepository: AlunoRepository) {}
 
-  // Cadastrar Aluno
   async cadastrar(dados: CadastrarAlunoInput): Promise<Aluno> {
     const cpfVo = new Cpf(dados.cpf);
     const telefoneVo = new Telefone(dados.telefone);
-    const emailVo = new Email(dados.email)
-    const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
+    const emailVo = new Email(dados.email);
 
+    const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
     if (cpfExistente) {
       throw new Error("Já existe um aluno cadastrado com este CPF.");
     }
+
     const novoAluno = new Aluno({
       ...dados,
       cpf: cpfVo,
       telefone: telefoneVo,
       email: emailVo
     });
+
     return await this.alunoRepository.cadastrar(novoAluno);
   }
 

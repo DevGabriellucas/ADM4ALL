@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 
 export class ExpressAdapter {
@@ -6,6 +7,7 @@ export class ExpressAdapter {
 
   constructor(private alunoUseCase: AlunoUseCase) {
     this.app.use(express.json());
+    this.app.use(cors({ origin: "http://localhost:3000" }));
     this.configurarRotas();
   }
 
@@ -13,11 +15,15 @@ export class ExpressAdapter {
     // Cadastrar Aluno
     this.app.post("/alunos", async (req: Request, res: Response) => {
       try {
-        const { nome, cpf, telefone, email, dataNascimento, isAlunoUnipe, cursoUnipe } = req.body;
+        const {
+           nome, cpf, telefone, email, dataNascimento,
+           senha, treinamento, isAlunoUnipe, rgm, cursoUnipe 
+          } = req.body;
+
         const aluno = await this.alunoUseCase.cadastrar({
           nome, cpf, telefone, email,
-          dataNascimento: new Date(dataNascimento),
-          isAlunoUnipe, cursoUnipe
+          dataNascimento: new Date(dataNascimento), senha, treinamento,
+          isAlunoUnipe, rgm, cursoUnipe
         });
         res.status(201).json({ id: aluno.id, nome: aluno.nome, mensagem: "Aluno cadastrado com sucesso!" });
       } catch (error: any) {
@@ -28,10 +34,7 @@ export class ExpressAdapter {
     // Listar Alunos
     this.app.get("/alunos", async (req: Request, res: Response) => {
       const alunos = await this.alunoUseCase.listar();
-      const resposta = alunos.map(a => ({
-        id: a.id, nome: a.nome, cpf: a.cpf, email: a.email, cursoUnipe: a.cursoUnipe
-      }));
-      res.json(resposta);
+      res.json(alunos.map(a => a.toJSON()));
     });
 
     // Listar aluno por ID
@@ -44,10 +47,7 @@ export class ExpressAdapter {
         }
         const aluno = await this.alunoUseCase.buscarPorId(id);
 
-        return res.json({
-            id: aluno.id,
-            ...aluno['props']
-          });
+        return res.json(aluno.toJSON());
 
       } catch (error:any) {
         res.status(400).json({ erro: error.message });
