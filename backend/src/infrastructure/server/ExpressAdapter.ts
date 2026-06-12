@@ -31,6 +31,25 @@ export class ExpressAdapter {
       }
     });
 
+    this.app.post("/alunos/recuperar-senha", async (req: Request, res: Response) => {
+      try {
+        const { email } = req.body;
+        
+        if (!email) {
+          res.status(400).json({ erro: "O e-mail é obrigatório." });
+          return;
+        }
+
+        await this.alunoUseCase.recuperarSenha(email);
+
+        res.status(200).json({ 
+          mensagem: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
+        });
+      } catch (error: any) {
+        res.status(400).json({ erro: error.message });
+      }
+    });
+
     // Listar Alunos
     this.app.get("/alunos", async (req: Request, res: Response) => {
       const alunos = await this.alunoUseCase.listar();

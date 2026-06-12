@@ -17,6 +17,10 @@ export class InMemoryAlunoRepository implements AlunoRepository {
     return this.alunos.find(a => a.cpf === cpf) || null;
   }
 
+  async buscarPorEmail(email: string): Promise<Aluno | null> {
+    return this.alunos.find(a => a.email === email) || null;
+  }
+
   async listarTodos(): Promise<Aluno[]> {
     return this.alunos;
   }

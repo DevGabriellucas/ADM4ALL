@@ -63,4 +63,20 @@ export class AlunoUseCase {
     await this.buscarPorId(id); // Garante que existe antes de deletar
     await this.alunoRepository.deletar(id);
   }
+
+  async recuperarSenha(emailBruto: string): Promise<void> {
+
+    const emailVo = new Email(emailBruto); 
+    const aluno = await this.alunoRepository.buscarPorEmail(emailVo.value);
+
+    if (!aluno) {
+      return; 
+    }
+
+    const tokenDeRecuperacao = crypto.randomUUID();
+
+    console.log(`Para: ${aluno.email}`);
+    console.log(`Assunto: Recuperação de Senha - ADM Para Todos`);
+    console.log(`Link: http://localhost:3000/redefinir-senha?token=${tokenDeRecuperacao}\n`);
+  }
 }
