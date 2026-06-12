@@ -45,7 +45,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
         href="/recuperar-senha"
         className="pr-1 text-right text-[#524ABF] text-base underline underline-offset-2 duration-200 hover:text-indigo-900"
       >
-        Recuperar Senhar
+        Recuperar Senha
       </Link>
 
       <Button
