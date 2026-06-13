@@ -32,10 +32,22 @@ export const ForgotPasswordForm = ({
 
   const forgotPasswordSubmit = async (data: ForgotPasswordData) => {
     try {
-      console.log(data);
+      const response = await fetch("http://localhost:8000/alunos/esqueci-senha", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: data.email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.erro || "Ocorreu um erro ao processar a solicitação.");
+      }
       onSuccess();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      alert(`❌ ${error.message}`);
     }
   };
 

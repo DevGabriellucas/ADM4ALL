@@ -19,8 +19,28 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
     resolver: zodResolver(loginFormDataSchema),
   });
 
-  const loginSubmit = (data: LoginFormData) => {
-    console.log(data);
+  const loginSubmit = async (data: LoginFormData) => {
+    try {
+      const response = await fetch("http://localhost:8000/alunos/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: data.identifier,
+          password: data.password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.erro || "Falha ao realizar login.");
+      }
+
+      alert(`✅ ${result.mensagem}\nBem-vindo(a), ${result.aluno.nome}!`);
+
+    } catch (error: any) {
+      alert(`❌ ${error.message}`);
+    }
   };
 
   return (

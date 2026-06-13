@@ -12,6 +12,27 @@ export class ExpressAdapter {
   }
 
   private configurarRotas() {
+    // Login
+    this.app.post("/alunos/login", async (req: Request, res: Response) => {
+      try {
+        const { identifier, password } = req.body;
+
+        if (!identifier || !password) {
+          res.status(400).json({ erro: "Identificador e senha são obrigatórios." });
+          return;
+        }
+
+        const aluno = await this.alunoUseCase.login(identifier, password);
+
+        res.status(200).json({ 
+          mensagem: "Login realizado com sucesso!",
+          aluno: aluno.toJSON() 
+        });
+
+      } catch (error: any) {
+        res.status(401).json({ erro: error.message });
+      }
+    });
     // Cadastrar Aluno
     this.app.post("/alunos", async (req: Request, res: Response) => {
       try {
@@ -30,7 +51,7 @@ export class ExpressAdapter {
         res.status(400).json({ erro: error.message });
       }
     });
-
+    // Recuperar senha
     this.app.post("/alunos/recuperar-senha", async (req: Request, res: Response) => {
       try {
         const { email } = req.body;
