@@ -21,14 +21,17 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
   const loginSubmit = async (data: LoginFormData) => {
     try {
-      const response = await fetch("http://localhost:8000/alunos/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identifier: data.identifier,
-          password: data.password,
-        }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/alunos/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifier: data.identifier,
+            password: data.password,
+          }),
+        },
+      );
 
       const result = await response.json();
 
