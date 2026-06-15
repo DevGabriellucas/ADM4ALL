@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ForgotPasswordForm } from "@/components/ForgotPasswordForm";
 
-export default function RecuperarSenhar() {
+export default function RecuperarSenha() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   return (
@@ -23,7 +23,7 @@ export default function RecuperarSenhar() {
       </div>
       <ForgotPasswordForm
         className="flex w-full flex-col items-center gap-y-24 px-6 xl:px-0"
-        onSuccess={() => setIsSuccess(!false)}
+        onSuccess={() => setIsSuccess(true)}
         isSuccess={isSuccess}
       />
     </main>
