@@ -32,7 +32,7 @@ export const ForgotPasswordForm = ({
 
   const forgotPasswordSubmit = async (data: ForgotPasswordData) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alunos/esqueci-senha`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/recuperar-senha`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

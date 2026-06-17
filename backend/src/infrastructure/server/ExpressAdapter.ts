@@ -13,7 +13,7 @@ export class ExpressAdapter {
 
   private configurarRotas() {
     // Login
-    this.app.post("/alunos/login", async (req: Request, res: Response) => {
+    this.app.post("/auth/login", async (req: Request, res: Response) => {
       try {
         const { identifier, password } = req.body;
 
@@ -52,7 +52,7 @@ export class ExpressAdapter {
       }
     });
     // Recuperar senha
-    this.app.post("/alunos/recuperar-senha", async (req: Request, res: Response) => {
+    this.app.post("/auth/recuperar-senha", async (req: Request, res: Response) => {
       try {
         const { email } = req.body;
         
