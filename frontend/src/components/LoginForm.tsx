@@ -80,14 +80,12 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       </Link>
 
       {message?.type === "error" && (
-        <p
-          className={`text-center font-medium text-sm ${
-            message.type === "error" && "text-red-700"
-          }`}
-          role={message.type === "error" ? "alert" : ""}
+        <output
+          className="text-center font-medium text-red-700 text-sm"
+          role="alert"
         >
           {message.text}
-        </p>
+        </output>
       )}
 
       <Button
@@ -99,12 +97,9 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       </Button>
 
       {message?.type === "success" && (
-        <p
-          className="text-center font-medium text-green-800 text-sm"
-          role={message.type === "success" ? "status" : ""}
-        >
+        <output className="text-center font-medium text-green-800 text-sm">
           {message.text}
-        </p>
+        </output>
       )}
     </form>
   );

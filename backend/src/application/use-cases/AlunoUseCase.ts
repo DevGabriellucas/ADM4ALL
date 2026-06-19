@@ -56,7 +56,9 @@ export class AlunoUseCase {
       cpf: cpfVo,
       telefone: telefoneVo,
       email: emailVo,
-      senha: senhaCriptografada
+      senha: senhaCriptografada,
+      rgm: dados.isAlunoUnipe ? dados.rgm : (null as any),
+      cursoUnipe: dados.isAlunoUnipe ? dados.cursoUnipe : (null as any)
     });
 
     return await this.alunoRepository.cadastrar(novoAluno);

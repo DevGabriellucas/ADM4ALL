@@ -70,7 +70,7 @@ const getApiErrorMessage = (
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  const response = await fetch(`${getApiUrl()}/alunos/login`, {
+  const response = await fetch(`${getApiUrl()}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -96,7 +96,7 @@ export const login = async (data: LoginPayload): Promise<LoginResponse> => {
 export const forgotPassword = async (
   data: ForgotPasswordPayload,
 ): Promise<ForgotPasswordResponse> => {
-  const response = await fetch(`${getApiUrl()}/alunos/esqueci-senha`, {
+  const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
