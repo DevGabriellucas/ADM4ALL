@@ -19,6 +19,6 @@ export const alunoDashboardMock: AlunoDashboard = {
   avatarUrl: `data:image/svg+xml,${diegoAvatarSvg}`,
   faltas: 0,
   progresso: 100,
-  notas: "Disponiveis na plataforma",
+  notas: "Disponíveis na plataforma",
   documentosPendentes: "Nenhum pendente",
 };
