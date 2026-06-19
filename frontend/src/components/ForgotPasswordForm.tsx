@@ -2,13 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import {
   type ForgotPasswordData,
   forgotPasswordDataSchema,
 } from "@/schemas/forgotPasswordSchema";
+import { forgotPassword } from "@/services/authService";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
 interface ForgotPasswordProps extends ComponentProps<"form"> {
@@ -22,6 +24,8 @@ export const ForgotPasswordForm = ({
   onSuccess,
   ...props
 }: ForgotPasswordProps) => {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -31,23 +35,13 @@ export const ForgotPasswordForm = ({
   });
 
   const forgotPasswordSubmit = async (data: ForgotPasswordData) => {
+    setErrorMessage(null);
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alunos/esqueci-senha`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: data.email }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.erro || "Ocorreu um erro ao processar a solicitação.");
-      }
+      await forgotPassword(data);
       onSuccess();
-    } catch (error: any) {
-      alert(`❌ ${error.message}`);
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error));
     }
   };
 
@@ -58,12 +52,23 @@ export const ForgotPasswordForm = ({
       {...props}
     >
       <Input
+        id="email"
+        label="E-mail"
         className="mt-4 w-full bg-[#B6AEAE] px-6 py-3 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-xl autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] md:w-[75%] xl:w-220"
         placeholder="E-mail"
-        type="text"
+        type="email"
         {...register("email")}
         error={errors.email?.message}
       />
+
+      {errorMessage && (
+        <p
+          className="text-center font-medium text-red-700 text-sm"
+          role="alert"
+        >
+          {errorMessage}
+        </p>
+      )}
 
       {!isSuccess ? (
         <Button
