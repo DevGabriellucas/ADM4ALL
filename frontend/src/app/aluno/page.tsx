@@ -2,9 +2,11 @@ import { AlunoCompletionMessage } from "@/components/aluno/AlunoCompletionMessag
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
 import { AlunoStatusPanel } from "@/components/aluno/AlunoStatusPanel";
 import { getAlunoDashboard } from "@/services/alunoService";
+import { getAlunoStatus } from "@/utils/getAlunoStatus";
 
 export default async function AlunoPage() {
   const aluno = await getAlunoDashboard();
+  const status = getAlunoStatus(aluno);
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 font-poppins text-slate-950 sm:px-6 lg:px-8">
@@ -22,10 +24,20 @@ export default async function AlunoPage() {
             Curso: {aluno.curso}
           </h2>
 
-          <AlunoStatusPanel aluno={aluno} />
+          <AlunoStatusPanel aluno={aluno} status={status} />
         </section>
 
-        {aluno.progresso === 100 && (
+        {status === "reprovadoPorFalta" && (
+          <section
+            className="mx-auto max-w-3xl text-center font-medium text-red-800 text-xs leading-6 tracking-[0.25em]"
+            role="alert"
+          >
+            Você foi reprovado por falta. O limite máximo permitido é de 2
+            faltas.
+          </section>
+        )}
+
+        {status === "aprovado" && (
           <AlunoCompletionMessage curso={aluno.curso} />
         )}
       </div>

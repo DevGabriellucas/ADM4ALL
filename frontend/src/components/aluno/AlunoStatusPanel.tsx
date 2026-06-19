@@ -1,23 +1,25 @@
 import { AlunoInfoCard } from "@/components/aluno/AlunoInfoCard";
 import type { AlunoDashboard } from "@/types/aluno";
+import type { AlunoStatus } from "@/utils/getAlunoStatus";
 
 interface AlunoStatusPanelProps {
   aluno: Pick<
     AlunoDashboard,
     "documentosPendentes" | "faltas" | "notas" | "progresso"
   >;
+  status: AlunoStatus;
 }
 
-const getFaltasHelperText = (faltas: AlunoDashboard["faltas"]) => {
-  if (faltas <= 20) {
+const getFaltasHelperText = (status: AlunoStatus) => {
+  if (status !== "reprovadoPorFalta") {
     return undefined;
   }
 
-  return "Atencao: acima do limite recomendado";
+  return "Limite máximo permitido: 2 faltas";
 };
 
-export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
-  const faltasEmAtencao = aluno.faltas > 20;
+export const AlunoStatusPanel = ({ aluno, status }: AlunoStatusPanelProps) => {
+  const faltasEmAtencao = status === "reprovadoPorFalta";
 
   return (
     <div className="bg-[#F1F4FC] px-5 py-8 sm:px-10 lg:px-16">
@@ -26,7 +28,7 @@ export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
           title="Faltas"
           value={aluno.faltas}
           isWarning={faltasEmAtencao}
-          helperText={getFaltasHelperText(aluno.faltas)}
+          helperText={getFaltasHelperText(status)}
         />
 
         <AlunoInfoCard title="Progresso" value={`${aluno.progresso}%`} />
