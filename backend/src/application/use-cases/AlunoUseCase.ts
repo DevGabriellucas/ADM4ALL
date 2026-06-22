@@ -4,6 +4,7 @@ import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 export interface CadastrarAlunoInput {
   nome: string;
   cpf: string;
