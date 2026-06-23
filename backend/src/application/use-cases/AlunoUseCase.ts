@@ -26,11 +26,13 @@ export class AlunoUseCase {
 
   async login(identificador: string, senhaBruta: string): Promise<Aluno> {
     let idLimpo = identificador.trim().toLowerCase();
-    const aluno = await this.alunoRepository.buscarPorEmailOuCpf(idLimpo);
 
     if (!idLimpo.includes("@")) {
       idLimpo = idLimpo.replace(/\D/g, "");
     }
+
+    const aluno = await this.alunoRepository.buscarPorEmailOuCpf(idLimpo);
+
     if (!aluno) {
       throw new UnauthorizedError("Credenciais inválidas.");
     }

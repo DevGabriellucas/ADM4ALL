@@ -1,94 +1,131 @@
-# Banco de dados — ADM4All
+# Banco de dados - ADM4All
 
-Banco **PostgreSQL 16** rodando em Docker, para armazenar os dados da
-plataforma (hoje: tabela `alunos`). Substitui o `InMemoryAlunoRepository`
-(que perdia tudo ao reiniciar o back-end).
+Banco **PostgreSQL 16** rodando em Docker para armazenar dados da plataforma.
+O compose oficial do projeto fica na raiz do repositorio.
 
 ## Estrutura
 
-```
+```text
 database/
-  ├─ docker-compose.yml     # sobe Postgres + Adminer
-  ├─ .env.example           # variáveis de conexão (copiar para .env)
-  ├─ README.md              # este arquivo
-  └─ init/
-     ├─ 01-schema.sql       # criação da tabela alunos (constraints + índices)
-     └─ 02-seed.sql         # dados de exemplo (somente dev)
+  README.md
+  docs/
+    modelo-entidade-relacionamento.md
+  init/
+    01-criar-tabelas.sql
+    02-inserir-dados-teste.sql
 ```
 
 ## Como subir
 
-Pré-requisito: **Docker Desktop** instalado e rodando.
+Pre-requisito: **Docker Desktop** instalado e rodando.
+
+Execute na raiz do projeto:
 
 ```bash
-# 1. Entre na pasta do banco
-cd database
-
-# 2. Crie seu .env a partir do exemplo
 cp .env.example .env
-
-# 3. Suba o banco (e o Adminer)
 docker compose up -d
-
-# 4. Veja se está saudável
 docker compose ps
 ```
 
-> Os scripts em `init/` rodam **apenas na primeira vez**, quando o
-> volume `pgdata` ainda está vazio. Se mudar o schema e quiser recriar do
-> zero, rode `docker compose down -v` (o `-v` apaga o volume e os dados).
+O arquivo `database/docker-compose.yml` foi removido para evitar dois bancos
+locais diferentes. Use sempre o `docker-compose.yml` da raiz.
+
+## Resetar o banco local
+
+Os scripts em `database/init/` rodam apenas na primeira criacao do volume do
+Postgres. Se mudar schema ou seed e quiser recriar tudo:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+O `-v` apaga o volume `pgdata` e todos os dados locais.
 
 ## Acessar os dados
 
-**Adminer (interface web):** http://localhost:8080
+Adminer: http://localhost:8080
 
-| Campo    | Valor                         |
-|----------|-------------------------------|
-| Sistema  | PostgreSQL                    |
-| Servidor | `db`                          |
-| Usuário  | `adm4all` (ou seu POSTGRES_USER) |
-| Senha    | `adm4all_dev` (ou sua POSTGRES_PASSWORD) |
-| Base     | `adm4all`                     |
+| Campo | Valor |
+|---|---|
+| Sistema | PostgreSQL |
+| Servidor | `db` |
+| Usuario | `adm4all` |
+| Senha | `adm4all_dev` |
+| Base | `adm4all` |
 
-**psql (linha de comando):**
+Via psql:
 
 ```bash
 docker compose exec db psql -U adm4all -d adm4all
-# dentro do psql:  \dt   (lista tabelas)   \d+ alunos   (detalha a tabela)
 ```
 
-## Conectar o back-end
+Comandos uteis dentro do `psql`:
 
-O back-end (TypeScript/Express) deve usar a `DATABASE_URL` do `.env`:
-
+```sql
+\dt
+\d+ usuarios
+\d+ alunos
+\d+ turmas
+\d+ aulas
+\d+ matriculas
 ```
-postgresql://adm4all:adm4all_dev@localhost:5432/adm4all
-```
 
-Próximo passo do time de back: criar um `PostgresAlunoRepository` que
-implemente a interface [`AlunoRepository`](../backend/src/domain/repositories/AlunoRepository.ts)
-usando o driver `pg` (`npm i pg`), e trocar a injeção em
-[`main.ts`](../backend/src/main.ts) do `InMemoryAlunoRepository` para ele.
+## Modelo de dados
 
-## Tabela `alunos`
+O modelo principal esta documentado em
+[docs/modelo-entidade-relacionamento.md](docs/modelo-entidade-relacionamento.md).
 
-Espelha a entidade [`Aluno`](../backend/src/domain/entities/Aluno.ts). Colunas
-em `snake_case` (padrão SQL); o back mapeia para `camelCase`.
+Tabelas criadas:
 
-| Coluna            | Tipo           | Regras                                   |
-|-------------------|----------------|------------------------------------------|
-| `id`              | UUID (PK)      | gerado automático (`gen_random_uuid()`)  |
-| `nome`            | VARCHAR(255)   | obrigatório                              |
-| `cpf`             | VARCHAR(11)    | único, 11 dígitos                        |
-| `telefone`        | VARCHAR(11)    | 10 ou 11 dígitos (com DDD)               |
-| `email`           | VARCHAR(255)   | único                                    |
-| `data_nascimento` | DATE           | obrigatório                              |
-| `is_aluno_unipe`  | BOOLEAN        | default `false`                          |
-| `curso_unipe`     | VARCHAR(255)   | obrigatório se `is_aluno_unipe = true`   |
-| `senha`           | VARCHAR(255)   | **hash bcrypt** (nunca texto puro)       |
-| `treinamento`     | VARCHAR(255)   | obrigatório                              |
-| `rgm`             | VARCHAR(8)     | único, 8 dígitos; obrigatório se Unipê   |
-| `data_cadastro`   | TIMESTAMPTZ    | default `now()`                          |
+| Tabela | Finalidade |
+|---|---|
+| `perfis` | Perfis de acesso: aluno, instrutor, coordenador e admin |
+| `usuarios` | Usuarios que podem autenticar no sistema |
+| `alunos` | Cadastro base do aluno, mantido compativel com o backend atual |
+| `instrutores` | Dados dos instrutores vinculados a usuarios |
+| `coordenadores` | Dados de coordenacao vinculados a usuarios |
+| `treinamentos` | Cursos/treinamentos oferecidos |
+| `turmas` | Turmas abertas por treinamento, instrutor e coordenador |
+| `matriculas` | Vinculo entre aluno, treinamento e turma, com status e progresso |
+| `aulas` | Cronograma de aulas das turmas |
+| `frequencias` | Presencas e faltas por matricula/aula |
+| `avaliacoes` | Notas por matricula |
+| `materiais` | Materiais publicados para as turmas |
+| `documentos_aluno` | Controle de documentos pendentes/enviados/aprovados |
+| `certificados` | Certificados emitidos para matriculas concluidas |
 
-As validações do domínio (CPF/telefone/RGM só dígitos, regra do Unipê)
-também são reforçadas por `CHECK constraints` no banco.
+## Qualidade dos dados
+
+O schema reforca regras importantes:
+
+- CPF com 11 digitos e nao repetido, como `11111111111`.
+- Telefone com 10 ou 11 digitos.
+- Email em minusculo, sem espacos e unico ignorando maiusculas/minusculas.
+- Nome, treinamento e tipos de documento nao podem ser texto vazio.
+- Aluno Unipe precisa ter `curso_unipe` e `rgm`; aluno externo nao deve ter esses campos.
+- Usuario precisa ter perfil valido e status padronizado.
+- Turma precisa ter codigo unico, capacidade positiva e datas consistentes.
+- Aula precisa ter numero positivo, status valido e horario final maior que inicial.
+- Progresso da matricula deve ficar entre 0 e 100.
+- Status de matricula e documento usa lista fechada de valores.
+- Nota de avaliacao deve ficar entre 0 e 10.
+- Certificado emitido precisa ter data de emissao.
+
+## Seed de desenvolvimento
+
+O arquivo `init/02-inserir-dados-teste.sql` cria dados para testar cenarios reais:
+
+- perfis de aluno, instrutor, coordenador e admin;
+- usuarios para cada perfil;
+- instrutor e coordenadora;
+- turma e cronograma de aulas;
+- aluno em andamento;
+- aluno aprovado;
+- aluno reprovado por falta;
+- materiais de turma;
+- documentos aprovados e pendentes;
+- frequencias, avaliacoes e certificado emitido.
+
+Esse seed nao e outro banco. Ele apenas popula o banco local criado pelo
+compose da raiz.

@@ -1,6 +1,9 @@
 import { Pool } from "pg";
 import { Aluno } from "../../domain/entities/Aluno";
 import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
+import { Cpf } from "../../domain/value-objects/Cpf";
+import { Email } from "../../domain/value-objects/Email";
+import { Telefone } from "../../domain/value-objects/Telefone";
 
 export class PostgresAlunoRepository implements AlunoRepository {
   constructor(private db: Pool) {}
@@ -9,10 +12,11 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return new Aluno({
       id: linha.id,
       nome: linha.nome,
-      cpf: linha.cpf,
-      telefone: linha.telefone,
-      email: linha.email,
-      dataNascimento: linha.data_nascimento,
+      cpf: new Cpf(linha.cpf),
+      telefone: new Telefone(linha.telefone),
+      email: new Email(linha.email),
+      dataNascimento: new Date(linha.data_nascimento),
+      dataCadastro: new Date(linha.data_cadastro),
       senha: linha.senha,
       treinamento: linha.treinamento,
       isAlunoUnipe: linha.is_aluno_unipe,   
@@ -69,8 +73,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
       aluno.cursoUnipe
     ];
 
-    await this.db.query(query, valores);
-    return aluno;
+    const resultado = await this.db.query(query, valores);
+    return this.mapearLinhaParaAluno(resultado.rows[0]);
   }
 
   async buscarPorId(id: string): Promise<Aluno | null> {
@@ -94,6 +98,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
       SET nome = $2, cpf = $3, telefone = $4, email = $5, data_nascimento = $6, 
           senha = $7, treinamento = $8, is_aluno_unipe = $9, rgm = $10, curso_unipe = $11
       WHERE id = $1
+      RETURNING *
     `;
     const valores = [
       aluno.id, aluno.nome, aluno.cpf, aluno.telefone, aluno.email, 
@@ -101,9 +106,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
       aluno.isAlunoUnipe, aluno.rgm, aluno.cursoUnipe
     ];
 
-    await this.db.query(query, valores);
-    
-    return aluno; 
+    const resultado = await this.db.query(query, valores);
+    return this.mapearLinhaParaAluno(resultado.rows[0]);
   }
 
   async deletar(id: string): Promise<void> {
