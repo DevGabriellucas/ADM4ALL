@@ -5,6 +5,9 @@ import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
+
 export interface CadastrarAlunoInput {
   nome: string;
   cpf: string;
@@ -29,12 +32,12 @@ export class AlunoUseCase {
       idLimpo = idLimpo.replace(/\D/g, "");
     }
     if (!aluno) {
-      throw new Error("Credenciais inválidas.");
+      throw new UnauthorizedError("Credenciais inválidas.");
     }
     const senhaCorreta = await bcrypt.compare(senhaBruta, aluno.senha);
     
     if (!senhaCorreta) {
-      throw new Error("Credenciais inválidas.");
+      throw new UnauthorizedError("Credenciais inválidas.");
     }
     return aluno;
   }
@@ -46,7 +49,7 @@ export class AlunoUseCase {
 
     const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
     if (cpfExistente) {
-      throw new Error("Já existe um aluno cadastrado com este CPF.");
+      throw new BadRequestError("Já existe um aluno cadastrado com este CPF.");
     }
 
     const saltRounds = 10;
@@ -73,7 +76,7 @@ export class AlunoUseCase {
   // Buscar aluno por ID
   async buscarPorId(id: string): Promise<Aluno> {
     const aluno = await this.alunoRepository.buscarPorId(id);
-    if (!aluno) throw new Error("Aluno não encontrado.");
+    if (!aluno) throw new BadRequestError("Aluno não encontrado.");
     return aluno;
   }
 

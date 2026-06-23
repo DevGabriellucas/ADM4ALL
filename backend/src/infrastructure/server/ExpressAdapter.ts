@@ -3,6 +3,7 @@ import cors from "cors";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
+import { BadRequestError } from "../errors/BadRequestError";
 
 export class ExpressAdapter {
   private app = express();
@@ -20,18 +21,14 @@ export class ExpressAdapter {
       const { identifier, password } = req.body;
 
       if (!identifier || !password) {
-        throw { status: 400, message: "Identificador e senha são obrigatórios." };
+        throw new BadRequestError("Identificador e senha são obrigatórios.");
       }
 
-      try {
-        const aluno = await this.alunoUseCase.login(identifier, password);
-        res.status(200).json({ 
-          mensagem: "Login realizado com sucesso!",
-          aluno: aluno.toJSON() 
-        });
-      } catch (error: any) {
-        throw { status: 401, message: error.message };
-      }
+      const aluno = await this.alunoUseCase.login(identifier, password);
+      res.status(200).json({ 
+        mensagem: "Login realizado com sucesso!",
+        aluno: aluno.toJSON() 
+      });
     }));
     
     // Cadastrar Aluno
@@ -54,7 +51,7 @@ export class ExpressAdapter {
       const { email } = req.body;
       
       if (!email) {
-        throw { status: 400, message: "O e-mail é obrigatório." };
+        throw new BadRequestError("O e-mail é obrigatório.");
       }
 
       await this.alunoUseCase.recuperarSenha(email);
@@ -74,7 +71,7 @@ export class ExpressAdapter {
     this.app.get("/alunos/:id", asyncHandler(async (req: Request, res:Response) => {
       const { id } = req.params;
       if (!id || typeof id !== "string") {
-        throw { status: 400, message: "O ID do aluno fornecido é inválido." };
+        throw new BadRequestError("O ID do aluno fornecido é inválido.");
       }
       const aluno = await this.alunoUseCase.buscarPorId(id);
       return res.json(aluno.toJSON());
@@ -86,7 +83,7 @@ export class ExpressAdapter {
 
       // Validação ID
       if (!id || typeof id !== "string") {
-        throw { status: 400, message: "O ID do aluno fornecido é inválido." };
+        throw new BadRequestError("O ID do aluno fornecido é inválido.");
       }
 
       const aluno = await this.alunoUseCase.atualizar(id, req.body);
@@ -99,7 +96,7 @@ export class ExpressAdapter {
 
       // Validação ID
       if (!id || typeof id !== "string") {
-        throw { status: 400, message: "O ID do aluno fornecido é inválido." };
+        throw new BadRequestError("O ID do aluno fornecido é inválido.");
       }
 
       await this.alunoUseCase.deletar(id);
