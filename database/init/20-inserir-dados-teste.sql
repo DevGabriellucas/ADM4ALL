@@ -299,6 +299,50 @@ VALUES
         '19:00',
         '21:00',
         'realizada'
+    ),
+    (
+        '50000000-0000-0000-0000-000000000007',
+        '40000000-0000-0000-0000-000000000001',
+        7,
+        'Etica profissional',
+        'Conduta profissional, postura no atendimento e sigilo de informacoes.',
+        '2026-06-24',
+        '19:00',
+        '21:00',
+        'planejada'
+    ),
+    (
+        '50000000-0000-0000-0000-000000000008',
+        '40000000-0000-0000-0000-000000000001',
+        8,
+        'Nocoes financeiras',
+        'Controle simples de entradas, saidas, recibos e organizacao financeira.',
+        '2026-06-26',
+        '19:00',
+        '21:00',
+        'planejada'
+    ),
+    (
+        '50000000-0000-0000-0000-000000000009',
+        '40000000-0000-0000-0000-000000000001',
+        9,
+        'Tecnologia no ambiente administrativo',
+        'Ferramentas digitais para produtividade e organizacao do trabalho.',
+        '2026-06-29',
+        '19:00',
+        '21:00',
+        'planejada'
+    ),
+    (
+        '50000000-0000-0000-0000-000000000010',
+        '40000000-0000-0000-0000-000000000001',
+        10,
+        'Revisao e encerramento',
+        'Revisao geral dos conteudos e orientacoes finais.',
+        '2026-06-30',
+        '19:00',
+        '21:00',
+        'planejada'
     )
 ON CONFLICT (turma_id, numero_aula) DO NOTHING;
 
@@ -312,7 +356,10 @@ VALUES
     ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000003', '2026-02-17', TRUE, NULL),
     ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000001', '2026-02-03', FALSE, 'Ausente'),
     ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000002', '2026-02-10', FALSE, 'Ausente'),
-    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000003', '2026-02-17', FALSE, 'Ausente')
+    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000003', '2026-02-17', FALSE, 'Ausente'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000007', '2026-06-24', TRUE, NULL),
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000007', '2026-06-24', TRUE, NULL),
+    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000007', '2026-06-24', FALSE, 'Falta justificada')
 ON CONFLICT (matricula_id, data_aula) DO NOTHING;
 
 INSERT INTO avaliacoes (id, matricula_id, aula_id, descricao, nota, data_avaliacao)

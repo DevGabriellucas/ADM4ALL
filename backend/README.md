@@ -29,30 +29,38 @@ Variaveis usadas pelo backend:
 |---|---|
 | `DATABASE_URL` | String de conexao do PostgreSQL |
 | `FRONTEND_URL` | Origem liberada no CORS e base do link de recuperacao de senha |
+| `JWT_SECRET` | Segredo usado para assinar tokens de login |
 | `ADMIN_API_KEY` | Chave simples para proteger rotas administrativas |
 
-## Autorizacao administrativa
+## Autorizacao
 
-As rotas de consulta, atualizacao e remocao de alunos exigem o header:
+O login retorna um token JWT simples, assinado com `JWT_SECRET`.
+Nas rotas protegidas por perfil, envie:
+
+```http
+Authorization: Bearer token_recebido_no_login
+```
+
+As rotas administrativas antigas de alunos ainda aceitam provisoriamente:
 
 ```http
 x-api-key: valor_do_ADMIN_API_KEY
 ```
 
-Essa protecao e provisoria para o MVP. O ideal depois e trocar por login com
-token/JWT e permissoes por perfil.
-
 ## Contrato da API
 
 | Metodo | Endpoint | Protecao | Descricao |
 |---|---|---|---|
-| POST | `/auth/login` | Publica | Realiza login do aluno |
+| POST | `/auth/login` | Publica | Realiza login e retorna token/perfil |
 | POST | `/auth/recuperar-senha` | Publica | Solicita recuperacao de senha |
 | POST | `/alunos` | Publica | Cadastra novo aluno |
 | GET | `/alunos` | `x-api-key` | Lista alunos |
 | GET | `/alunos/:id` | `x-api-key` | Busca aluno por ID |
 | PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
 | DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
+| GET | `/instrutores/:id/dashboard` | `Bearer` instrutor/coordenador/admin | Dashboard do instrutor |
+| POST | `/turmas/:turmaId/presencas` | `Bearer` instrutor/coordenador/admin | Registra presencas da turma |
+| POST | `/turmas/:turmaId/materiais` | `Bearer` instrutor/coordenador/admin | Cadastra material e salva upload opcional |
 
 ## Recuperacao de senha
 
@@ -76,6 +84,24 @@ envio e manter o token puro fora do banco.
 {
   "identifier": "email_ou_cpf",
   "password": "senha"
+}
+```
+
+Resposta:
+
+```json
+{
+  "mensagem": "Login realizado com sucesso!",
+  "token": "jwt",
+  "usuario": {
+    "id": "uuid",
+    "nome": "Eduardo Lima",
+    "email": "eduardo.lima@example.com",
+    "perfil": "instrutor",
+    "alunoId": null,
+    "instrutorId": "uuid",
+    "coordenadorId": null
+  }
 }
 ```
 
