@@ -5,6 +5,8 @@ import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 
 export interface CadastrarAlunoInput {
   nome: string;
@@ -53,13 +55,13 @@ export class AlunoUseCase {
     const aluno = await this.alunoRepository.buscarPorEmailOuCpf(idLimpo);
 
     if (!aluno) {
-      throw new Error("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais invalidas.");
     }
 
     const senhaCorreta = await bcrypt.compare(senhaBruta, aluno.senha);
 
     if (!senhaCorreta) {
-      throw new Error("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais invalidas.");
     }
 
     return aluno;
@@ -73,12 +75,16 @@ export class AlunoUseCase {
 
     const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
     if (cpfExistente) {
-      throw new Error("Ja existe um aluno cadastrado com este CPF.");
+      throw new BadRequestError("Ja existe um aluno cadastrado com este CPF.");
     }
 
-    const emailExistente = await this.alunoRepository.buscarPorEmail(emailVo.value);
+    const emailExistente = await this.alunoRepository.buscarPorEmail(
+      emailVo.value,
+    );
     if (emailExistente) {
-      throw new Error("Ja existe um aluno cadastrado com este e-mail.");
+      throw new BadRequestError(
+        "Ja existe um aluno cadastrado com este e-mail.",
+      );
     }
 
     const senhaCriptografada = await this.criptografarSenha(dados.senha);
@@ -103,13 +109,18 @@ export class AlunoUseCase {
 
   async buscarPorId(id: string): Promise<Aluno> {
     const aluno = await this.alunoRepository.buscarPorId(id);
-    if (!aluno) throw new Error("Aluno nao encontrado.");
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
     return aluno;
   }
 
-  async atualizar(id: string, dadosAtualizados: AtualizarAlunoInput): Promise<Aluno> {
+  async atualizar(
+    id: string,
+    dadosAtualizados: AtualizarAlunoInput,
+  ): Promise<Aluno> {
     if (dadosAtualizados.cpf !== undefined) {
-      throw new Error("CPF nao pode ser alterado.");
+      throw new BadRequestError("CPF nao pode ser alterado.");
     }
 
     const aluno = await this.buscarPorId(id);
@@ -127,9 +138,13 @@ export class AlunoUseCase {
       const emailVo = new Email(dadosAtualizados.email);
 
       if (emailVo.value !== aluno.email) {
-        const alunoComEmail = await this.alunoRepository.buscarPorEmail(emailVo.value);
+        const alunoComEmail = await this.alunoRepository.buscarPorEmail(
+          emailVo.value,
+        );
         if (alunoComEmail && alunoComEmail.id !== aluno.id) {
-          throw new Error("Ja existe um aluno cadastrado com este e-mail.");
+          throw new BadRequestError(
+            "Ja existe um aluno cadastrado com este e-mail.",
+          );
         }
       }
 
@@ -137,7 +152,9 @@ export class AlunoUseCase {
     }
 
     if (dadosAtualizados.dataNascimento !== undefined) {
-      novosDados.dataNascimento = this.normalizarDataNascimento(dadosAtualizados.dataNascimento);
+      novosDados.dataNascimento = this.normalizarDataNascimento(
+        dadosAtualizados.dataNascimento,
+      );
     }
 
     if (dadosAtualizados.senha !== undefined) {
@@ -174,9 +191,14 @@ export class AlunoUseCase {
     await this.alunoRepository.deletar(id);
   }
 
-  async recuperarSenha(emailBruto: string, contexto: RecuperarSenhaContexto = {}): Promise<void> {
+  async recuperarSenha(
+    emailBruto: string,
+    contexto: RecuperarSenhaContexto = {},
+  ): Promise<void> {
     const emailVo = new Email(emailBruto);
-    const usuario = await this.alunoRepository.buscarUsuarioPorEmail(emailVo.value);
+    const usuario = await this.alunoRepository.buscarUsuarioPorEmail(
+      emailVo.value,
+    );
 
     if (!usuario) {
       return;
@@ -193,8 +215,12 @@ export class AlunoUseCase {
     }
 
     const tokenDeRecuperacao = randomBytes(32).toString("hex");
-    const tokenHash = createHash("sha256").update(tokenDeRecuperacao).digest("hex");
-    const expiraEm = new Date(Date.now() + RECUPERACAO_SENHA_MINUTOS * 60 * 1000);
+    const tokenHash = createHash("sha256")
+      .update(tokenDeRecuperacao)
+      .digest("hex");
+    const expiraEm = new Date(
+      Date.now() + RECUPERACAO_SENHA_MINUTOS * 60 * 1000,
+    );
 
     await this.alunoRepository.registrarRecuperacaoSenha({
       usuarioId: usuario.id,
@@ -215,7 +241,7 @@ export class AlunoUseCase {
     const dataNascimento = data instanceof Date ? data : new Date(data);
 
     if (isNaN(dataNascimento.getTime())) {
-      throw new Error("A data de nascimento e invalida.");
+      throw new BadRequestError("A data de nascimento e invalida.");
     }
 
     return dataNascimento;
@@ -223,7 +249,7 @@ export class AlunoUseCase {
 
   private async criptografarSenha(senha: string): Promise<string> {
     if (!senha || senha.trim() === "") {
-      throw new Error("A senha e obrigatoria.");
+      throw new BadRequestError("A senha e obrigatoria.");
     }
 
     return await bcrypt.hash(senha, SALT_ROUNDS);

@@ -1,12 +1,16 @@
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
+import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import { randomUUID } from "crypto";
-import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
-import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
-import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
 import { JwtService, TokenPayload } from "../../application/security/JwtService";
+import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
+import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
+import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
+import { BadRequestError } from "../errors/BadRequestError";
+import { UnauthorizedError } from "../errors/UnauthorizedError";
+import { asyncHandler } from "../middleware/asyncHandler";
+import { errorMiddleware } from "../middleware/errorMiddleware";
 
 type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
 
@@ -27,35 +31,38 @@ export class ExpressAdapter {
     private jwtService: JwtService,
   ) {
     this.app.use(express.json({ limit: "60mb" }));
-    this.app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000" }));
+    this.app.use(
+      cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000" }),
+    );
     this.app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
     this.configurarRotas();
+    this.app.use(errorMiddleware);
   }
 
-  private exigirApiKey(req: Request, res: Response, next: NextFunction) {
+  private exigirApiKey(req: Request, _res: Response, next: NextFunction) {
     const apiKeyEsperada = process.env.ADMIN_API_KEY;
 
     if (!apiKeyEsperada) {
-      res.status(500).json({ erro: "ADMIN_API_KEY nao configurada." });
+      next(new BadRequestError("ADMIN_API_KEY nao configurada."));
       return;
     }
 
     if (req.header("x-api-key") !== apiKeyEsperada) {
-      res.status(401).json({ erro: "Nao autorizado." });
+      next(new UnauthorizedError("Nao autorizado."));
       return;
     }
 
     next();
   }
 
-  private autenticar(req: Request, res: Response, next: NextFunction) {
+  private autenticar(req: Request, _res: Response, next: NextFunction) {
     const authorization = req.header("authorization");
     const token = authorization?.startsWith("Bearer ")
       ? authorization.slice("Bearer ".length).trim()
       : null;
 
     if (!token) {
-      res.status(401).json({ erro: "Token de acesso nao informado." });
+      next(new UnauthorizedError("Token de acesso nao informado."));
       return;
     }
 
@@ -64,7 +71,7 @@ export class ExpressAdapter {
         this.jwtService.verificar(token);
       next();
     } catch (error: any) {
-      res.status(401).json({ erro: error.message ?? "Token invalido." });
+      next(new UnauthorizedError(error.message ?? "Token invalido."));
     }
   }
 
@@ -74,7 +81,7 @@ export class ExpressAdapter {
         const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!perfis.includes(usuario.perfil as Perfil)) {
-          res.status(403).json({ erro: "Perfil sem permissao para esta rota." });
+          next(new UnauthorizedError("Perfil sem permissao para esta rota."));
           return;
         }
 
@@ -107,14 +114,14 @@ export class ExpressAdapter {
     ]);
 
     if (!tiposPermitidos.has(arquivo.tipoMime)) {
-      throw new Error("Tipo de arquivo nao permitido.");
+      throw new BadRequestError("Tipo de arquivo nao permitido.");
     }
 
     const conteudo = Buffer.from(arquivo.conteudoBase64, "base64");
     const limiteBytes = 50 * 1024 * 1024;
 
     if (conteudo.length === 0 || conteudo.length > limiteBytes) {
-      throw new Error("O arquivo deve ter ate 50MB.");
+      throw new BadRequestError("O arquivo deve ter ate 50MB.");
     }
 
     await fs.mkdir(this.uploadsDir, { recursive: true });
@@ -133,28 +140,34 @@ export class ExpressAdapter {
   }
 
   private configurarRotas() {
-    this.app.post("/auth/login", async (req: Request, res: Response) => {
-      try {
+    this.app.post(
+      "/auth/login",
+      asyncHandler(async (req: Request, res: Response) => {
         const { identifier, password } = req.body;
 
         if (!identifier || !password) {
-          res.status(400).json({ erro: "Identificador e senha sao obrigatorios." });
-          return;
+          throw new BadRequestError("Identificador e senha sao obrigatorios.");
         }
 
         const resultado = await this.authUseCase.login(identifier, password);
-
         res.status(200).json(resultado);
-      } catch (error: any) {
-        res.status(401).json({ erro: error.message });
-      }
-    });
+      }),
+    );
 
-    this.app.post("/alunos", async (req: Request, res: Response) => {
-      try {
+    this.app.post(
+      "/alunos",
+      asyncHandler(async (req: Request, res: Response) => {
         const {
-          nome, cpf, telefone, email, dataNascimento,
-          senha, treinamento, isAlunoUnipe, rgm, cursoUnipe,
+          nome,
+          cpf,
+          telefone,
+          email,
+          dataNascimento,
+          senha,
+          treinamento,
+          isAlunoUnipe,
+          rgm,
+          cursoUnipe,
         } = req.body;
 
         const aluno = await this.alunoUseCase.cadastrar({
@@ -175,18 +188,16 @@ export class ExpressAdapter {
           nome: aluno.nome,
           mensagem: "Aluno cadastrado com sucesso!",
         });
-      } catch (error: any) {
-        res.status(400).json({ erro: error.message });
-      }
-    });
+      }),
+    );
 
-    this.app.post("/auth/recuperar-senha", async (req: Request, res: Response) => {
-      try {
+    this.app.post(
+      "/auth/recuperar-senha",
+      asyncHandler(async (req: Request, res: Response) => {
         const { email } = req.body;
 
         if (!email) {
-          res.status(400).json({ erro: "O e-mail e obrigatorio." });
-          return;
+          throw new BadRequestError("O e-mail e obrigatorio.");
         }
 
         await this.alunoUseCase.recuperarSenha(email, {
@@ -197,165 +208,148 @@ export class ExpressAdapter {
         res.status(200).json({
           mensagem: "Se o e-mail estiver cadastrado, as instrucoes foram enviadas.",
         });
-      } catch (error: any) {
-        res.status(400).json({ erro: error.message });
-      }
-    });
+      }),
+    );
 
-    this.app.get("/alunos", this.exigirApiKey, async (req: Request, res: Response) => {
-      try {
+    this.app.get(
+      "/alunos",
+      this.exigirApiKey,
+      asyncHandler(async (_req: Request, res: Response) => {
         const alunos = await this.alunoUseCase.listar();
-        res.json(alunos.map(a => a.toJSON()));
-      } catch (error: any) {
-        res.status(500).json({ erro: error.message });
-      }
-    });
+        res.json(alunos.map((aluno) => aluno.toJSON()));
+      }),
+    );
 
-    this.app.get("/alunos/:id", this.exigirApiKey, async (req: Request, res: Response) => {
-      try {
+    this.app.get(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         if (!id || typeof id !== "string") {
-          res.status(400).json({ erro: "O ID do aluno fornecido e invalido." });
-          return;
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
         }
 
         const aluno = await this.alunoUseCase.buscarPorId(id);
-        return res.json(aluno.toJSON());
-      } catch (error: any) {
-        res.status(400).json({ erro: error.message });
-      }
-    });
+        res.json(aluno.toJSON());
+      }),
+    );
 
-    this.app.put("/alunos/:id", this.exigirApiKey, async (req: Request, res: Response) => {
-      try {
+    this.app.put(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 
         if (!id || typeof id !== "string") {
-          res.status(400).json({ erro: "O ID do aluno fornecido e invalido." });
-          return;
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
         }
 
         const aluno = await this.alunoUseCase.atualizar(id, req.body);
-        res.json({ id: aluno.id, nome: aluno.nome, mensagem: "Cadastro atualizado!" });
-      } catch (error: any) {
-        res.status(400).json({ erro: error.message });
-      }
-    });
+        res.json({
+          id: aluno.id,
+          nome: aluno.nome,
+          mensagem: "Cadastro atualizado!",
+        });
+      }),
+    );
 
-    this.app.delete("/alunos/:id", this.exigirApiKey, async (req: Request, res: Response) => {
-      try {
+    this.app.delete(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 
         if (!id || typeof id !== "string") {
-          res.status(400).json({ erro: "O ID do aluno fornecido e invalido." });
-          return;
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
         }
 
         await this.alunoUseCase.deletar(id);
         res.json({ mensagem: "Aluno removido com sucesso." });
-      } catch (error: any) {
-        res.status(400).json({ erro: error.message });
-      }
-    });
+      }),
+    );
 
     this.app.get(
       "/instrutores/:id/dashboard",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
-      async (req: Request, res: Response) => {
-        try {
-          const { id } = req.params;
-          const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
-          if (!id || typeof id !== "string") {
-            res.status(400).json({ erro: "O ID do instrutor e invalido." });
-            return;
-          }
-
-          if (usuario.perfil === "instrutor" && usuario.instrutorId !== id) {
-            res.status(403).json({ erro: "Instrutor sem acesso a esta turma." });
-            return;
-          }
-
-          const dashboard = await this.instrutorUseCase.obterDashboard(id);
-          res.json(dashboard);
-        } catch (error: any) {
-          res.status(400).json({ erro: error.message });
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do instrutor e invalido.");
         }
-      },
+
+        if (usuario.perfil === "instrutor" && usuario.instrutorId !== id) {
+          throw new UnauthorizedError("Instrutor sem acesso a esta turma.");
+        }
+
+        const dashboard = await this.instrutorUseCase.obterDashboard(id);
+        res.json(dashboard);
+      }),
     );
 
     this.app.post(
       "/turmas/:turmaId/presencas",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
-      async (req: Request, res: Response) => {
-        try {
-          const { turmaId } = req.params;
-          const { aulaId, registros } = req.body;
-          const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const { aulaId, registros } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
-          if (!turmaId || typeof turmaId !== "string") {
-            res.status(400).json({ erro: "O ID da turma e invalido." });
-            return;
-          }
-
-          if (usuario.perfil === "instrutor") {
-            await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
-              turmaId,
-              usuario.instrutorId,
-            );
-          }
-
-          await this.instrutorUseCase.registrarPresencas({
-            turmaId,
-            aulaId,
-            registros,
-          });
-
-          res.status(200).json({ mensagem: "Presencas registradas com sucesso." });
-        } catch (error: any) {
-          res.status(400).json({ erro: error.message });
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
         }
-      },
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        await this.instrutorUseCase.registrarPresencas({
+          turmaId,
+          aulaId,
+          registros,
+        });
+
+        res.status(200).json({ mensagem: "Presencas registradas com sucesso." });
+      }),
     );
 
     this.app.post(
       "/turmas/:turmaId/materiais",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
-      async (req: Request, res: Response) => {
-        try {
-          const { turmaId } = req.params;
-          const { titulo, tipo, urlArquivo, tamanhoBytes, publicadoPorId, arquivo } =
-            req.body;
-          const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const { titulo, tipo, urlArquivo, tamanhoBytes, publicadoPorId, arquivo } =
+          req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
-          if (!turmaId || typeof turmaId !== "string") {
-            res.status(400).json({ erro: "O ID da turma e invalido." });
-            return;
-          }
-
-          if (usuario.perfil === "instrutor") {
-            await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
-              turmaId,
-              usuario.instrutorId,
-            );
-          }
-
-          const arquivoSalvo = await this.salvarArquivoMaterial(arquivo);
-
-          const material = await this.instrutorUseCase.adicionarMaterial({
-            turmaId,
-            titulo,
-            tipo,
-            urlArquivo: arquivoSalvo.urlArquivo ?? urlArquivo,
-            tamanhoBytes: arquivoSalvo.tamanhoBytes ?? tamanhoBytes,
-            publicadoPorId: publicadoPorId ?? usuario.sub,
-          });
-
-          res.status(201).json(material);
-        } catch (error: any) {
-          res.status(400).json({ erro: error.message });
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
         }
-      },
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const arquivoSalvo = await this.salvarArquivoMaterial(arquivo);
+
+        const material = await this.instrutorUseCase.adicionarMaterial({
+          turmaId,
+          titulo,
+          tipo,
+          urlArquivo: arquivoSalvo.urlArquivo ?? urlArquivo,
+          tamanhoBytes: arquivoSalvo.tamanhoBytes ?? tamanhoBytes,
+          publicadoPorId: publicadoPorId ?? usuario.sub,
+        });
+
+        res.status(201).json(material);
+      }),
     );
   }
 

@@ -3,6 +3,8 @@ import {
   AuthRepository,
   UsuarioAutenticacao,
 } from "../../domain/repositories/AuthRepository";
+import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 import { JwtService } from "../security/JwtService";
 
 export interface LoginResultado {
@@ -31,7 +33,7 @@ export class AuthUseCase {
 
   async login(identificador: string, senha: string): Promise<LoginResultado> {
     if (!identificador || !senha) {
-      throw new Error("Identificador e senha sao obrigatorios.");
+      throw new BadRequestError("Identificador e senha sao obrigatorios.");
     }
 
     const usuario = await this.authRepository.buscarUsuarioPorIdentificador(
@@ -39,12 +41,12 @@ export class AuthUseCase {
     );
 
     if (!usuario || usuario.status !== "ativo") {
-      throw new Error("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais invalidas.");
     }
 
     const senhaCorreta = await bcrypt.compare(senha, usuario.senhaHash);
     if (!senhaCorreta) {
-      throw new Error("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais invalidas.");
     }
 
     await this.authRepository.registrarUltimoLogin(usuario.id);
