@@ -1,107 +1,356 @@
-import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import express, { NextFunction, Request, Response } from "express";
+import { randomUUID } from "crypto";
+import fs from "fs/promises";
+import path from "path";
+import { JwtService, TokenPayload } from "../../application/security/JwtService";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
+import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
+import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
+import { BadRequestError } from "../errors/BadRequestError";
+import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
-import { BadRequestError } from "../errors/BadRequestError";
+
+type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
+
+interface ArquivoUploadJson {
+  nome: string;
+  tipoMime: string;
+  conteudoBase64: string;
+}
 
 export class ExpressAdapter {
   private app = express();
+  private uploadsDir = path.resolve(process.cwd(), "uploads", "materiais");
 
-  constructor(private alunoUseCase: AlunoUseCase) {
-    this.app.use(express.json());
-    this.app.use(cors({ origin: "http://localhost:3000" }));
+  constructor(
+    private authUseCase: AuthUseCase,
+    private alunoUseCase: AlunoUseCase,
+    private instrutorUseCase: InstrutorUseCase,
+    private jwtService: JwtService,
+  ) {
+    this.app.use(express.json({ limit: "60mb" }));
+    this.app.use(
+      cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000" }),
+    );
+    this.app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
     this.configurarRotas();
     this.app.use(errorMiddleware);
   }
 
-  private configurarRotas() {
-    // Login
-    this.app.post("/auth/login", asyncHandler(async (req: Request, res: Response) => {
-      const { identifier, password } = req.body;
+  private exigirApiKey(req: Request, _res: Response, next: NextFunction) {
+    const apiKeyEsperada = process.env.ADMIN_API_KEY;
 
-      if (!identifier || !password) {
-        throw new BadRequestError("Identificador e senha são obrigatórios.");
-      }
+    if (!apiKeyEsperada) {
+      next(new BadRequestError("ADMIN_API_KEY nao configurada."));
+      return;
+    }
 
-      const aluno = await this.alunoUseCase.login(identifier, password);
-      res.status(200).json({ 
-        mensagem: "Login realizado com sucesso!",
-        aluno: aluno.toJSON() 
+    if (req.header("x-api-key") !== apiKeyEsperada) {
+      next(new UnauthorizedError("Nao autorizado."));
+      return;
+    }
+
+    next();
+  }
+
+  private autenticar(req: Request, _res: Response, next: NextFunction) {
+    const authorization = req.header("authorization");
+    const token = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : null;
+
+    if (!token) {
+      next(new UnauthorizedError("Token de acesso nao informado."));
+      return;
+    }
+
+    try {
+      (req as Request & { usuario: TokenPayload }).usuario =
+        this.jwtService.verificar(token);
+      next();
+    } catch (error: any) {
+      next(new UnauthorizedError(error.message ?? "Token invalido."));
+    }
+  }
+
+  private exigirPerfis(perfis: Perfil[]) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      this.autenticar(req, res, () => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!perfis.includes(usuario.perfil as Perfil)) {
+          next(new UnauthorizedError("Perfil sem permissao para esta rota."));
+          return;
+        }
+
+        next();
       });
-    }));
-    
-    // Cadastrar Aluno
-    this.app.post("/alunos", asyncHandler(async (req: Request, res: Response) => {
-      const {
-          nome, cpf, telefone, email, dataNascimento,
-          senha, treinamento, isAlunoUnipe, rgm, cursoUnipe 
+    };
+  }
+
+  private async salvarArquivoMaterial(
+    arquivo: ArquivoUploadJson | null | undefined,
+  ): Promise<{ urlArquivo: string | null; tamanhoBytes: number | null }> {
+    if (!arquivo) {
+      return { urlArquivo: null, tamanhoBytes: null };
+    }
+
+    const tiposPermitidos = new Set([
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ]);
+
+    if (!tiposPermitidos.has(arquivo.tipoMime)) {
+      throw new BadRequestError("Tipo de arquivo nao permitido.");
+    }
+
+    const conteudo = Buffer.from(arquivo.conteudoBase64, "base64");
+    const limiteBytes = 50 * 1024 * 1024;
+
+    if (conteudo.length === 0 || conteudo.length > limiteBytes) {
+      throw new BadRequestError("O arquivo deve ter ate 50MB.");
+    }
+
+    await fs.mkdir(this.uploadsDir, { recursive: true });
+
+    const extensaoOriginal = path.extname(arquivo.nome).toLowerCase();
+    const extensao = extensaoOriginal.replace(/[^a-z0-9.]/g, "") || ".bin";
+    const nomeArquivo = `${randomUUID()}${extensao}`;
+    const destino = path.join(this.uploadsDir, nomeArquivo);
+
+    await fs.writeFile(destino, conteudo);
+
+    return {
+      urlArquivo: `/uploads/materiais/${nomeArquivo}`,
+      tamanhoBytes: conteudo.length,
+    };
+  }
+
+  private configurarRotas() {
+    this.app.post(
+      "/auth/login",
+      asyncHandler(async (req: Request, res: Response) => {
+        const { identifier, password } = req.body;
+
+        if (!identifier || !password) {
+          throw new BadRequestError("Identificador e senha sao obrigatorios.");
+        }
+
+        const resultado = await this.authUseCase.login(identifier, password);
+        res.status(200).json(resultado);
+      }),
+    );
+
+    this.app.post(
+      "/alunos",
+      asyncHandler(async (req: Request, res: Response) => {
+        const {
+          nome,
+          cpf,
+          telefone,
+          email,
+          dataNascimento,
+          senha,
+          treinamento,
+          isAlunoUnipe,
+          rgm,
+          cursoUnipe,
         } = req.body;
 
-      const aluno = await this.alunoUseCase.cadastrar({
-        nome, cpf, telefone, email,
-        dataNascimento: new Date(dataNascimento), senha, treinamento,
-        isAlunoUnipe, rgm, cursoUnipe
-      });
-      res.status(201).json({ id: aluno.id, nome: aluno.nome, mensagem: "Aluno cadastrado com sucesso!" });
-    }));
-    
-    // Recuperar senha
-    this.app.post("/auth/recuperar-senha", asyncHandler(async (req: Request, res: Response) => {
-      const { email } = req.body;
-      
-      if (!email) {
-        throw new BadRequestError("O e-mail é obrigatório.");
-      }
+        const aluno = await this.alunoUseCase.cadastrar({
+          nome,
+          cpf,
+          telefone,
+          email,
+          dataNascimento,
+          senha,
+          treinamento,
+          isAlunoUnipe,
+          rgm,
+          cursoUnipe,
+        });
 
-      await this.alunoUseCase.recuperarSenha(email);
+        res.status(201).json({
+          id: aluno.id,
+          nome: aluno.nome,
+          mensagem: "Aluno cadastrado com sucesso!",
+        });
+      }),
+    );
 
-      res.status(200).json({ 
-        mensagem: "Se o e-mail estiver cadastrado, as instruções foram enviadas." 
-      });
-    }));
+    this.app.post(
+      "/auth/recuperar-senha",
+      asyncHandler(async (req: Request, res: Response) => {
+        const { email } = req.body;
 
-    // Listar Alunos
-    this.app.get("/alunos", asyncHandler(async (req: Request, res: Response) => {
-      const alunos = await this.alunoUseCase.listar();
-      res.json(alunos.map(a => a.toJSON()));
-    }));
+        if (!email) {
+          throw new BadRequestError("O e-mail e obrigatorio.");
+        }
 
-    // Listar aluno por ID
-    this.app.get("/alunos/:id", asyncHandler(async (req: Request, res:Response) => {
-      const { id } = req.params;
-      if (!id || typeof id !== "string") {
-        throw new BadRequestError("O ID do aluno fornecido é inválido.");
-      }
-      const aluno = await this.alunoUseCase.buscarPorId(id);
-      return res.json(aluno.toJSON());
-    }));
+        await this.alunoUseCase.recuperarSenha(email, {
+          ipSolicitante: req.ip,
+          userAgent: req.get("user-agent"),
+        });
 
-    // Atualizar Aluno
-    this.app.put("/alunos/:id", asyncHandler(async (req: Request, res: Response) => {
-      const { id } = req.params;
+        res.status(200).json({
+          mensagem: "Se o e-mail estiver cadastrado, as instrucoes foram enviadas.",
+        });
+      }),
+    );
 
-      // Validação ID
-      if (!id || typeof id !== "string") {
-        throw new BadRequestError("O ID do aluno fornecido é inválido.");
-      }
+    this.app.get(
+      "/alunos",
+      this.exigirApiKey,
+      asyncHandler(async (_req: Request, res: Response) => {
+        const alunos = await this.alunoUseCase.listar();
+        res.json(alunos.map((aluno) => aluno.toJSON()));
+      }),
+    );
 
-      const aluno = await this.alunoUseCase.atualizar(id, req.body);
-      res.json({ id: aluno.id, nome: aluno.nome, mensagem: "Cadastro atualizado!" });
-    }));
+    this.app.get(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
+        }
 
-    //Deletar Aluno
-    this.app.delete("/alunos/:id", asyncHandler(async (req: Request, res: Response) => {
-      const { id } = req.params;
+        const aluno = await this.alunoUseCase.buscarPorId(id);
+        res.json(aluno.toJSON());
+      }),
+    );
 
-      // Validação ID
-      if (!id || typeof id !== "string") {
-        throw new BadRequestError("O ID do aluno fornecido é inválido.");
-      }
+    this.app.put(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
 
-      await this.alunoUseCase.deletar(id);
-      res.json({ mensagem: "Aluno removido com sucesso." });
-    }));
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
+        }
+
+        const aluno = await this.alunoUseCase.atualizar(id, req.body);
+        res.json({
+          id: aluno.id,
+          nome: aluno.nome,
+          mensagem: "Cadastro atualizado!",
+        });
+      }),
+    );
+
+    this.app.delete(
+      "/alunos/:id",
+      this.exigirApiKey,
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do aluno fornecido e invalido.");
+        }
+
+        await this.alunoUseCase.deletar(id);
+        res.json({ mensagem: "Aluno removido com sucesso." });
+      }),
+    );
+
+    this.app.get(
+      "/instrutores/:id/dashboard",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do instrutor e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor" && usuario.instrutorId !== id) {
+          throw new UnauthorizedError("Instrutor sem acesso a esta turma.");
+        }
+
+        const dashboard = await this.instrutorUseCase.obterDashboard(id);
+        res.json(dashboard);
+      }),
+    );
+
+    this.app.post(
+      "/turmas/:turmaId/presencas",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const { aulaId, registros } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        await this.instrutorUseCase.registrarPresencas({
+          turmaId,
+          aulaId,
+          registros,
+        });
+
+        res.status(200).json({ mensagem: "Presencas registradas com sucesso." });
+      }),
+    );
+
+    this.app.post(
+      "/turmas/:turmaId/materiais",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const { titulo, tipo, urlArquivo, tamanhoBytes, publicadoPorId, arquivo } =
+          req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const arquivoSalvo = await this.salvarArquivoMaterial(arquivo);
+
+        const material = await this.instrutorUseCase.adicionarMaterial({
+          turmaId,
+          titulo,
+          tipo,
+          urlArquivo: arquivoSalvo.urlArquivo ?? urlArquivo,
+          tamanhoBytes: arquivoSalvo.tamanhoBytes ?? tamanhoBytes,
+          publicadoPorId: publicadoPorId ?? usuario.sub,
+        });
+
+        res.status(201).json(material);
+      }),
+    );
   }
 
   public iniciar(porta: number) {

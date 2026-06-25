@@ -9,6 +9,7 @@ login por tipo de usuario.
 erDiagram
     PERFIS ||--o{ USUARIOS : define
     ALUNOS ||--o| USUARIOS : acessa
+    USUARIOS ||--o{ RECUPERACOES_SENHA : solicita
     USUARIOS ||--o| INSTRUTORES : representa
     USUARIOS ||--o| COORDENADORES : representa
 
@@ -51,6 +52,17 @@ erDiagram
         varchar status
         timestamptz data_criacao
         timestamptz ultimo_login
+    }
+
+    RECUPERACOES_SENHA {
+        uuid id PK
+        uuid usuario_id FK
+        varchar token_hash UK
+        timestamptz solicitado_em
+        timestamptz expira_em
+        timestamptz usado_em
+        varchar ip_solicitante
+        text user_agent
     }
 
     ALUNOS {
@@ -237,6 +249,10 @@ erDiagram
 
 - O backend atual ainda autentica usando `alunos.email` e `alunos.senha`.
   A tabela `usuarios` prepara a migracao para login por perfil.
+- `recuperacoes_senha` deve armazenar apenas o hash do token. O token puro
+  deve existir somente no link enviado ao usuario.
+- A expiracao padrao de recuperacao de senha e de 15 minutos. O backend deve
+  consultar a ultima solicitacao do usuario antes de criar um novo token.
 - `matriculas.turma_id` permite alimentar a tela do aluno e as telas do
   instrutor/coordenador com a mesma fonte de dados.
 - `aulas`, `frequencias` e `materiais` sustentam a tela do instrutor.

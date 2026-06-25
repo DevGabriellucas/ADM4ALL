@@ -9,7 +9,18 @@ interface ForgotPasswordPayload {
 
 export interface LoginResponse {
   mensagem?: string;
+  token?: string;
+  usuario?: {
+    id: string;
+    nome: string;
+    email: string;
+    perfil: "aluno" | "instrutor" | "coordenador" | "admin";
+    alunoId: string | null;
+    instrutorId: string | null;
+    coordenadorId: string | null;
+  };
   aluno?: {
+    id?: string | null;
     nome?: string;
   };
 }
@@ -18,39 +29,22 @@ export interface ForgotPasswordResponse {
   mensagem?: string;
 }
 
-// TODO: substituir este tipo genérico por tipos específicos
-// quando o contrato real das APIs estiver definido.
-//
-// Por enquanto, como ainda não sabemos exatamente se a API retorna
-// "mensagem", "erro", "message", "aluno", "token", etc.,
-// mantemos um tipo flexível para evitar adivinhar o contrato final.
-type ApiResponse = {
-  mensagem?: string;
-  erro?: string;
-  message?: string;
-  aluno?: {
-    nome?: string;
+type ApiResponse = LoginResponse &
+  ForgotPasswordResponse & {
+    erro?: string;
+    message?: string;
   };
-};
 
 const getApiUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
-    throw new Error("URL da API não configurada.");
+    throw new Error("URL da API nao configurada.");
   }
 
   return apiUrl;
 };
 
-// TODO: quando o backend tiver respostas padronizadas,
-// podemos trocar este parse genérico por tipos mais precisos
-// para cada endpoint da API.
-//
-// Esta função evita que a aplicação quebre caso a API retorne:
-// - corpo vazio;
-// - resposta não JSON;
-// - erro inesperado no parse.
 const parseJson = async (response: Response): Promise<ApiResponse | null> => {
   try {
     return await response.json();
@@ -59,9 +53,6 @@ const parseJson = async (response: Response): Promise<ApiResponse | null> => {
   }
 };
 
-// TODO: quando a API padronizar o formato de erro,
-// por exemplo sempre retornando { erro: string },
-// podemos simplificar esta função.
 const getApiErrorMessage = (
   data: ApiResponse | null,
   fallbackMessage: string,
@@ -89,6 +80,8 @@ export const login = async (data: LoginPayload): Promise<LoginResponse> => {
 
   return {
     mensagem: result?.mensagem ?? "Login realizado com sucesso.",
+    token: result?.token,
+    usuario: result?.usuario,
     aluno: result?.aluno,
   };
 };
@@ -110,7 +103,7 @@ export const forgotPassword = async (
 
   if (!response.ok) {
     throw new Error(
-      getApiErrorMessage(result, "Ocorreu um erro ao processar a solicitação."),
+      getApiErrorMessage(result, "Ocorreu um erro ao processar a solicitacao."),
     );
   }
 
