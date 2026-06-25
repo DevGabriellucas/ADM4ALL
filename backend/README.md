@@ -1,129 +1,135 @@
+# Backend - ADM4All
+
 ## Tecnologias
-- **Node.js** (CommonJS)
-- **TypeScript**
-- **Express**
-- **PostgreSQL**
-- **Bcrypt** (hash de senhas)
-- **Nodemailer** (envio de e-mails)
+
+- Node.js
+- TypeScript
+- Express
+- PostgreSQL
+- Bcrypt
 
 ## Como rodar
-1. Certifique-se de ter um arquivo `.env` com as configurações de banco de dados e e-mail.
-2. Instale as dependências: `npm install`
-3. Rode em modo de desenvolvimento: `npm run start:dev`
+
+1. Crie o `.env` na raiz do projeto a partir de `.env.example`.
+2. Instale as dependencias:
+
+```bash
+npm install
+```
+
+3. Rode em desenvolvimento:
+
+```bash
+npm run start:dev
+```
+
+Variaveis usadas pelo backend:
+
+| Variavel | Uso |
+|---|---|
+| `DATABASE_URL` | String de conexao do PostgreSQL |
+| `FRONTEND_URL` | Origem liberada no CORS e base do link de recuperacao de senha |
+| `JWT_SECRET` | Segredo usado para assinar tokens de login |
+| `ADMIN_API_KEY` | Chave simples para proteger rotas administrativas |
+
+## Autorizacao
+
+O login retorna um token JWT simples, assinado com `JWT_SECRET`.
+Nas rotas protegidas por perfil, envie:
+
+```http
+Authorization: Bearer token_recebido_no_login
+```
+
+As rotas administrativas antigas de alunos ainda aceitam provisoriamente:
+
+```http
+x-api-key: valor_do_ADMIN_API_KEY
+```
 
 ## Contrato da API
 
-| Método | Endpoint | Descrição |
-| :--- | :--- | :--- |
-| POST | `/auth/login` | Realiza login do aluno |
-| POST | `/alunos` | Cadastra um novo aluno |
-| POST | `/auth/recuperar-senha` | Solicita recuperação de senha |
-| GET | `/alunos` | Lista todos os alunos |
-| GET | `/alunos/:id` | Busca aluno por ID |
-| PUT | `/alunos/:id` | Atualiza cadastro de um aluno |
-| DELETE | `/alunos/:id` | Remove um aluno |
+| Metodo | Endpoint | Protecao | Descricao |
+|---|---|---|---|
+| POST | `/auth/login` | Publica | Realiza login e retorna token/perfil |
+| POST | `/auth/recuperar-senha` | Publica | Solicita recuperacao de senha |
+| POST | `/alunos` | Publica | Cadastra novo aluno |
+| GET | `/alunos` | `x-api-key` | Lista alunos |
+| GET | `/alunos/:id` | `x-api-key` | Busca aluno por ID |
+| PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
+| DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
+| GET | `/instrutores/:id/dashboard` | `Bearer` instrutor/coordenador/admin | Dashboard do instrutor |
+| POST | `/turmas/:turmaId/presencas` | `Bearer` instrutor/coordenador/admin | Registra presencas da turma |
+| POST | `/turmas/:turmaId/materiais` | `Bearer` instrutor/coordenador/admin | Cadastra material e salva upload opcional |
 
----
+## Recuperacao de senha
 
-## Detalhes das Requisições e Respostas
+O endpoint `POST /auth/recuperar-senha`:
 
-### 1. POST /auth/login
-**Payload:**
+- normaliza e valida o e-mail;
+- busca o usuario ativo em `usuarios`;
+- impede nova solicitacao se ja houve uma nos ultimos 15 minutos;
+- gera um token aleatorio;
+- salva apenas o `token_hash` em `recuperacoes_senha`;
+- por enquanto exibe o link no console.
+
+Ainda nao ha envio real de e-mail. Para producao, adicionar um servico de
+envio e manter o token puro fora do banco.
+
+## Exemplos
+
+### POST /auth/login
+
 ```json
 {
-  "identifier": "seu_email_ou_cpf",
-  "password": "sua_senha"
+  "identifier": "email_ou_cpf",
+  "password": "senha"
 }
 ```
-**Sucesso (200 OK):**
+
+Resposta:
+
 ```json
 {
   "mensagem": "Login realizado com sucesso!",
-  "aluno": { /* Objeto do aluno */ }
+  "token": "jwt",
+  "usuario": {
+    "id": "uuid",
+    "nome": "Eduardo Lima",
+    "email": "eduardo.lima@example.com",
+    "perfil": "instrutor",
+    "alunoId": null,
+    "instrutorId": "uuid",
+    "coordenadorId": null
+  }
 }
 ```
-**Erro (401 Unauthorized):**
-```json
-{ "erro": "Credenciais inválidas." }
-```
 
-### 2. POST /alunos
-**Payload:**
+### POST /alunos
+
 ```json
 {
-  "nome": "João Silva",
-  "cpf": "123.456.789-00",
-  "telefone": "(11) 99999-9999",
+  "nome": "Joao Silva",
+  "cpf": "123.456.789-09",
+  "telefone": "(83) 99999-9999",
   "email": "joao@email.com",
   "dataNascimento": "2000-01-01",
   "senha": "senhaSegura123",
-  "treinamento": "algum_treinamento",
+  "treinamento": "Assistente Administrativo",
   "isAlunoUnipe": true,
   "rgm": "12345678",
-  "cursoUnipe": "Ciência da Computação"
+  "cursoUnipe": "Administracao"
 }
 ```
-**Sucesso (201 Created):**
-```json
-{ "id": "uuid", "nome": "João Silva", "mensagem": "Aluno cadastrado com sucesso!" }
-```
-**Erro (400 Bad Request):**
-```json
-{ "erro": "Mensagem de erro específica" }
-```
 
-### 3. POST /auth/recuperar-senha
-**Payload:**
-```json
-{
-  "email": "joao@email.com"
-}
-```
-**Sucesso (200 OK):**
-```json
-{ "mensagem": "Se o e-mail estiver cadastrado, as instruções foram enviadas." }
-```
-**Erro (400 Bad Request):**
-```json
-{ "erro": "O e-mail é obrigatório." }
-```
+### PUT /alunos/:id
 
-### 4. GET /alunos/:id
-**Parâmetros:** `id` (UUID do aluno)
-**Sucesso (200 OK):**
-```json
-{ /* Objeto do aluno */ }
-```
-**Erro (400 Bad Request):**
-```json
-{ "erro": "O ID do aluno fornecido é inválido." }
-```
+O CPF nao pode ser alterado. Se a senha for enviada, ela sera salva com bcrypt.
 
-### 5. PUT /alunos/:id
-**Parâmetros:** `id` (UUID do aluno)
-**Payload:** (Campos do aluno para atualização)
 ```json
 {
   "nome": "Novo Nome",
-  "telefone": "(11) 99999-9999"
+  "telefone": "(83) 98888-7777",
+  "email": "novo@email.com"
 }
-```
-**Sucesso (200 OK):**
-```json
-{ "id": "uuid", "nome": "Novo Nome", "mensagem": "Cadastro atualizado!" }
-```
-**Erro (400 Bad Request):**
-```json
-{ "erro": "O ID do aluno fornecido é inválido" }
-```
-
-### 6. DELETE /alunos/:id
-**Parâmetros:** `id` (UUID do aluno)
-**Sucesso (200 OK):**
-```json
-{ "mensagem": "Aluno removido com sucesso." }
-```
-**Erro (400 Bad Request):**
-```json
-{ "erro": "O ID do aluno fornecido é inválido." }
 ```

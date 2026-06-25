@@ -9,15 +9,15 @@ interface ForgotPasswordPayload {
 
 export interface LoginResponse {
   mensagem: string;
-  aluno: {
+  token: string;
+  usuario: {
+    id: string;
     nome: string;
-    matricula: string | null;
-    cursoDeExtensao: {
-      nome_curso: string;
-      qtd_faltas: number;
-      qtd_total_aulas: number;
-      qtd_aulas_concluidas: number;
-    };
+    email: string;
+    perfil: "aluno" | "instrutor" | "coordenador" | "admin";
+    alunoId: string | null;
+    instrutorId: string | null;
+    coordenadorId: string | null;
   };
 }
 
@@ -33,7 +33,7 @@ const getApiUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
-    throw new Error("URL da API não configurada.");
+    throw new Error("URL da API nao configurada.");
   }
 
   return apiUrl;
@@ -66,9 +66,9 @@ export const login = async (data: LoginPayload): Promise<LoginResponse> => {
   }
 };
 
-export const forgotPassword = async (
-  { email }: ForgotPasswordPayload,
-): Promise<ForgotPasswordResponse> => {
+export const forgotPassword = async ({
+  email,
+}: ForgotPasswordPayload): Promise<ForgotPasswordResponse> => {
   try {
     const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
       method: "POST",

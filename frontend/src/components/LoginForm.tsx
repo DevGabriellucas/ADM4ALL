@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type ComponentProps, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
@@ -13,6 +14,7 @@ import { Button } from "./Button";
 interface LoginFormProps extends ComponentProps<"form"> {}
 
 export const LoginForm = ({ className, ...props }: LoginFormProps) => {
+  const router = useRouter();
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
@@ -31,14 +33,33 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
     try {
       const result = await login(data);
-      const alunoNome = result.aluno?.nome
-        ? ` Bem-vindo(a), ${result.aluno.nome}!`
+      const nomeUsuario = result.usuario?.nome;
+      const saudacao = nomeUsuario
+        ? ` Bem-vindo(a), ${nomeUsuario}!`
         : "";
 
       setMessage({
         type: "success",
-        text: `${result.mensagem}${alunoNome}`,
+        text: `${result.mensagem}${saudacao}`,
       });
+
+      if (result.token && result.usuario) {
+        document.cookie = `adm4all_token=${result.token}; path=/; max-age=28800; SameSite=Lax`;
+        document.cookie = `adm4all_perfil=${result.usuario.perfil}; path=/; max-age=28800; SameSite=Lax`;
+
+        if (result.usuario.instrutorId) {
+          document.cookie = `adm4all_instrutor_id=${result.usuario.instrutorId}; path=/; max-age=28800; SameSite=Lax`;
+        }
+
+        const destinoPorPerfil = {
+          aluno: "/aluno",
+          instrutor: "/instrutor",
+          coordenador: "/coordenador",
+          admin: "/dashboard",
+        } as const;
+
+        router.push(destinoPorPerfil[result.usuario.perfil] ?? "/");
+      }
     } catch (error: unknown) {
       setMessage({
         type: "error",
