@@ -40,21 +40,21 @@ export const alunoEmProgressoMock: AlunoDashboard = {
   curso: "Assistente Administrativo",
   avatarUrl: `data:image/svg+xml,${priscillaAvatarSvg}`,
   faltas: 1,
-  progresso: 45,
-  notas: "Parcial: 8,5",
-  documentosPendentes: "Nenhum pendente",
+  aulasPlanejadas: 10,
+  aulasConcluidas: 4,
+  progresso: 40,
 };
 
 export const alunoReprovadoPorFaltaMock: AlunoDashboard = {
   id: "aluno-002",
   nome: "Jose Santos",
-  matricula: "xxxxxxxx",
+  matricula: null,
   curso: "Assistente Administrativo",
   avatarUrl: `data:image/svg+xml,${joseAvatarSvg}`,
   faltas: 3,
+  aulasPlanejadas: 10,
+  aulasConcluidas: 3,
   progresso: 30,
-  notas: "Em avaliação",
-  documentosPendentes: "Comprovante de matrícula",
 };
 
 export const alunoAprovadoMock: AlunoDashboard = {
@@ -64,9 +64,9 @@ export const alunoAprovadoMock: AlunoDashboard = {
   curso: "Assistente Administrativo",
   avatarUrl: `data:image/svg+xml,${diegoAvatarSvg}`,
   faltas: 0,
+  aulasPlanejadas: 10,
+  aulasConcluidas: 10,
   progresso: 100,
-  notas: "Disponíveis na plataforma",
-  documentosPendentes: "Nenhum pendente",
 };
 
 export const alunoDashboardMock = alunoEmProgressoMock;

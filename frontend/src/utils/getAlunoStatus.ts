@@ -7,7 +7,7 @@ export const getAlunoStatus = (aluno: AlunoDashboard): AlunoStatus => {
     return "reprovadoPorFalta";
   }
 
-  if (aluno.progresso === 100) {
+  if (aluno.aulasConcluidas >= aluno.aulasPlanejadas) {
     return "aprovado";
   }
 
