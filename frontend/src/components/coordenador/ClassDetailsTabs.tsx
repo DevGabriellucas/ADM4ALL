@@ -9,6 +9,7 @@ import type {
   Lesson,
   Student,
 } from "@/types/coordinator";
+import { getCertificateStatus as resolveCertificateStatus } from "@/utils/getCertificateStatus";
 
 type ClassDetailsTab =
   | "alunos"
@@ -69,8 +70,11 @@ const getCertificateStatus = (status: CertificateRecord["status"]) => {
   if (status === "emitido") {
     return { label: "Emitido", tone: "green" as const };
   }
-  if (status === "bloqueado") {
-    return { label: "Bloqueado", tone: "red" as const };
+  if (status === "nao_elegivel") {
+    return { label: "Não elegível", tone: "red" as const };
+  }
+  if (status === "elegivel") {
+    return { label: "Elegível", tone: "blue" as const };
   }
   return { label: "Pendente", tone: "amber" as const };
 };
@@ -371,7 +375,9 @@ export const ClassDetailsTabs = ({
               </thead>
               <tbody>
                 {certificates.map((certificate) => {
-                  const status = getCertificateStatus(certificate.status);
+                  const certificateStatus =
+                    resolveCertificateStatus(certificate);
+                  const status = getCertificateStatus(certificateStatus);
 
                   return (
                     <tr key={`${certificate.aluno}-${certificate.turma}`}>
@@ -392,7 +398,7 @@ export const ClassDetailsTabs = ({
                           type="button"
                           className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
                         >
-                          {certificate.status === "emitido"
+                          {certificateStatus === "emitido"
                             ? "Visualizar"
                             : "Analisar"}
                         </button>

@@ -28,7 +28,11 @@ export type AttendanceSituation =
   | "risco_reprovacao"
   | "reprovado_por_falta";
 
-export type CertificateStatus = "pendente" | "emitido" | "bloqueado";
+export type CertificateStatus =
+  | "elegivel"
+  | "pendente"
+  | "emitido"
+  | "nao_elegivel";
 
 export type ProcessStatus = "aberto" | "em_analise" | "concluido" | "cancelado";
 

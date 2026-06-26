@@ -10,6 +10,7 @@ import type {
   Lesson,
   Student,
 } from "@/types/coordinator";
+import { getCertificateStatus } from "@/utils/getCertificateStatus";
 
 interface ClassDetailsContentProps {
   classGroup: ClassGroup;
@@ -52,7 +53,7 @@ export const ClassDetailsContent = ({
     (lesson) => lesson.status === "realizada",
   ).length;
   const eligibleCertificates = certificates.filter(
-    (certificate) => certificate.status !== "bloqueado",
+    (certificate) => getCertificateStatus(certificate) !== "nao_elegivel",
   ).length;
 
   return (

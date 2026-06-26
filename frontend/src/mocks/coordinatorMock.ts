@@ -133,6 +133,16 @@ export const coordinatorStudentsMock: Student[] = [
     status: "ativo",
     dataCriacao: "2026-05-24",
   },
+  {
+    id: "student-007",
+    nome: "Carla Menezes",
+    email: "carla.menezes@example.com",
+    turma: "ATD-2026-01",
+    curso: "Atendimento ao Cliente",
+    frequencia: 85,
+    status: "ativo",
+    dataCriacao: "2026-05-25",
+  },
 ];
 
 export const coordinatorClassesMock: ClassGroup[] = [
@@ -313,6 +323,14 @@ export const coordinatorAttendanceMock: AttendanceSummary[] = [
     frequencia: 72,
     situacao: "risco_reprovacao",
   },
+  {
+    aluno: "Carla Menezes",
+    turma: "ATD-2026-01",
+    presencas: 11,
+    faltas: 2,
+    frequencia: 85,
+    situacao: "regular",
+  },
 ];
 
 export const coordinatorCertificatesMock: CertificateRecord[] = [
@@ -321,7 +339,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 92,
-    status: "pendente",
+    status: "elegivel",
     certificado: null,
   },
   {
@@ -329,7 +347,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 78,
-    status: "pendente",
+    status: "nao_elegivel",
     certificado: null,
   },
   {
@@ -337,7 +355,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 70,
-    status: "bloqueado",
+    status: "nao_elegivel",
     certificado: null,
   },
   {
@@ -347,6 +365,14 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     frequencia: 96,
     status: "emitido",
     certificado: "CERT-ATD-2026-0001",
+  },
+  {
+    aluno: "Carla Menezes",
+    curso: "Atendimento ao Cliente",
+    turma: "ATD-2026-01",
+    frequencia: 85,
+    status: "pendente",
+    certificado: null,
   },
 ];
 
@@ -443,7 +469,7 @@ export const coordinatorDashboardSummaryMock: CoordinatorDashboardSummary = {
       id: "report-003",
       tipo: "certificados",
       titulo: "Certificados",
-      descricao: "Status de certificados emitidos, pendentes e bloqueados.",
+      descricao: "Status de certificados elegíveis, pendentes e emitidos.",
       ultimaAtualizacao: "2026-06-24",
     },
   ],
