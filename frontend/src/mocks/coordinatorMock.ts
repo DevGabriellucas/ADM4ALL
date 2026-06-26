@@ -97,7 +97,7 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ADM-2026-01",
     curso: "Assistente Administrativo",
     frequencia: 70,
-    status: "ativo",
+    status: "reprovado_por_falta",
     dataCriacao: "2026-05-21",
   },
   {
@@ -110,6 +110,17 @@ export const coordinatorStudentsMock: Student[] = [
     frequencia: 96,
     status: "ativo",
     dataCriacao: "2026-05-22",
+  },
+  {
+    id: "student-005",
+    nome: "Mariana Costa",
+    email: "mariana.costa@example.com",
+    telefone: "(83) 98888-1005",
+    turma: "Não vinculada",
+    curso: "Noções Financeiras",
+    frequencia: 0,
+    status: "pendente_ativacao",
+    dataCriacao: "2026-06-24",
   },
 ];
 
