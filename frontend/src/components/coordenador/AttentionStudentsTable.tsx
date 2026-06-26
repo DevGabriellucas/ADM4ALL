@@ -15,6 +15,10 @@ const getSituationInfo = (situacao: AttendanceSummary["situacao"]) => {
     return { label: "Em atenção", tone: "amber" as const };
   }
 
+  if (situacao === "risco_reprovacao") {
+    return { label: "Risco de reprovação", tone: "red" as const };
+  }
+
   return { label: "Regular", tone: "green" as const };
 };
 
@@ -39,7 +43,7 @@ export const AttentionStudentsTable = ({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-2xl border-slate-200 border-separate border-spacing-0 text-left text-sm">
+        <table className="w-full min-w-2xl border-separate border-spacing-0 border-slate-200 text-left text-sm">
           <thead>
             <tr className="text-slate-500 text-xs">
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">

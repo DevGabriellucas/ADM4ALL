@@ -87,7 +87,7 @@ export const coordinatorStudentsMock: Student[] = [
     telefone: "(83) 98888-1002",
     turma: "ADM-2026-01",
     curso: "Assistente Administrativo",
-    frequencia: 88,
+    frequencia: 78,
     status: "ativo",
     dataCriacao: "2026-05-20",
   },
@@ -122,6 +122,16 @@ export const coordinatorStudentsMock: Student[] = [
     frequencia: 0,
     status: "pendente_ativacao",
     dataCriacao: "2026-06-24",
+  },
+  {
+    id: "student-006",
+    nome: "Lucas Azevedo",
+    email: "lucas.azevedo@example.com",
+    turma: "ATD-2026-01",
+    curso: "Atendimento ao Cliente",
+    frequencia: 72,
+    status: "ativo",
+    dataCriacao: "2026-05-24",
   },
 ];
 
@@ -254,10 +264,10 @@ export const coordinatorAttendanceMock: AttendanceSummary[] = [
   {
     aluno: "Douglas Silva",
     turma: "ADM-2026-01",
-    presencas: 10,
+    presencas: 7,
     faltas: 2,
-    frequencia: 88,
-    situacao: "regular",
+    frequencia: 78,
+    situacao: "atencao",
   },
   {
     aluno: "Felipe Ribeiro",
@@ -275,6 +285,14 @@ export const coordinatorAttendanceMock: AttendanceSummary[] = [
     frequencia: 96,
     situacao: "regular",
   },
+  {
+    aluno: "Lucas Azevedo",
+    turma: "ATD-2026-01",
+    presencas: 8,
+    faltas: 3,
+    frequencia: 72,
+    situacao: "risco_reprovacao",
+  },
 ];
 
 export const coordinatorCertificatesMock: CertificateRecord[] = [
@@ -290,7 +308,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     aluno: "Douglas Silva",
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
-    frequencia: 88,
+    frequencia: 78,
     status: "pendente",
     certificado: null,
   },

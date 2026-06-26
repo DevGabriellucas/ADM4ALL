@@ -16,7 +16,11 @@ export type LessonStatus = "planejada" | "realizada" | "cancelada";
 
 export type ClassMaterialType = "PDF" | "Planilha" | "Apresentação" | "Link";
 
-export type AttendanceSituation = "regular" | "atencao" | "reprovado_por_falta";
+export type AttendanceSituation =
+  | "regular"
+  | "atencao"
+  | "risco_reprovacao"
+  | "reprovado_por_falta";
 
 export type CertificateStatus = "pendente" | "emitido" | "bloqueado";
 
