@@ -1,0 +1,145 @@
+"use client";
+
+import { useState } from "react";
+import { ReportPreviewPanel } from "@/components/coordenador/ReportPreviewPanel";
+import type {
+  ClassGroup,
+  CoordinatorReportData,
+  CoordinatorReportType,
+  Course,
+} from "@/types/coordinator";
+
+interface ReportsPageContentProps {
+  reports: CoordinatorReportData[];
+  courses: Course[];
+  classes: ClassGroup[];
+}
+
+export const ReportsPageContent = ({
+  reports,
+  courses,
+  classes,
+}: ReportsPageContentProps) => {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reportType, setReportType] =
+    useState<CoordinatorReportType>("frequencia_turma");
+  const [courseFilter, setCourseFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+
+  const selectedReport =
+    reports.find((report) => report.type === reportType) ?? reports[0];
+  const availableClasses = classes.filter(
+    (classGroup) => !courseFilter || classGroup.curso === courseFilter,
+  );
+  const filteredRows = selectedReport.rows.filter((row) => {
+    if (startDate && row.data < startDate) {
+      return false;
+    }
+    if (endDate && row.data > endDate) {
+      return false;
+    }
+    if (courseFilter && row.curso !== courseFilter) {
+      return false;
+    }
+    if (classFilter && row.turma !== classFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return (
+    <>
+      <header>
+        <h1 className="font-semibold text-2xl text-slate-950">Relatórios</h1>
+        <p className="mt-1 text-slate-600 text-sm">
+          Gere relatórios acadêmicos e administrativos
+        </p>
+      </header>
+
+      <section
+        aria-label="Filtros de relatórios"
+        className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm"
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
+            Data inicial
+            <input
+              type="date"
+              max={endDate || undefined}
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
+            Data final
+            <input
+              type="date"
+              min={startDate || undefined}
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
+            Tipo de relatório
+            <select
+              value={reportType}
+              onChange={(event) =>
+                setReportType(event.target.value as CoordinatorReportType)
+              }
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            >
+              {reports.map((report) => (
+                <option key={report.type} value={report.type}>
+                  {report.title}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
+            Curso
+            <select
+              value={courseFilter}
+              onChange={(event) => {
+                setCourseFilter(event.target.value);
+                setClassFilter("");
+              }}
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            >
+              <option value="">Todos os cursos</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.nome}>
+                  {course.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
+            Turma
+            <select
+              value={classFilter}
+              onChange={(event) => setClassFilter(event.target.value)}
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            >
+              <option value="">Todas as turmas</option>
+              {availableClasses.map((classGroup) => (
+                <option key={classGroup.id} value={classGroup.nome}>
+                  {classGroup.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <ReportPreviewPanel report={selectedReport} rows={filteredRows} />
+    </>
+  );
+};

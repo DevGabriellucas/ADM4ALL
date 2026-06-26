@@ -5,6 +5,7 @@ import type {
   ClassGroup,
   ClassMaterial,
   CoordinatorDashboardSummary,
+  CoordinatorReportData,
   Course,
   Instructor,
   Lesson,
@@ -432,6 +433,191 @@ export const coordinatorUsersMock: BaseUser[] = [
     role: "aluno",
     status: "ativo",
     dataCriacao: "2026-05-20",
+  },
+];
+
+export const coordinatorReportsMock: CoordinatorReportData[] = [
+  {
+    type: "frequencia_turma",
+    title: "Frequência por turma",
+    description: "Média de frequência registrada em cada turma.",
+    metricLabel: "Frequência média",
+    metricSuffix: "%",
+    aggregation: "average",
+    columns: [
+      { key: "turma", label: "Turma" },
+      { key: "curso", label: "Curso" },
+      { key: "frequencia", label: "Frequência" },
+    ],
+    rows: coordinatorClassesMock.map((classGroup) => ({
+      id: `report-attendance-${classGroup.id}`,
+      data: classGroup.dataInicio,
+      curso: classGroup.curso,
+      turma: classGroup.nome,
+      chartLabel: classGroup.nome,
+      chartValue: classGroup.frequenciaMedia,
+      values: {
+        turma: classGroup.nome,
+        curso: classGroup.curso,
+        frequencia: `${classGroup.frequenciaMedia}%`,
+      },
+    })),
+  },
+  {
+    type: "reprovados_falta",
+    title: "Alunos reprovados por falta",
+    description: "Alunos com reprovação consolidada por frequência.",
+    metricLabel: "Alunos reprovados",
+    aggregation: "count",
+    columns: [
+      { key: "aluno", label: "Aluno" },
+      { key: "turma", label: "Turma" },
+      { key: "frequencia", label: "Frequência" },
+    ],
+    rows: coordinatorStudentsMock
+      .filter((student) => student.status === "reprovado_por_falta")
+      .map((student) => ({
+        id: `report-failed-${student.id}`,
+        data: student.dataCriacao,
+        curso: student.curso,
+        turma: student.turma,
+        chartLabel: student.nome,
+        chartValue: 1,
+        values: {
+          aluno: student.nome,
+          turma: student.turma,
+          frequencia: `${student.frequencia}%`,
+        },
+      })),
+  },
+  {
+    type: "elegiveis_certificado",
+    title: "Alunos elegíveis para certificado",
+    description: "Alunos que atingiram frequência igual ou superior a 80%.",
+    metricLabel: "Alunos elegíveis",
+    aggregation: "count",
+    columns: [
+      { key: "aluno", label: "Aluno" },
+      { key: "curso", label: "Curso" },
+      { key: "frequencia", label: "Frequência" },
+      { key: "status", label: "Status" },
+    ],
+    rows: coordinatorCertificatesMock
+      .filter((certificate) => certificate.frequencia >= 80)
+      .map((certificate, index) => ({
+        id: `report-eligible-${index}`,
+        data:
+          coordinatorClassesMock.find(
+            (classGroup) => classGroup.nome === certificate.turma,
+          )?.dataTermino ?? "2026-06-26",
+        curso: certificate.curso,
+        turma: certificate.turma,
+        chartLabel: certificate.aluno,
+        chartValue: 1,
+        values: {
+          aluno: certificate.aluno,
+          curso: certificate.curso,
+          frequencia: `${certificate.frequencia}%`,
+          status:
+            certificate.status === "emitido" ? "Emitido" : "Apto à emissão",
+        },
+      })),
+  },
+  {
+    type: "certificados_emitidos",
+    title: "Certificados emitidos",
+    description: "Certificados concluídos e disponíveis para os alunos.",
+    metricLabel: "Certificados emitidos",
+    aggregation: "count",
+    columns: [
+      { key: "aluno", label: "Aluno" },
+      { key: "curso", label: "Curso" },
+      { key: "turma", label: "Turma" },
+      { key: "certificado", label: "Certificado" },
+    ],
+    rows: coordinatorCertificatesMock
+      .filter((certificate) => certificate.status === "emitido")
+      .map((certificate, index) => ({
+        id: `report-issued-${index}`,
+        data:
+          coordinatorClassesMock.find(
+            (classGroup) => classGroup.nome === certificate.turma,
+          )?.dataTermino ?? "2026-06-26",
+        curso: certificate.curso,
+        turma: certificate.turma,
+        chartLabel: certificate.aluno,
+        chartValue: 1,
+        values: {
+          aluno: certificate.aluno,
+          curso: certificate.curso,
+          turma: certificate.turma,
+          certificado: certificate.certificado ?? "-",
+        },
+      })),
+  },
+  {
+    type: "matriculas_curso",
+    title: "Matrículas por curso",
+    description: "Distribuição de alunos matriculados entre os cursos.",
+    metricLabel: "Total de matrículas",
+    aggregation: "sum",
+    columns: [
+      { key: "curso", label: "Curso" },
+      { key: "turmas", label: "Turmas" },
+      { key: "matriculas", label: "Matrículas" },
+    ],
+    rows: coordinatorCoursesMock.map((course) => {
+      const courseClasses = coordinatorClassesMock.filter(
+        (classGroup) => classGroup.curso === course.nome,
+      );
+      const enrollments = courseClasses.reduce(
+        (total, classGroup) => total + classGroup.alunos,
+        0,
+      );
+
+      return {
+        id: `report-enrollment-${course.id}`,
+        data: courseClasses[0]?.dataInicio ?? "2026-01-01",
+        curso: course.nome,
+        turma: "",
+        chartLabel: course.nome,
+        chartValue: enrollments,
+        values: {
+          curso: course.nome,
+          turmas: courseClasses.length,
+          matriculas: enrollments,
+        },
+      };
+    }),
+  },
+  {
+    type: "turmas_andamento",
+    title: "Turmas em andamento",
+    description: "Turmas ativas no período selecionado.",
+    metricLabel: "Turmas em andamento",
+    aggregation: "count",
+    columns: [
+      { key: "turma", label: "Turma" },
+      { key: "curso", label: "Curso" },
+      { key: "instrutor", label: "Instrutor" },
+      { key: "alunos", label: "Alunos" },
+    ],
+    rows: coordinatorClassesMock
+      .filter((classGroup) => classGroup.status === "em_andamento")
+      .map((classGroup) => ({
+        id: `report-active-class-${classGroup.id}`,
+        data: classGroup.dataInicio,
+        curso: classGroup.curso,
+        turma: classGroup.nome,
+        chartLabel: classGroup.nome,
+        chartValue: classGroup.alunos,
+        values: {
+          turma: classGroup.nome,
+          curso: classGroup.curso,
+          instrutor: classGroup.instrutor,
+          alunos: classGroup.alunos,
+        },
+      })),
   },
 ];
 

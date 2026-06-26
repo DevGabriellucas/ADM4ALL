@@ -46,6 +46,16 @@ export type ReportType =
   | "certificados"
   | "processos";
 
+export type CoordinatorReportType =
+  | "frequencia_turma"
+  | "reprovados_falta"
+  | "elegiveis_certificado"
+  | "certificados_emitidos"
+  | "matriculas_curso"
+  | "turmas_andamento";
+
+export type ReportAggregation = "average" | "count" | "sum";
+
 export interface BaseUser {
   id: string;
   nome: string;
@@ -150,6 +160,32 @@ export interface ReportPreview {
   titulo: string;
   descricao: string;
   ultimaAtualizacao: string;
+}
+
+export interface ReportTableColumn {
+  key: string;
+  label: string;
+}
+
+export interface ReportDataRow {
+  id: string;
+  data: string;
+  curso: string;
+  turma: string;
+  chartLabel: string;
+  chartValue: number;
+  values: Record<string, string | number>;
+}
+
+export interface CoordinatorReportData {
+  type: CoordinatorReportType;
+  title: string;
+  description: string;
+  metricLabel: string;
+  metricSuffix?: string;
+  aggregation: ReportAggregation;
+  columns: ReportTableColumn[];
+  rows: ReportDataRow[];
 }
 
 export interface CoordinatorDashboardSummary {
