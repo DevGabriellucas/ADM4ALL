@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { clearSession } from "@/services/sessionService";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/coordenador" },
+  { label: "Dashboard", href: "/coordenador/dashboard" },
   { label: "Cursos", href: "/coordenador/cursos" },
   { label: "Turmas", href: "/coordenador/turmas" },
   { label: "Alunos", href: "/coordenador/alunos" },
@@ -48,8 +48,7 @@ export const CoordinatorSidebar = () => {
         {NAV_ITEMS.map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href !== "/coordenador" &&
-              pathname.startsWith(`${item.href}/`));
+            pathname.startsWith(`${item.href}/`);
 
           return (
             <Link

@@ -20,7 +20,7 @@ export interface LoginResponse {
     id: string;
     nome: string;
     email: string;
-    perfil: "aluno" | "instrutor" | "coordenador";
+    perfil: "aluno" | "instrutor" | "coordenador" | "admin";
     alunoId: string | null;
     instrutorId: string | null;
     coordenadorId: string | null;
