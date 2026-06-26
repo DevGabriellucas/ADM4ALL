@@ -158,6 +158,17 @@ export const coordinatorClassesMock: ClassGroup[] = [
     status: "em_andamento",
     frequenciaMedia: 91,
   },
+  {
+    id: "class-004",
+    nome: "FIN-2025-02",
+    curso: "Noções Financeiras",
+    instrutor: "Camila Souza",
+    alunos: 16,
+    dataInicio: "2025-10-06",
+    dataTermino: "2025-11-24",
+    status: "encerrada",
+    frequenciaMedia: 89,
+  },
 ];
 
 export const coordinatorLessonsMock: Lesson[] = [

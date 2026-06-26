@@ -6,7 +6,11 @@ export type StudentStatus = UserStatus | "reprovado_por_falta" | "concluido";
 
 export type CourseStatus = "ativo" | "em_planejamento" | "encerrado";
 
-export type ClassStatus = "planejada" | "em_andamento" | "encerrada";
+export type ClassStatus =
+  | "planejada"
+  | "em_andamento"
+  | "encerrada"
+  | "cancelada";
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
 
