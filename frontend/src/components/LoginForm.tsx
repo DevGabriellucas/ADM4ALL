@@ -46,7 +46,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
       const destinoPorPerfil = {
         aluno: "/aluno/dashboard",
-        instrutor: "/instrutor",
+        instrutor: "/instrutor/dashboard",
         coordenador: "/",
       } as const;
 
