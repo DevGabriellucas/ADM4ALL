@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { AlunoLogoutButton } from "@/components/aluno/AlunoLogoutButton";
 import type { AlunoDashboard } from "@/types/aluno";
 
 interface AlunoHeaderProps {
@@ -29,12 +29,7 @@ export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
         </p>
       </div>
 
-      <Link
-        href="/"
-        className="rounded-md border border-slate-800 px-5 py-2 font-medium text-sm transition-colors hover:bg-slate-900 hover:text-white sm:ml-auto"
-      >
-        Sair
-      </Link>
+      <AlunoLogoutButton />
     </header>
   );
 };
