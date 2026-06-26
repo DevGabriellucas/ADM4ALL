@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import type { CourseStatus } from "@/types/coordinator";
 
@@ -33,7 +33,7 @@ export const NewCourseForm = ({ isOpen, onCancel }: NewCourseFormProps) => {
     onCancel();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // MOCK TEMPORARIO: a API de cadastro substituirá esta confirmação local.

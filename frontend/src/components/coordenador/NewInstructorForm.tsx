@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
 
@@ -35,7 +35,7 @@ export const NewInstructorForm = ({
     onCancel();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // MOCK TEMPORARIO: futuramente a API criara o usuario e enviara o e-mail.

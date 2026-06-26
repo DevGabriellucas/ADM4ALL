@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
 import type { ClassGroup, Course } from "@/types/coordinator";
@@ -47,7 +47,7 @@ export const NewStudentForm = ({
     onCancel();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // MOCK TEMPORARIO: futuramente a API criara o aluno e enviara o e-mail.
