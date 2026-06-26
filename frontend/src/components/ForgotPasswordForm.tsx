@@ -15,7 +15,7 @@ import { Button } from "./Button";
 
 interface ForgotPasswordProps extends ComponentProps<"form"> {
   isSuccess: boolean;
-  onSuccess: () => void;
+  onSuccess: (message: string) => void;
 }
 
 export const ForgotPasswordForm = ({
@@ -38,8 +38,8 @@ export const ForgotPasswordForm = ({
     setErrorMessage(null);
 
     try {
-      await forgotPassword(data);
-      onSuccess();
+      const result = await forgotPassword(data);
+      onSuccess(result.mensagem);
     } catch (error: unknown) {
       setErrorMessage(getErrorMessage(error));
     }
