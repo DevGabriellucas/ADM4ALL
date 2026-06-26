@@ -5,7 +5,7 @@ import type { AlunoStatus } from "@/utils/getAlunoStatus";
 interface AlunoStatusPanelProps {
   aluno: Pick<
     AlunoDashboard,
-    "documentosPendentes" | "faltas" | "notas" | "progresso"
+    "aulasConcluidas" | "aulasPlanejadas" | "faltas" | "progresso"
   >;
   status: AlunoStatus;
 }
@@ -33,12 +33,12 @@ export const AlunoStatusPanel = ({ aluno, status }: AlunoStatusPanelProps) => {
 
         <AlunoInfoCard title="Progresso" value={`${aluno.progresso}%`} />
 
-        <AlunoInfoCard title="Notas" value={aluno.notas ?? "Sem lancamentos"} />
-
         <AlunoInfoCard
-          title="Documentos pendentes"
-          value={aluno.documentosPendentes ?? "Nenhum pendente"}
+          title="Aulas planejadas"
+          value={aluno.aulasPlanejadas}
         />
+
+        <AlunoInfoCard title="Aulas concluidas" value={aluno.aulasConcluidas} />
       </div>
     </div>
   );

@@ -1,3 +1,9 @@
+import {
+  alunoLoginResponseMock,
+  coordenadorLoginResponseMock,
+  instrutorLoginResponseMock,
+} from "@/mocks/authMock";
+
 interface LoginPayload {
   identifier: string;
   password: string;
@@ -13,37 +19,32 @@ interface ResetPasswordPayload {
 }
 
 export interface LoginResponse {
-  mensagem?: string;
-  token?: string;
-  usuario?: {
+  mensagem: string;
+  token: string;
+  usuario: {
     id: string;
     nome: string;
     email: string;
-    perfil: "aluno" | "instrutor" | "coordenador" | "admin";
+    perfil: "aluno" | "instrutor" | "coordenador";
     alunoId: string | null;
     instrutorId: string | null;
     coordenadorId: string | null;
   };
-  aluno?: {
-    id?: string | null;
-    nome?: string;
-  };
 }
 
 export interface ForgotPasswordResponse {
-  mensagem?: string;
+  mensagem: string;
 }
 
 export interface ResetPasswordResponse {
-  mensagem?: string;
+  mensagem: string;
 }
 
-type ApiResponse = LoginResponse &
-  ForgotPasswordResponse &
-  ResetPasswordResponse & {
-    erro?: string;
-    message?: string;
-  };
+interface ApiErrorResponse {
+  erro: string;
+}
+
+type AuthMockProfile = "aluno" | "instrutor" | "coordenador";
 
 const getApiUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -55,96 +56,106 @@ const getApiUrl = () => {
   return apiUrl;
 };
 
-const parseJson = async (response: Response): Promise<ApiResponse | null> => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
+const getMockLoginResponse = (): LoginResponse => {
+  const profile = process.env.NEXT_PUBLIC_AUTH_MOCK_PROFILE as
+    | AuthMockProfile
+    | undefined;
 
-const getApiErrorMessage = (
-  data: ApiResponse | null,
-  fallbackMessage: string,
-) => {
-  return data?.erro ?? data?.message ?? data?.mensagem ?? fallbackMessage;
+  if (profile === "instrutor") {
+    return instrutorLoginResponseMock;
+  }
+
+  if (profile === "coordenador") {
+    return coordenadorLoginResponseMock;
+  }
+
+  return alunoLoginResponseMock;
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  const response = await fetch(`${getApiUrl()}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      identifier: data.identifier,
-      password: data.password,
-    }),
-  });
-
-  const result = await parseJson(response);
-
-  if (!response.ok) {
-    throw new Error(getApiErrorMessage(result, "Falha ao realizar login."));
+  if (process.env.NEXT_PUBLIC_USE_AUTH_MOCK === "true") {
+    return getMockLoginResponse();
   }
 
-  return {
-    mensagem: result?.mensagem ?? "Login realizado com sucesso.",
-    token: result?.token,
-    usuario: result?.usuario,
-    aluno: result?.aluno,
-  };
+  try {
+    const response = await fetch(`${getApiUrl()}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        identifier: data.identifier,
+        password: data.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const error: ApiErrorResponse = await response.json();
+      throw new Error(error.erro);
+    }
+
+    const result: LoginResponse = await response.json();
+
+    return result;
+  } catch (error: unknown) {
+    console.error("Erro ao tentar realizar login", error);
+    throw error;
+  }
 };
 
-export const forgotPassword = async (
-  data: ForgotPasswordPayload,
-): Promise<ForgotPasswordResponse> => {
-  const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email: data.email,
-    }),
-  });
+export const forgotPassword = async ({
+  email,
+}: ForgotPasswordPayload): Promise<ForgotPasswordResponse> => {
+  try {
+    const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+      }),
+    });
 
-  const result = await parseJson(response);
+    if (!response.ok) {
+      const error: ApiErrorResponse = await response.json();
+      throw new Error(error.erro);
+    }
 
-  if (!response.ok) {
-    throw new Error(
-      getApiErrorMessage(result, "Ocorreu um erro ao processar a solicitacao."),
-    );
+    const result: ForgotPasswordResponse = await response.json();
+
+    return result;
+  } catch (error: unknown) {
+    console.error("Erro ao tentar recuperar senha", error);
+    throw error;
   }
-
-  return {
-    mensagem: result?.mensagem,
-  };
 };
 
 export const resetPassword = async (
   data: ResetPasswordPayload,
 ): Promise<ResetPasswordResponse> => {
-  const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      token: data.token,
-      novaSenha: data.novaSenha,
-    }),
-  });
+  try {
+    const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: data.token,
+        novaSenha: data.novaSenha,
+      }),
+    });
 
-  const result = await parseJson(response);
+    if (!response.ok) {
+      const error: ApiErrorResponse = await response.json();
+      throw new Error(error.erro);
+    }
 
-  if (!response.ok) {
-    throw new Error(
-      getApiErrorMessage(result, "Não foi possível redefinir a senha."),
-    );
+    const result: ResetPasswordResponse = await response.json();
+
+    return result;
+  } catch (error: unknown) {
+    console.error("Erro ao tentar redefinir senha", error);
+    throw error;
   }
-
-  return {
-    mensagem: result?.mensagem,
-  };
 };

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AlunoLogoutButton } from "@/components/aluno/AlunoLogoutButton";
 import type { AlunoDashboard } from "@/types/aluno";
 
 interface AlunoHeaderProps {
@@ -6,8 +7,10 @@ interface AlunoHeaderProps {
 }
 
 export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
+  const matricula = aluno.matricula ?? "Nao informada";
+
   return (
-    <header className="flex min-h-24 w-full items-center justify-center gap-x-5 bg-brand-medium px-5 py-4 text-center text-slate-950 sm:gap-x-7">
+    <header className="flex min-h-24 w-full flex-col items-center justify-center gap-5 bg-brand-medium px-5 py-4 text-center text-slate-950 sm:flex-row sm:gap-x-7">
       <Image
         src={aluno.avatarUrl}
         alt={`Avatar de ${aluno.nome}`}
@@ -22,9 +25,11 @@ export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
           {aluno.nome}
         </h1>
         <p className="text-xs tracking-[0.35em] sm:text-sm">
-          Matricula: {aluno.matricula}
+          Matricula/RGM: {matricula}
         </p>
       </div>
+
+      <AlunoLogoutButton />
     </header>
   );
 };
