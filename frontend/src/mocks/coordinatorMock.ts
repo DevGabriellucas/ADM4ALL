@@ -1,0 +1,362 @@
+import type {
+  AttendanceSummary,
+  BaseUser,
+  CertificateRecord,
+  ClassGroup,
+  CoordinatorDashboardSummary,
+  Course,
+  Instructor,
+  Lesson,
+  ProcessRecord,
+  Student,
+} from "@/types/coordinator";
+
+export const coordinatorCoursesMock: Course[] = [
+  {
+    id: "course-001",
+    nome: "Assistente Administrativo",
+    descricao: "Formacao introdutoria para rotinas administrativas.",
+    cargaHoraria: 40,
+    status: "ativo",
+    quantidadeTurmas: 2,
+  },
+  {
+    id: "course-002",
+    nome: "Atendimento ao Cliente",
+    descricao: "Boas praticas de comunicacao, atendimento e pos-venda.",
+    cargaHoraria: 24,
+    status: "ativo",
+    quantidadeTurmas: 1,
+  },
+  {
+    id: "course-003",
+    nome: "Nocoes Financeiras",
+    descricao: "Conceitos basicos de organizacao financeira.",
+    cargaHoraria: 20,
+    status: "em_planejamento",
+    quantidadeTurmas: 0,
+  },
+];
+
+export const coordinatorInstructorsMock: Instructor[] = [
+  {
+    id: "instructor-001",
+    nome: "Eduardo Lima",
+    email: "eduardo.lima@example.com",
+    telefone: "(83) 99999-1111",
+    status: "ativo",
+    turmasVinculadas: 2,
+    dataCriacao: "2026-05-10",
+  },
+  {
+    id: "instructor-002",
+    nome: "Camila Souza",
+    email: "camila.souza@example.com",
+    telefone: "(83) 99999-2222",
+    status: "ativo",
+    turmasVinculadas: 1,
+    dataCriacao: "2026-05-14",
+  },
+  {
+    id: "instructor-003",
+    nome: "Renato Alves",
+    email: "renato.alves@example.com",
+    status: "pendente_ativacao",
+    turmasVinculadas: 0,
+    dataCriacao: "2026-06-01",
+  },
+];
+
+export const coordinatorStudentsMock: Student[] = [
+  {
+    id: "student-001",
+    nome: "Ana Clara Silva",
+    email: "ana.clara@example.com",
+    telefone: "(83) 98888-1001",
+    turma: "ADM-2026-01",
+    curso: "Assistente Administrativo",
+    frequencia: 92,
+    status: "ativo",
+    dataCriacao: "2026-05-20",
+  },
+  {
+    id: "student-002",
+    nome: "Douglas Silva",
+    email: "douglas.silva@example.com",
+    telefone: "(83) 98888-1002",
+    turma: "ADM-2026-01",
+    curso: "Assistente Administrativo",
+    frequencia: 88,
+    status: "ativo",
+    dataCriacao: "2026-05-20",
+  },
+  {
+    id: "student-003",
+    nome: "Felipe Ribeiro",
+    email: "felipe.ribeiro@example.com",
+    turma: "ADM-2026-01",
+    curso: "Assistente Administrativo",
+    frequencia: 70,
+    status: "ativo",
+    dataCriacao: "2026-05-21",
+  },
+  {
+    id: "student-004",
+    nome: "Priscila Cahino",
+    email: "priscila.cahino@example.com",
+    telefone: "(83) 98888-1004",
+    turma: "ATD-2026-01",
+    curso: "Atendimento ao Cliente",
+    frequencia: 96,
+    status: "ativo",
+    dataCriacao: "2026-05-22",
+  },
+];
+
+export const coordinatorClassesMock: ClassGroup[] = [
+  {
+    id: "class-001",
+    nome: "ADM-2026-01",
+    curso: "Assistente Administrativo",
+    instrutor: "Eduardo Lima",
+    alunos: 28,
+    dataInicio: "2026-06-08",
+    dataTermino: "2026-08-10",
+    status: "em_andamento",
+    frequenciaMedia: 86,
+  },
+  {
+    id: "class-002",
+    nome: "ADM-2026-02",
+    curso: "Assistente Administrativo",
+    instrutor: "Eduardo Lima",
+    alunos: 24,
+    dataInicio: "2026-07-01",
+    dataTermino: "2026-09-02",
+    status: "planejada",
+    frequenciaMedia: 0,
+  },
+  {
+    id: "class-003",
+    nome: "ATD-2026-01",
+    curso: "Atendimento ao Cliente",
+    instrutor: "Camila Souza",
+    alunos: 18,
+    dataInicio: "2026-06-12",
+    dataTermino: "2026-07-24",
+    status: "em_andamento",
+    frequenciaMedia: 91,
+  },
+];
+
+export const coordinatorLessonsMock: Lesson[] = [
+  {
+    id: "lesson-001",
+    numeroAula: 1,
+    titulo: "Introducao a administracao",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    instrutor: "Eduardo Lima",
+    data: "2026-06-08",
+    status: "realizada",
+  },
+  {
+    id: "lesson-002",
+    numeroAula: 2,
+    titulo: "Planejamento e organizacao",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    instrutor: "Eduardo Lima",
+    data: "2026-06-15",
+    status: "realizada",
+  },
+  {
+    id: "lesson-003",
+    numeroAula: 3,
+    titulo: "Gestao empresarial",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    instrutor: "Eduardo Lima",
+    data: "2026-06-22",
+    status: "realizada",
+  },
+  {
+    id: "lesson-004",
+    numeroAula: 4,
+    titulo: "Rotinas administrativas",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    instrutor: "Eduardo Lima",
+    data: "2026-06-29",
+    status: "planejada",
+  },
+];
+
+export const coordinatorAttendanceMock: AttendanceSummary[] = [
+  {
+    aluno: "Ana Clara Silva",
+    turma: "ADM-2026-01",
+    presencas: 11,
+    faltas: 1,
+    frequencia: 92,
+    situacao: "regular",
+  },
+  {
+    aluno: "Douglas Silva",
+    turma: "ADM-2026-01",
+    presencas: 10,
+    faltas: 2,
+    frequencia: 88,
+    situacao: "regular",
+  },
+  {
+    aluno: "Felipe Ribeiro",
+    turma: "ADM-2026-01",
+    presencas: 8,
+    faltas: 4,
+    frequencia: 70,
+    situacao: "reprovado_por_falta",
+  },
+  {
+    aluno: "Priscila Cahino",
+    turma: "ATD-2026-01",
+    presencas: 12,
+    faltas: 0,
+    frequencia: 96,
+    situacao: "regular",
+  },
+];
+
+export const coordinatorCertificatesMock: CertificateRecord[] = [
+  {
+    aluno: "Ana Clara Silva",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    frequencia: 92,
+    status: "pendente",
+    certificado: null,
+  },
+  {
+    aluno: "Douglas Silva",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    frequencia: 88,
+    status: "pendente",
+    certificado: null,
+  },
+  {
+    aluno: "Felipe Ribeiro",
+    curso: "Assistente Administrativo",
+    turma: "ADM-2026-01",
+    frequencia: 70,
+    status: "bloqueado",
+    certificado: null,
+  },
+  {
+    aluno: "Priscila Cahino",
+    curso: "Atendimento ao Cliente",
+    turma: "ATD-2026-01",
+    frequencia: 96,
+    status: "emitido",
+    certificado: "CERT-ATD-2026-0001",
+  },
+];
+
+export const coordinatorProcessesMock: ProcessRecord[] = [
+  {
+    id: "process-001",
+    nome: "Validacao de novos alunos",
+    status: "aberto",
+    responsavel: "Marina Araujo",
+    dataCriacao: "2026-06-03",
+  },
+  {
+    id: "process-002",
+    nome: "Conferencia de frequencia",
+    status: "em_analise",
+    responsavel: "Eduardo Lima",
+    dataCriacao: "2026-06-12",
+  },
+  {
+    id: "process-003",
+    nome: "Emissao de certificados",
+    status: "aberto",
+    responsavel: "Marina Araujo",
+    dataCriacao: "2026-06-20",
+  },
+];
+
+export const coordinatorUsersMock: BaseUser[] = [
+  {
+    id: "user-001",
+    nome: "Marina Araujo",
+    email: "marina.araujo@example.com",
+    role: "coordenador",
+    status: "ativo",
+    dataCriacao: "2026-05-01",
+  },
+  {
+    id: "user-002",
+    nome: "Eduardo Lima",
+    email: "eduardo.lima@example.com",
+    role: "instrutor",
+    status: "ativo",
+    dataCriacao: "2026-05-10",
+  },
+  {
+    id: "user-003",
+    nome: "Renato Alves",
+    email: "renato.alves@example.com",
+    role: "instrutor",
+    status: "pendente_ativacao",
+    dataCriacao: "2026-06-01",
+  },
+  {
+    id: "user-004",
+    nome: "Ana Clara Silva",
+    email: "ana.clara@example.com",
+    role: "aluno",
+    status: "ativo",
+    dataCriacao: "2026-05-20",
+  },
+];
+
+export const coordinatorDashboardSummaryMock: CoordinatorDashboardSummary = {
+  totalCursos: coordinatorCoursesMock.length,
+  totalTurmas: coordinatorClassesMock.length,
+  totalAlunos: coordinatorStudentsMock.length,
+  totalInstrutores: coordinatorInstructorsMock.length,
+  frequenciaMedia: 87,
+  certificadosPendentes: coordinatorCertificatesMock.filter(
+    (certificate) => certificate.status === "pendente",
+  ).length,
+  processosAbertos: coordinatorProcessesMock.filter(
+    (process) => process.status === "aberto",
+  ).length,
+  usuariosPendentes: coordinatorUsersMock.filter(
+    (user) => user.status === "pendente_ativacao",
+  ).length,
+  relatorios: [
+    {
+      id: "report-001",
+      tipo: "dashboard",
+      titulo: "Resumo geral",
+      descricao: "Indicadores consolidados da operacao.",
+      ultimaAtualizacao: "2026-06-26",
+    },
+    {
+      id: "report-002",
+      tipo: "frequencia",
+      titulo: "Frequencia por turma",
+      descricao: "Acompanhamento de presencas e faltas.",
+      ultimaAtualizacao: "2026-06-25",
+    },
+    {
+      id: "report-003",
+      tipo: "certificados",
+      titulo: "Certificados",
+      descricao: "Status de certificados emitidos, pendentes e bloqueados.",
+      ultimaAtualizacao: "2026-06-24",
+    },
+  ],
+};
