@@ -9,6 +9,7 @@ import {
   coordinatorLessonsMock,
   coordinatorProcessesMock,
   coordinatorReportsMock,
+  coordinatorSettingsMock,
   coordinatorStudentsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
@@ -20,6 +21,7 @@ import type {
   ClassMaterial,
   CoordinatorDashboardSummary,
   CoordinatorReportData,
+  CoordinatorSettings,
   Course,
   Instructor,
   Lesson,
@@ -86,6 +88,11 @@ export const getProcesses = async (): Promise<ProcessRecord[]> => {
 export const getReports = async (): Promise<CoordinatorReportData[]> => {
   return coordinatorReportsMock;
 };
+
+export const getCoordinatorSettings =
+  async (): Promise<CoordinatorSettings> => {
+    return coordinatorSettingsMock;
+  };
 
 export const getUsers = async (): Promise<BaseUser[]> => {
   return coordinatorUsersMock;

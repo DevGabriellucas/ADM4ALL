@@ -189,6 +189,32 @@ export interface CoordinatorReportData {
   rows: ReportDataRow[];
 }
 
+export interface AccessProfileSetting {
+  role: UserRole;
+  label: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface CoordinatorSettings {
+  account: {
+    nome: string;
+    email: string;
+    telefone: string;
+    cargo: string;
+  };
+  system: {
+    instituicao: string;
+    periodoLetivo: string;
+    frequenciaMinimaCertificado: number;
+  };
+  accessProfiles: AccessProfileSetting[];
+  security: {
+    sessoesAtivas: number;
+    ultimaAlteracaoSenha: string;
+  };
+}
+
 export interface CoordinatorDashboardSummary {
   totalCursos: number;
   totalTurmas: number;

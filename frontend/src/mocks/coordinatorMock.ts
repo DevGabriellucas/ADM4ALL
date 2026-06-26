@@ -6,6 +6,7 @@ import type {
   ClassMaterial,
   CoordinatorDashboardSummary,
   CoordinatorReportData,
+  CoordinatorSettings,
   Course,
   Instructor,
   Lesson,
@@ -656,6 +657,50 @@ export const coordinatorReportsMock: CoordinatorReportData[] = [
       })),
   },
 ];
+
+export const coordinatorSettingsMock: CoordinatorSettings = {
+  account: {
+    nome: "Marina Araujo",
+    email: "marina.araujo@example.com",
+    telefone: "(83) 99999-4001",
+    cargo: "Coordenadora Acadêmica",
+  },
+  system: {
+    instituicao: "Centro Universitário UNIPÊ",
+    periodoLetivo: "2026.1",
+    frequenciaMinimaCertificado: 80,
+  },
+  accessProfiles: [
+    {
+      role: "administrador",
+      label: "Administrador",
+      description: "Acesso completo às configurações e permissões.",
+      enabled: true,
+    },
+    {
+      role: "coordenador",
+      label: "Coordenador",
+      description: "Gestão acadêmica, relatórios e acompanhamento geral.",
+      enabled: true,
+    },
+    {
+      role: "instrutor",
+      label: "Instrutor",
+      description: "Gestão das aulas, materiais e frequência das turmas.",
+      enabled: true,
+    },
+    {
+      role: "aluno",
+      label: "Aluno",
+      description: "Consulta de curso, frequência e progresso acadêmico.",
+      enabled: true,
+    },
+  ],
+  security: {
+    sessoesAtivas: 2,
+    ultimaAlteracaoSenha: "2026-05-18",
+  },
+};
 
 export const coordinatorDashboardSummaryMock: CoordinatorDashboardSummary = {
   totalCursos: coordinatorCoursesMock.length,
