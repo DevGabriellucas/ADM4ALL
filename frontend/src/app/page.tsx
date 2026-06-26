@@ -22,7 +22,7 @@ export default function Home() {
         <LoginForm className="flex w-full flex-col gap-y-4" />
 
         <p className="mt-auto pt-6 text-center text-base text-slate-800">
-          Ainda não tem cadastro?{" "}
+          Ainda não é aluno?{" "}
           <Link
             href="/cadastro"
             className="font-bold text-[#524ABF] underline underline-offset-2 transition-colors duration-200 hover:brightness-125"
