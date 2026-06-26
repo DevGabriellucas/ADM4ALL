@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
+import { saveSession } from "@/services/sessionService";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
@@ -33,33 +34,23 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
     try {
       const result = await login(data);
-      const nomeUsuario = result.usuario?.nome;
-      const saudacao = nomeUsuario
-        ? ` Bem-vindo(a), ${nomeUsuario}!`
-        : "";
+      const nomeUsuario = result.usuario.nome;
+      const saudacao = ` Bem-vindo(a), ${nomeUsuario}!`;
 
       setMessage({
         type: "success",
-        text: `${result.mensagem}${saudacao}`,
+        text: `${result.mensagem},${saudacao}`,
       });
 
-      if (result.token && result.usuario) {
-        document.cookie = `adm4all_token=${result.token}; path=/; max-age=28800; SameSite=Lax`;
-        document.cookie = `adm4all_perfil=${result.usuario.perfil}; path=/; max-age=28800; SameSite=Lax`;
+      saveSession(result);
 
-        if (result.usuario.instrutorId) {
-          document.cookie = `adm4all_instrutor_id=${result.usuario.instrutorId}; path=/; max-age=28800; SameSite=Lax`;
-        }
+      const destinoPorPerfil = {
+        aluno: "/aluno/dashboard",
+        instrutor: "/instrutor",
+        coordenador: "/",
+      } as const;
 
-        const destinoPorPerfil = {
-          aluno: "/aluno",
-          instrutor: "/instrutor",
-          coordenador: "/coordenador",
-          admin: "/dashboard",
-        } as const;
-
-        router.push(destinoPorPerfil[result.usuario.perfil] ?? "/");
-      }
+      router.push(destinoPorPerfil[result.usuario.perfil]);
     } catch (error: unknown) {
       setMessage({
         type: "error",
@@ -118,7 +109,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       </Button>
 
       {message?.type === "success" && (
-        <output className="text-center font-medium text-green-800 text-sm">
+        <output className="text-center font-medium text-green-800 text-sm" role="status">
           {message.text}
         </output>
       )}
