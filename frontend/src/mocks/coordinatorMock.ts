@@ -399,6 +399,20 @@ export const coordinatorProcessesMock: ProcessRecord[] = [
     responsavel: "Marina Araujo",
     dataCriacao: "2026-06-20",
   },
+  {
+    id: "process-004",
+    nome: "Revisão de matrículas",
+    status: "concluido",
+    responsavel: "Marina Araujo",
+    dataCriacao: "2026-05-18",
+  },
+  {
+    id: "process-005",
+    nome: "Atualização de material didático",
+    status: "cancelado",
+    responsavel: "Eduardo Lima",
+    dataCriacao: "2026-05-25",
+  },
 ];
 
 export const coordinatorUsersMock: BaseUser[] = [
