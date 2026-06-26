@@ -423,6 +423,7 @@ export const coordinatorUsersMock: BaseUser[] = [
     role: "coordenador",
     status: "ativo",
     dataCriacao: "2026-05-01",
+    ultimoAcesso: "2026-06-26T08:40:00-03:00",
   },
   {
     id: "user-002",
@@ -431,6 +432,7 @@ export const coordinatorUsersMock: BaseUser[] = [
     role: "instrutor",
     status: "ativo",
     dataCriacao: "2026-05-10",
+    ultimoAcesso: "2026-06-25T19:15:00-03:00",
   },
   {
     id: "user-003",
@@ -439,6 +441,7 @@ export const coordinatorUsersMock: BaseUser[] = [
     role: "instrutor",
     status: "pendente_ativacao",
     dataCriacao: "2026-06-01",
+    ultimoAcesso: null,
   },
   {
     id: "user-004",
@@ -447,6 +450,25 @@ export const coordinatorUsersMock: BaseUser[] = [
     role: "aluno",
     status: "ativo",
     dataCriacao: "2026-05-20",
+    ultimoAcesso: "2026-06-24T14:20:00-03:00",
+  },
+  {
+    id: "user-005",
+    nome: "Roberto Nunes",
+    email: "roberto.nunes@example.com",
+    role: "administrador",
+    status: "ativo",
+    dataCriacao: "2026-04-15",
+    ultimoAcesso: "2026-06-26T07:55:00-03:00",
+  },
+  {
+    id: "user-006",
+    nome: "Júlia Fernandes",
+    email: "julia.fernandes@example.com",
+    role: "aluno",
+    status: "inativo",
+    dataCriacao: "2026-04-28",
+    ultimoAcesso: "2026-05-30T10:05:00-03:00",
   },
 ];
 

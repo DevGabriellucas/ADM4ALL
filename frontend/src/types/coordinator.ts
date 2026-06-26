@@ -63,6 +63,7 @@ export interface BaseUser {
   role: UserRole;
   status: UserStatus;
   dataCriacao: string;
+  ultimoAcesso: string | null;
 }
 
 export interface Instructor {
