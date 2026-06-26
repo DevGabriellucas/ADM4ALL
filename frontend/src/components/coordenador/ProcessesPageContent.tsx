@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewProcessForm } from "@/components/coordenador/NewProcessForm";
 import { ProcessTable } from "@/components/coordenador/ProcessTable";
@@ -32,23 +33,20 @@ export const ProcessesPageContent = ({
 
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-semibold text-2xl text-slate-950">Processos</h1>
-          <p className="mt-1 text-slate-600 text-sm">
-            Acompanhe processos administrativos e acadêmicos
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsFormOpen((currentValue) => !currentValue)}
-          aria-expanded={isFormOpen}
-          className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] sm:w-auto"
-        >
-          + Novo Processo
-        </button>
-      </header>
+      <CoordinatorPageHeader
+        title="Processos"
+        subtitle="Acompanhe processos administrativos e acadêmicos"
+        action={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen((currentValue) => !currentValue)}
+            aria-expanded={isFormOpen}
+            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+          >
+            + Novo Processo
+          </button>
+        }
+      />
 
       <NewProcessForm
         users={users}

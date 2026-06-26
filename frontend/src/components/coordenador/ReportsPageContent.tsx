@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { ReportPreviewPanel } from "@/components/coordenador/ReportPreviewPanel";
 import type {
   ClassGroup,
@@ -51,12 +52,10 @@ export const ReportsPageContent = ({
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Relatórios</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Gere relatórios acadêmicos e administrativos
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Relatórios"
+        subtitle="Gere relatórios acadêmicos e administrativos"
+      />
 
       <section
         aria-label="Filtros de relatórios"

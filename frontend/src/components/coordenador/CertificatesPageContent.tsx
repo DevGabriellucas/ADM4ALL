@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CertificateTable } from "@/components/coordenador/CertificateTable";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import type {
   CertificateRecord,
@@ -58,12 +59,10 @@ export const CertificatesPageContent = ({
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Certificados</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Gerencie elegibilidade e emissão de certificados
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Certificados"
+        subtitle="Gerencie elegibilidade e emissão de certificados"
+      />
 
       <section
         aria-label="Indicadores de certificados"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { UserTable } from "@/components/coordenador/UserTable";
 import type { BaseUser, UserRole, UserStatus } from "@/types/coordinator";
@@ -38,12 +39,10 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Usuários</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Gerencie contas, perfis e status de acesso
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Usuários"
+        subtitle="Gerencie contas, perfis e status de acesso"
+      />
 
       <section
         aria-label="Indicadores de usuários"

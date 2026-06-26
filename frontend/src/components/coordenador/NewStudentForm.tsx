@@ -3,6 +3,7 @@
 import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
+import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import type { ClassGroup, Course } from "@/types/coordinator";
 
 interface NewStudentFormProps {
@@ -186,21 +187,10 @@ export const NewStudentForm = ({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="h-11 rounded-lg border border-slate-300 bg-white px-5 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-100"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="h-11 rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68]"
-          >
-            Enviar convite de ativação
-          </button>
-        </div>
+        <CoordinatorFormActions
+          submitLabel="Enviar convite de ativação"
+          onCancel={handleCancel}
+        />
       </form>
     </section>
   );

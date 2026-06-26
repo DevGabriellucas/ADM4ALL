@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { ScheduleTable } from "@/components/coordenador/ScheduleTable";
 import type {
@@ -73,12 +74,10 @@ export const SchedulePageContent = ({
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Cronograma</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Acompanhe o planejamento das aulas por turma
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Cronograma"
+        subtitle="Acompanhe o planejamento das aulas por turma"
+      />
 
       <section
         aria-label="Filtros do cronograma"

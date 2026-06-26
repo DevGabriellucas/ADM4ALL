@@ -1,4 +1,3 @@
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import { ReportsPageContent } from "@/components/coordenador/ReportsPageContent";
 import {
   getClasses,
@@ -14,12 +13,6 @@ export default async function CoordinatorReportsPage() {
   ]);
 
   return (
-    <CoordinatorLayout>
-      <ReportsPageContent
-        reports={reports}
-        courses={courses}
-        classes={classes}
-      />
-    </CoordinatorLayout>
+    <ReportsPageContent reports={reports} courses={courses} classes={classes} />
   );
 }

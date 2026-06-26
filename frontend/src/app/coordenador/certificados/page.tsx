@@ -1,5 +1,4 @@
 import { CertificatesPageContent } from "@/components/coordenador/CertificatesPageContent";
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import {
   getCertificates,
   getClasses,
@@ -14,12 +13,10 @@ export default async function CoordinatorCertificatesPage() {
   ]);
 
   return (
-    <CoordinatorLayout>
-      <CertificatesPageContent
-        certificates={certificates}
-        courses={courses}
-        classes={classes}
-      />
-    </CoordinatorLayout>
+    <CertificatesPageContent
+      certificates={certificates}
+      courses={courses}
+      classes={classes}
+    />
   );
 }

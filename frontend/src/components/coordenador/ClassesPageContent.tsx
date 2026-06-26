@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ClassTable } from "@/components/coordenador/ClassTable";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
 import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
@@ -44,23 +45,20 @@ export const ClassesPageContent = ({
 
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-semibold text-2xl text-slate-950">Turmas</h1>
-          <p className="mt-1 text-slate-600 text-sm">
-            Gerencie turmas, instrutores e alunos vinculados
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsFormOpen((currentValue) => !currentValue)}
-          aria-expanded={isFormOpen}
-          className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] sm:w-auto"
-        >
-          + Nova Turma
-        </button>
-      </header>
+      <CoordinatorPageHeader
+        title="Turmas"
+        subtitle="Gerencie turmas, instrutores e alunos vinculados"
+        action={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen((currentValue) => !currentValue)}
+            aria-expanded={isFormOpen}
+            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+          >
+            + Nova Turma
+          </button>
+        }
+      />
 
       <NewClassForm
         courses={courses}

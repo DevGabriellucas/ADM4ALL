@@ -1,4 +1,3 @@
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import { StudentsPageContent } from "@/components/coordenador/StudentsPageContent";
 import {
   getClasses,
@@ -14,12 +13,10 @@ export default async function CoordinatorStudentsPage() {
   ]);
 
   return (
-    <CoordinatorLayout>
-      <StudentsPageContent
-        students={students}
-        courses={courses}
-        classes={classes}
-      />
-    </CoordinatorLayout>
+    <StudentsPageContent
+      students={students}
+      courses={courses}
+      classes={classes}
+    />
   );
 }

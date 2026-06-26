@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import type { CoordinatorSettings } from "@/types/coordinator";
 
 interface SettingsPageContentProps {
@@ -19,12 +20,10 @@ export const SettingsPageContent = ({ settings }: SettingsPageContentProps) => {
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Configurações</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Gerencie preferências e dados administrativos
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Configurações"
+        subtitle="Gerencie preferências e dados administrativos"
+      />
 
       {feedback && (
         <output

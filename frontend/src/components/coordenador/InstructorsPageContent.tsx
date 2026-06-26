@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { InstructorTable } from "@/components/coordenador/InstructorTable";
 import { NewInstructorForm } from "@/components/coordenador/NewInstructorForm";
@@ -28,23 +29,20 @@ export const InstructorsPageContent = ({
 
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-semibold text-2xl text-slate-950">Instrutores</h1>
-          <p className="mt-1 text-slate-600 text-sm">
-            Gerencie instrutores, vínculos e convites de ativação
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsFormOpen((currentValue) => !currentValue)}
-          aria-expanded={isFormOpen}
-          className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] sm:w-auto"
-        >
-          + Novo Instrutor
-        </button>
-      </header>
+      <CoordinatorPageHeader
+        title="Instrutores"
+        subtitle="Gerencie instrutores, vínculos e convites de ativação"
+        action={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen((currentValue) => !currentValue)}
+            aria-expanded={isFormOpen}
+            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+          >
+            + Novo Instrutor
+          </button>
+        }
+      />
 
       <NewInstructorForm
         isOpen={isFormOpen}

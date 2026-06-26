@@ -1,5 +1,4 @@
 import { AttentionStudentsTable } from "@/components/coordenador/AttentionStudentsTable";
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { DashboardInfoCard } from "@/components/coordenador/DashboardInfoCard";
 import { UpcomingLessonsList } from "@/components/coordenador/UpcomingLessonsList";
@@ -47,7 +46,7 @@ export default async function CoordenadorPage() {
   ).length;
 
   return (
-    <CoordinatorLayout>
+    <>
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-lg bg-brand-medium/80 px-5 py-4 text-center text-slate-950">
           <p className="font-semibold text-xs uppercase tracking-[0.35em]">
@@ -137,6 +136,6 @@ export default async function CoordenadorPage() {
           </div>
         </article>
       </section>
-    </CoordinatorLayout>
+    </>
   );
 }

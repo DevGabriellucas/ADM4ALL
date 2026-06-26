@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AttendanceTable } from "@/components/coordenador/AttendanceTable";
+import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import type {
   AttendanceSituation,
@@ -112,12 +113,10 @@ export const AttendancePageContent = ({
 
   return (
     <>
-      <header>
-        <h1 className="font-semibold text-2xl text-slate-950">Frequência</h1>
-        <p className="mt-1 text-slate-600 text-sm">
-          Acompanhe presença, faltas e alunos em risco
-        </p>
-      </header>
+      <CoordinatorPageHeader
+        title="Frequência"
+        subtitle="Acompanhe presença, faltas e alunos em risco"
+      />
 
       <section
         aria-label="Filtros de frequência"

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { ClassDetailsContent } from "@/components/coordenador/ClassDetailsContent";
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import {
   getAttendanceSummary,
   getCertificates,
@@ -34,21 +33,17 @@ export default async function CoordinatorClassDetailsPage({
     ]);
 
   return (
-    <CoordinatorLayout>
-      <ClassDetailsContent
-        classGroup={classGroup}
-        students={students.filter(
-          (student) => student.turma === classGroup.nome,
-        )}
-        lessons={lessons.filter((lesson) => lesson.turma === classGroup.nome)}
-        attendance={attendance.filter(
-          (record) => record.turma === classGroup.nome,
-        )}
-        materials={materials}
-        certificates={certificates.filter(
-          (certificate) => certificate.turma === classGroup.nome,
-        )}
-      />
-    </CoordinatorLayout>
+    <ClassDetailsContent
+      classGroup={classGroup}
+      students={students.filter((student) => student.turma === classGroup.nome)}
+      lessons={lessons.filter((lesson) => lesson.turma === classGroup.nome)}
+      attendance={attendance.filter(
+        (record) => record.turma === classGroup.nome,
+      )}
+      materials={materials}
+      certificates={certificates.filter(
+        (certificate) => certificate.turma === classGroup.nome,
+      )}
+    />
   );
 }

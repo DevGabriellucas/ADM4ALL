@@ -1,5 +1,4 @@
 import { AttendancePageContent } from "@/components/coordenador/AttendancePageContent";
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import {
   getAttendanceSummary,
   getClasses,
@@ -16,13 +15,11 @@ export default async function CoordinatorAttendancePage() {
   ]);
 
   return (
-    <CoordinatorLayout>
-      <AttendancePageContent
-        attendance={attendance}
-        courses={courses}
-        classes={classes}
-        students={students}
-      />
-    </CoordinatorLayout>
+    <AttendancePageContent
+      attendance={attendance}
+      courses={courses}
+      classes={classes}
+      students={students}
+    />
   );
 }
