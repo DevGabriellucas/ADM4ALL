@@ -1,6 +1,6 @@
+import { AttentionStudentsTable } from "@/components/coordenador/AttentionStudentsTable";
 import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
-import { AttentionStudentsTable } from "@/components/coordenador/AttentionStudentsTable";
 import { DashboardInfoCard } from "@/components/coordenador/DashboardInfoCard";
 import { UpcomingLessonsList } from "@/components/coordenador/UpcomingLessonsList";
 import {
@@ -11,6 +11,7 @@ import {
   getLessons,
   getProcesses,
 } from "@/services/coordinatorService";
+import { getLessonScheduleStatus } from "@/utils/getLessonScheduleStatus";
 
 export default async function CoordenadorPage() {
   const [
@@ -39,7 +40,7 @@ export default async function CoordenadorPage() {
     (student) => student.situacao !== "regular",
   );
   const upcomingLessons = lessons
-    .filter((lesson) => lesson.status === "planejada")
+    .filter((lesson) => getLessonScheduleStatus(lesson) === "proxima")
     .slice(0, 4);
   const processesInProgress = processes.filter(
     (process) => process.status === "em_analise",
@@ -61,9 +62,7 @@ export default async function CoordenadorPage() {
           <p className="font-semibold text-xs uppercase tracking-[0.35em]">
             Período letivo
           </p>
-          <p className="mt-1 font-medium text-sm sm:text-base">
-            2026.1
-          </p>
+          <p className="mt-1 font-medium text-sm sm:text-base">2026.1</p>
         </div>
       </section>
 

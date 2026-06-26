@@ -14,6 +14,12 @@ export type ClassStatus =
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
 
+export type LessonScheduleStatus =
+  | "concluida"
+  | "proxima"
+  | "pendente"
+  | "cancelada";
+
 export type ClassMaterialType = "PDF" | "Planilha" | "Apresentação" | "Link";
 
 export type AttendanceSituation =

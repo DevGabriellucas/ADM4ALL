@@ -1,21 +1,28 @@
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { Lesson } from "@/types/coordinator";
 import { formatData } from "@/utils/format";
+import { getLessonScheduleStatus } from "@/utils/getLessonScheduleStatus";
 
 interface UpcomingLessonsListProps {
   lessons: Lesson[];
 }
 
-const getLessonStatusInfo = (status: Lesson["status"]) => {
-  if (status === "realizada") {
-    return { label: "Realizada", tone: "green" as const };
+const getLessonStatusInfo = (lesson: Lesson) => {
+  const status = getLessonScheduleStatus(lesson);
+
+  if (status === "concluida") {
+    return { label: "Concluída", tone: "green" as const };
   }
 
   if (status === "cancelada") {
     return { label: "Cancelada", tone: "red" as const };
   }
 
-  return { label: "Planejada", tone: "blue" as const };
+  if (status === "pendente") {
+    return { label: "Pendente", tone: "amber" as const };
+  }
+
+  return { label: "Próxima", tone: "blue" as const };
 };
 
 export const UpcomingLessonsList = ({ lessons }: UpcomingLessonsListProps) => {
@@ -38,7 +45,7 @@ export const UpcomingLessonsList = ({ lessons }: UpcomingLessonsListProps) => {
 
       <div className="flex flex-col gap-y-3">
         {lessons.map((lesson) => {
-          const status = getLessonStatusInfo(lesson.status);
+          const status = getLessonStatusInfo(lesson);
 
           return (
             <article
@@ -55,7 +62,10 @@ export const UpcomingLessonsList = ({ lessons }: UpcomingLessonsListProps) => {
                   </p>
                 </div>
 
-                <CoordinatorStatusBadge label={status.label} tone={status.tone} />
+                <CoordinatorStatusBadge
+                  label={status.label}
+                  tone={status.tone}
+                />
               </div>
 
               <p className="mt-3 text-slate-500 text-xs">

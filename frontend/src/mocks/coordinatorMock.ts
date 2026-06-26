@@ -223,6 +223,26 @@ export const coordinatorLessonsMock: Lesson[] = [
     data: "2026-06-29",
     status: "planejada",
   },
+  {
+    id: "lesson-005",
+    numeroAula: 1,
+    titulo: "Comunicação e experiência do cliente",
+    curso: "Atendimento ao Cliente",
+    turma: "ATD-2026-01",
+    instrutor: "Camila Souza",
+    data: "2026-06-24",
+    status: "planejada",
+  },
+  {
+    id: "lesson-006",
+    numeroAula: 2,
+    titulo: "Técnicas de atendimento",
+    curso: "Atendimento ao Cliente",
+    turma: "ATD-2026-01",
+    instrutor: "Camila Souza",
+    data: "2026-07-03",
+    status: "cancelada",
+  },
 ];
 
 export const coordinatorClassMaterialsMock: ClassMaterial[] = [
