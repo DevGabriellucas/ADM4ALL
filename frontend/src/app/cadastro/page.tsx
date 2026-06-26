@@ -48,8 +48,8 @@ export default function Cadastro(){
     };
 
     return (
-        <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-16 bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 font-poppins xl:flex-row xl:gap-x-20 xl:gap-y-0">
-            <h1 className="flex items-center justify-center text-2xl font-bold">Cadastro</h1>
+        <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-16 bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 font-poppins">
+            <h1 className="font-medium text-3xl tracking-[10%] xl:text-4xl">Cadastro</h1>
             
             <form onSubmit={handleSubmit(cadastroSubmit)} 
                   className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-[#9FA3C7E5]/60 px-6 py-9">
@@ -59,8 +59,8 @@ export default function Cadastro(){
                 <Input type="tel" className="rounded-lg p-2" placeholder="Telefone" {...register("telefone")} error={errors.telefone?.message}/>
                 <Input type="date" className="rounded-lg p-2" {...register("dataNascimento")}/>
                 <Input type="email" className="rounded-lg p-2 autofill:shadow-[inset_0_0_01000px#B6AEAE]" placeholder="email" {...register("email")} error={errors.email?.message}/>
-                <Input type="password" className="rounded-lg p-2" placeholder="Senha"/>
-                <Input type="password" className="rounded-lg p-2" placeholder="Confirmar Senha"/>
+                <Input type="password" className="rounded-lg p-2" placeholder="Senha" {...register("senha")} error={errors.senha?.message}/>
+                <Input type="password" className="rounded-lg p-2" placeholder="Confirmar Senha" {...register("confirmarSenha")} error={errors.confirmarSenha?.message}/>
         
                 <div className="flex items-center gap-3">
                     <Input type="checkbox" checked={checkbox} {...register("isAlunoUnipe")} onChange={() => setCheckbox(!checkbox)}/>

@@ -10,8 +10,13 @@ export const cadastroFormDataSchema = z.object({
   cursoUnipe: z.string().optional(),
   
   senha: z.string().min(1, { error: "A senha é obrigatória!" }),
+  confirmarSenha: z.string().min(1, { error: "Confirme sua senha!" }),
+
   treinamento: z.string().min(1, { error: "Selecione um treinamento!" }),
   rgm: z.string().optional() 
+}).refine((data) => data.senha === data.confirmarSenha, {
+  error: "As senhas não coincidem!",
+  path: ["confirmarSenha"],
 });
 
 export type CadastroFormData = z.infer<typeof cadastroFormDataSchema>;
