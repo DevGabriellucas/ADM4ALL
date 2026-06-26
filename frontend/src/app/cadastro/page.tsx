@@ -38,8 +38,9 @@ export default function Cadastro(){
                 <Input type="text" className="rounded-lg p-2" placeholder="CPF" {...register("cpf")}error={errors.cpf?.message}/>
                 <Input type="tel" className="rounded-lg p-2" placeholder="Telefone" {...register("telefone")} error={errors.telefone?.message}/>
                 <Input type="date" className="rounded-lg p-2" {...register("dataNascimento")}/>
-                <Input type="email" className="rounded-lg p-2" placeholder="email" {...register("email")} error={errors.email?.message}/>
+                <Input type="email" className="rounded-lg p-2 autofill:shadow-[inset_0_0_01000px#B6AEAE]" placeholder="email" {...register("email")} error={errors.email?.message}/>
                 <Input type="password" className="rounded-lg p-2" placeholder="Senha"/>
+                <Input type="password" className="rounded-lg p-2" placeholder="Confirmar Senha"/>
         
                 <div className="flex items-center gap-3">
                     <Input type="checkbox" checked={checkbox} {...register("isAlunoUnipe")} onChange={() => setCheckbox(!checkbox)}/>

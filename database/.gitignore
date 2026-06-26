@@ -1,0 +1,5 @@
+# Variáveis de ambiente (NUNCA commitar — contém senha do banco)
+.env
+.env.local
+.env.*.local
+pgdata
