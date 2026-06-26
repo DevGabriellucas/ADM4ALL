@@ -14,6 +14,8 @@ export type ClassStatus =
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
 
+export type ClassMaterialType = "PDF" | "Planilha" | "Apresentação" | "Link";
+
 export type AttendanceSituation = "regular" | "atencao" | "reprovado_por_falta";
 
 export type CertificateStatus = "pendente" | "emitido" | "bloqueado";
@@ -91,6 +93,15 @@ export interface Lesson {
   instrutor: string;
   data: string;
   status: LessonStatus;
+}
+
+export interface ClassMaterial {
+  id: string;
+  turma: string;
+  nome: string;
+  tipo: ClassMaterialType;
+  data: string;
+  tamanho: string;
 }
 
 export interface AttendanceSummary {

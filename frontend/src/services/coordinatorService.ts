@@ -2,6 +2,7 @@ import {
   coordinatorAttendanceMock,
   coordinatorCertificatesMock,
   coordinatorClassesMock,
+  coordinatorClassMaterialsMock,
   coordinatorCoursesMock,
   coordinatorDashboardSummaryMock,
   coordinatorInstructorsMock,
@@ -15,6 +16,7 @@ import type {
   BaseUser,
   CertificateRecord,
   ClassGroup,
+  ClassMaterial,
   CoordinatorDashboardSummary,
   Course,
   Instructor,
@@ -53,6 +55,14 @@ export const getClassById = async (
   id: string,
 ): Promise<ClassGroup | undefined> => {
   return coordinatorClassesMock.find((classGroup) => classGroup.id === id);
+};
+
+export const getClassMaterials = async (
+  className: string,
+): Promise<ClassMaterial[]> => {
+  return coordinatorClassMaterialsMock.filter(
+    (material) => material.turma === className,
+  );
 };
 
 export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {

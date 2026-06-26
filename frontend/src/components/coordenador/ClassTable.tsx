@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { ClassGroup } from "@/types/coordinator";
 
@@ -108,12 +109,12 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
-                      <button
-                        type="button"
+                      <Link
+                        href={`/coordenador/turmas/${classGroup.id}`}
                         className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Visualizar
-                      </button>
+                      </Link>
                       <button
                         type="button"
                         className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
