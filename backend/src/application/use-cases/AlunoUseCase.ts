@@ -237,6 +237,35 @@ export class AlunoUseCase {
     console.log(`${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}\n`);
   }
 
+  async redefinirSenha(tokenBruto: string, novaSenha: string): Promise<void> {
+    if (!tokenBruto || tokenBruto.trim() === "") {
+      throw new BadRequestError("O token de redefinicao e obrigatorio.");
+    }
+
+    if (!novaSenha || novaSenha.length < 8) {
+      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
+    }
+
+    const tokenHash = createHash("sha256")
+      .update(tokenBruto.trim())
+      .digest("hex");
+
+    const recuperacao =
+      await this.alunoRepository.buscarRecuperacaoValidaPorTokenHash(tokenHash);
+
+    if (!recuperacao) {
+      throw new BadRequestError("Link de redefinicao invalido ou expirado.");
+    }
+
+    const novaSenhaCriptografada = await this.criptografarSenha(novaSenha);
+
+    await this.alunoRepository.redefinirSenhaUsuario(
+      recuperacao.usuarioId,
+      novaSenhaCriptografada,
+      recuperacao.recuperacaoId,
+    );
+  }
+
   private normalizarDataNascimento(data: Date | string): Date {
     const dataNascimento = data instanceof Date ? data : new Date(data);
 

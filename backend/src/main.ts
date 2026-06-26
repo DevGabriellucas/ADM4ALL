@@ -3,7 +3,7 @@ import { AlunoUseCase } from "./application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "./application/use-cases/AuthUseCase";
 import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
-//import { InMemoryAlunoRepository } from "./infrastructure/database/InMemoryAlunoRepository";
+//import { InMemoryAlunoRepository } from "./infrastructure/repositories/InMemoryAlunoRepository";
 import { pool } from "./infrastructure/database/database";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
 import { PostgresAuthRepository } from "./infrastructure/repositories/PostgresAuthRepository";

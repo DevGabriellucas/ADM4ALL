@@ -77,7 +77,12 @@ export class ExpressAdapter {
 
   private exigirPerfis(perfis: Perfil[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-      this.autenticar(req, res, () => {
+      this.autenticar(req, res, (erro?: unknown) => {
+        if (erro) {
+          next(erro as Error);
+          return;
+        }
+
         const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!perfis.includes(usuario.perfil as Perfil)) {
@@ -208,6 +213,21 @@ export class ExpressAdapter {
         res.status(200).json({
           mensagem: "Se o e-mail estiver cadastrado, as instrucoes foram enviadas.",
         });
+      }),
+    );
+
+    this.app.post(
+      "/auth/redefinir-senha",
+      asyncHandler(async (req: Request, res: Response) => {
+        const { token, novaSenha } = req.body;
+
+        if (!token || !novaSenha) {
+          throw new BadRequestError("Token e nova senha sao obrigatorios.");
+        }
+
+        await this.alunoUseCase.redefinirSenha(token, novaSenha);
+
+        res.status(200).json({ mensagem: "Senha redefinida com sucesso." });
       }),
     );
 

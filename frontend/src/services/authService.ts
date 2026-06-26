@@ -7,6 +7,11 @@ interface ForgotPasswordPayload {
   email: string;
 }
 
+interface ResetPasswordPayload {
+  token: string;
+  novaSenha: string;
+}
+
 export interface LoginResponse {
   mensagem?: string;
   token?: string;
@@ -29,8 +34,13 @@ export interface ForgotPasswordResponse {
   mensagem?: string;
 }
 
+export interface ResetPasswordResponse {
+  mensagem?: string;
+}
+
 type ApiResponse = LoginResponse &
-  ForgotPasswordResponse & {
+  ForgotPasswordResponse &
+  ResetPasswordResponse & {
     erro?: string;
     message?: string;
   };
@@ -104,6 +114,33 @@ export const forgotPassword = async (
   if (!response.ok) {
     throw new Error(
       getApiErrorMessage(result, "Ocorreu um erro ao processar a solicitacao."),
+    );
+  }
+
+  return {
+    mensagem: result?.mensagem,
+  };
+};
+
+export const resetPassword = async (
+  data: ResetPasswordPayload,
+): Promise<ResetPasswordResponse> => {
+  const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      token: data.token,
+      novaSenha: data.novaSenha,
+    }),
+  });
+
+  const result = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(
+      getApiErrorMessage(result, "Não foi possível redefinir a senha."),
     );
   }
 

@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { Aluno } from "../../domain/entities/Aluno";
 import {
   AlunoRepository,
+  RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
   UsuarioRecuperacaoSenha,
 } from "../../domain/repositories/AlunoRepository";
@@ -102,6 +103,77 @@ export class PostgresAlunoRepository implements AlunoRepository {
       dados.ipSolicitante ?? null,
       dados.userAgent ?? null,
     ]);
+  }
+
+  async buscarRecuperacaoValidaPorTokenHash(
+    tokenHash: string,
+  ): Promise<RecuperacaoSenhaValida | null> {
+    const query = `
+      SELECT id, usuario_id
+      FROM recuperacoes_senha
+      WHERE token_hash = $1
+        AND usado_em IS NULL
+        AND expira_em > now()
+      LIMIT 1
+    `;
+    const resultado = await this.db.query(query, [tokenHash]);
+    const linha = resultado.rows[0];
+
+    if (!linha) return null;
+
+    return {
+      recuperacaoId: linha.id,
+      usuarioId: linha.usuario_id,
+    };
+  }
+
+  async redefinirSenhaUsuario(
+    usuarioId: string,
+    novaSenhaHash: string,
+    recuperacaoId: string,
+  ): Promise<void> {
+    const client = await this.db.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const resultadoUsuario = await client.query(
+        `UPDATE usuarios SET senha = $2 WHERE id = $1 RETURNING aluno_id`,
+        [usuarioId, novaSenhaHash],
+      );
+
+      if (resultadoUsuario.rowCount !== 1) {
+        throw new Error("Usuario nao encontrado.");
+      }
+
+      const alunoId = resultadoUsuario.rows[0].aluno_id;
+
+      if (alunoId) {
+        await client.query(`UPDATE alunos SET senha = $2 WHERE id = $1`, [
+          alunoId,
+          novaSenhaHash,
+        ]);
+      }
+
+      const resultadoRecuperacao = await client.query(
+        `UPDATE recuperacoes_senha
+         SET usado_em = now()
+         WHERE id = $1 AND usado_em IS NULL
+         RETURNING id`,
+        [recuperacaoId],
+      );
+
+      if (resultadoRecuperacao.rowCount !== 1) {
+        throw new Error("Link de redefinicao ja foi utilizado.");
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async cadastrar(aluno: Aluno): Promise<Aluno> {
