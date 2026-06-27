@@ -6,12 +6,15 @@ CREATE TABLE IF NOT EXISTS treinamentos (
     descricao       TEXT,
     carga_horaria   INTEGER      NOT NULL,
     ativo           BOOLEAN      NOT NULL DEFAULT TRUE,
+    status          VARCHAR(20)  NOT NULL DEFAULT 'em_planejamento',
     data_criacao    TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_treinamentos_nome_nao_vazio
         CHECK (length(trim(nome)) > 0),
     CONSTRAINT chk_treinamentos_carga_horaria_positiva
-        CHECK (carga_horaria > 0)
+        CHECK (carga_horaria > 0),
+    CONSTRAINT chk_treinamentos_status
+        CHECK (status IN ('ativo', 'em_planejamento', 'encerrado'))
 );
 
 CREATE TABLE IF NOT EXISTS turmas (
@@ -23,6 +26,7 @@ CREATE TABLE IF NOT EXISTS turmas (
     nome             VARCHAR(120) NOT NULL,
     turno            VARCHAR(20)  NOT NULL DEFAULT 'noite',
     local            VARCHAR(120),
+    horario          VARCHAR(120),
     status           VARCHAR(20)  NOT NULL DEFAULT 'planejada',
     capacidade       INTEGER      NOT NULL DEFAULT 30,
     data_inicio      DATE         NOT NULL,
