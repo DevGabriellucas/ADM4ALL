@@ -37,6 +37,13 @@ services:
     environment:
       - DATABASE_URL=postgresql://adm4all:adm4all_dev@db:5432/adm4all
       - PORT=8000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-adm4all_dev_key}
+      - JWT_SECRET=${JWT_SECRET:-adm4all_dev_secret_change_me}
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
     depends_on:
       db:
         condition: service_healthy

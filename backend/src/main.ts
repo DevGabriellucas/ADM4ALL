@@ -5,6 +5,7 @@ import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
 //import { InMemoryAlunoRepository } from "./infrastructure/repositories/InMemoryAlunoRepository";
 import { pool } from "./infrastructure/database/database";
+import { EmailService } from "./infrastructure/email/EmailService";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
 import { PostgresAuthRepository } from "./infrastructure/repositories/PostgresAuthRepository";
 import { PostgresInstrutorRepository } from "./infrastructure/repositories/PostgresInstrutorRepository";
@@ -18,8 +19,13 @@ const instrutorRepository = new PostgresInstrutorRepository(pool);
 const jwtService = new JwtService(
   process.env.JWT_SECRET ?? "adm4all_dev_secret_change_me",
 );
+const emailService = new EmailService(
+  process.env.GMAIL_USER ?? "",
+  process.env.GMAIL_APP_PASSWORD ?? "",
+);
+
 const authUseCase = new AuthUseCase(authRepository, jwtService);
-const alunoUseCase = new AlunoUseCase(alunoRepository);
+const alunoUseCase = new AlunoUseCase(alunoRepository, emailService);
 const instrutorUseCase = new InstrutorUseCase(instrutorRepository);
 
 const servidor = new ExpressAdapter(authUseCase, alunoUseCase, instrutorUseCase, jwtService);

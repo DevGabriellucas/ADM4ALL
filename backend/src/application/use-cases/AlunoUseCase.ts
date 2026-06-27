@@ -5,6 +5,7 @@ import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 
@@ -43,7 +44,10 @@ const RECUPERACAO_SENHA_MINUTOS = 15;
 const SALT_ROUNDS = 10;
 
 export class AlunoUseCase {
-  constructor(private alunoRepository: AlunoRepository) {}
+  constructor(
+    private alunoRepository: AlunoRepository,
+    private emailService: EmailService,
+  ) {}
 
   async login(identificador: string, senhaBruta: string): Promise<Aluno> {
     let idLimpo = identificador.trim().toLowerCase();
@@ -231,10 +235,17 @@ export class AlunoUseCase {
     });
 
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkRedefinicao = `${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}`;
 
-    console.log(`Para: ${usuario.email}`);
-    console.log("Assunto: Recuperacao de Senha - ADM Para Todos");
-    console.log(`${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}\n`);
+    await this.emailService.enviar(
+      usuario.email,
+      "Recuperacao de Senha - ADM Para Todos",
+      `<p>Recebemos uma solicitacao para redefinir sua senha.</p>
+       <p><a href="${linkRedefinicao}">Clique aqui para criar uma nova senha</a></p>
+       <p>Este link expira em ${RECUPERACAO_SENHA_MINUTOS} minutos. Se voce nao solicitou, ignore este e-mail.</p>`,
+    );
+
+    console.log(`E-mail de recuperacao enviado para: ${usuario.email}`);
   }
 
   async redefinirSenha(tokenBruto: string, novaSenha: string): Promise<void> {
@@ -271,6 +282,15 @@ export class AlunoUseCase {
 
     if (isNaN(dataNascimento.getTime())) {
       throw new BadRequestError("A data de nascimento e invalida.");
+    }
+
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const dataNascimentoIso = dataNascimento.toISOString().slice(0, 10);
+
+    if (dataNascimentoIso >= hojeIso) {
+      throw new BadRequestError(
+        "A data de nascimento deve ser anterior a hoje.",
+      );
     }
 
     return dataNascimento;
