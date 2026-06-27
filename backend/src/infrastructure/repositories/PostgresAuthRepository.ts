@@ -27,7 +27,10 @@ export class PostgresAuthRepository implements AuthRepository {
       LEFT JOIN instrutores i ON i.usuario_id = u.id
       LEFT JOIN coordenadores c ON c.usuario_id = u.id
       WHERE lower(u.email) = lower($1)
-         OR regexp_replace(coalesce(a.cpf, ''), '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')
+         OR (
+           length(regexp_replace($1, '[^0-9]', '', 'g')) > 0
+           AND regexp_replace(a.cpf, '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')
+         )
       LIMIT 1
     `;
 
