@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { SubmitEvent } from "react";
 import { useState } from "react";
+import { convidarInstrutorAction } from "@/app/coordenador/actions";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 
@@ -26,24 +28,41 @@ export const NewInstructorForm = ({
   isOpen,
   onCancel,
 }: NewInstructorFormProps) => {
+  const router = useRouter();
   const [formData, setFormData] =
     useState<InstructorFormData>(INITIAL_FORM_DATA);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCancel = () => {
     setFormData(INITIAL_FORM_DATA);
     setSuccessMessage(null);
+    setErrorMessage(null);
     onCancel();
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // MOCK TEMPORARIO: futuramente a API criara o usuario e enviara o e-mail.
-    setSuccessMessage(
-      `Convite de ativação preparado para ${formData.email}. Nenhum e-mail foi enviado nesta versão.`,
-    );
+    const resultado = await convidarInstrutorAction({
+      nome: formData.nome,
+      email: formData.email,
+      telefone: formData.telefone || undefined,
+    });
+
+    setIsSubmitting(false);
+
+    if (!resultado.sucesso) {
+      setErrorMessage(resultado.mensagem);
+      return;
+    }
+
+    setSuccessMessage(resultado.mensagem);
     setFormData(INITIAL_FORM_DATA);
+    router.refresh();
   };
 
   if (!isOpen) {
@@ -75,6 +94,15 @@ export const NewInstructorForm = ({
           className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
         >
           {successMessage}
+        </output>
+      )}
+
+      {errorMessage && (
+        <output
+          aria-live="polite"
+          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {errorMessage}
         </output>
       )}
 
@@ -124,8 +152,11 @@ export const NewInstructorForm = ({
         </div>
 
         <CoordinatorFormActions
-          submitLabel="Enviar convite de ativação"
+          submitLabel={
+            isSubmitting ? "Enviando..." : "Enviar convite de ativação"
+          }
           onCancel={handleCancel}
+          disabled={isSubmitting}
         />
       </form>
     </section>

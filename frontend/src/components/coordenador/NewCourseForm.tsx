@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { SubmitEvent } from "react";
 import { useState } from "react";
+import { criarCursoAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import type { CourseStatus } from "@/types/coordinator";
 
@@ -25,23 +27,41 @@ const INITIAL_FORM_DATA: CourseFormData = {
 };
 
 export const NewCourseForm = ({ isOpen, onCancel }: NewCourseFormProps) => {
+  const router = useRouter();
   const [formData, setFormData] = useState<CourseFormData>(INITIAL_FORM_DATA);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCancel = () => {
     setFormData(INITIAL_FORM_DATA);
     setSuccessMessage(null);
+    setErrorMessage(null);
     onCancel();
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // MOCK TEMPORARIO: a API de cadastro substituirá esta confirmação local.
-    setSuccessMessage(
-      `Curso "${formData.nome}" pronto para ser enviado quando a API estiver disponível.`,
-    );
+    const resultado = await criarCursoAction({
+      nome: formData.nome,
+      descricao: formData.descricao,
+      cargaHoraria: Number(formData.cargaHoraria),
+      status: formData.status,
+    });
+
+    setIsSubmitting(false);
+
+    if (!resultado.sucesso) {
+      setErrorMessage(resultado.mensagem);
+      return;
+    }
+
+    setSuccessMessage(resultado.mensagem);
     setFormData(INITIAL_FORM_DATA);
+    router.refresh();
   };
 
   if (!isOpen) {
@@ -71,6 +91,15 @@ export const NewCourseForm = ({ isOpen, onCancel }: NewCourseFormProps) => {
           className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
         >
           {successMessage}
+        </output>
+      )}
+
+      {errorMessage && (
+        <output
+          aria-live="polite"
+          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {errorMessage}
         </output>
       )}
 
@@ -142,8 +171,9 @@ export const NewCourseForm = ({ isOpen, onCancel }: NewCourseFormProps) => {
         </div>
 
         <CoordinatorFormActions
-          submitLabel="Salvar curso"
+          submitLabel={isSubmitting ? "Salvando..." : "Salvar curso"}
           onCancel={handleCancel}
+          disabled={isSubmitting}
         />
       </form>
     </section>
