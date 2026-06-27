@@ -63,6 +63,7 @@ export default async function InstrutorDashboardPage() {
                 <PresencaPanel
                   turmaId={turma.id}
                   aulaReferencia={aulaReferencia}
+                  cronograma={dashboard.cronograma}
                   alunos={dashboard.alunos}
                 />
               ) : (
@@ -81,7 +82,10 @@ export default async function InstrutorDashboardPage() {
             </div>
 
             <div className="min-w-0">
-              <CronogramaList aulas={dashboard.cronograma} />
+              <CronogramaList
+                turmaId={turma?.id ?? null}
+                aulas={dashboard.cronograma}
+              />
             </div>
           </div>
         </div>

@@ -1,5 +1,7 @@
 import { Pool } from "pg";
+import { BadRequestError } from "../errors/BadRequestError";
 import {
+  AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
   AulaResumo,
@@ -11,6 +13,8 @@ import {
   StatusPresenca,
   TurmaResumo,
 } from "../../domain/repositories/InstrutorRepository";
+
+const CODIGO_VIOLACAO_UNICIDADE = "23505";
 
 export class PostgresInstrutorRepository implements InstrutorRepository {
   constructor(private db: Pool) {}
@@ -86,7 +90,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     instrutorId: string,
   ): Promise<InstrutorResumo | null> {
     const query = `
-      SELECT id, usuario_id, nome, area_atuacao
+      SELECT id, usuario_id, nome, area_atuacao, avatar_url
       FROM instrutores
       WHERE id = $1
       LIMIT 1
@@ -103,6 +107,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       usuarioId: linha.usuario_id,
       nome: linha.nome,
       areaAtuacao: linha.area_atuacao ?? null,
+      avatarUrl: linha.avatar_url ?? null,
     };
   }
 
@@ -318,6 +323,91 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     ]);
 
     return this.mapearMaterial(resultado.rows[0]);
+  }
+
+  async removerMaterial(materialId: string, turmaId: string): Promise<void> {
+    const resultado = await this.db.query(
+      `UPDATE materiais
+       SET status = 'arquivado'
+       WHERE id = $1 AND turma_id = $2 AND status = 'ativo'`,
+      [materialId, turmaId],
+    );
+
+    if (resultado.rowCount === 0) {
+      throw new BadRequestError("Material nao encontrado para esta turma.");
+    }
+  }
+
+  async adicionarAula(input: AdicionarAulaInput): Promise<AulaResumo> {
+    const query = `
+      INSERT INTO aulas (turma_id, numero_aula, titulo, data_aula, hora_inicio, hora_fim)
+      SELECT $1, COALESCE(MAX(numero_aula), 0) + 1, $2, $3, $4, $5
+      FROM aulas
+      WHERE turma_id = $1
+      RETURNING id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+    `;
+
+    try {
+      const resultado = await this.db.query(query, [
+        input.turmaId,
+        input.titulo,
+        input.data,
+        input.horaInicio ?? null,
+        input.horaFim ?? null,
+      ]);
+
+      return this.mapearAula(resultado.rows[0])!;
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new BadRequestError("Ja existe uma aula cadastrada para esta data.");
+      }
+      throw error;
+    }
+  }
+
+  async removerAula(aulaId: string, turmaId: string): Promise<void> {
+    const frequenciasResultado = await this.db.query(
+      "SELECT 1 FROM frequencias WHERE aula_id = $1 LIMIT 1",
+      [aulaId],
+    );
+
+    if (frequenciasResultado.rows[0]) {
+      throw new BadRequestError(
+        "Esta aula ja possui presenca registrada e nao pode ser removida.",
+      );
+    }
+
+    const resultado = await this.db.query(
+      "DELETE FROM aulas WHERE id = $1 AND turma_id = $2",
+      [aulaId, turmaId],
+    );
+
+    if (resultado.rowCount === 0) {
+      throw new BadRequestError("Aula nao encontrada para esta turma.");
+    }
+  }
+
+  async buscarPresencasPorAula(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<AlunoPresenca[]> {
+    const aulaResultado = await this.db.query(
+      "SELECT 1 FROM aulas WHERE id = $1 AND turma_id = $2 LIMIT 1",
+      [aulaId, turmaId],
+    );
+
+    if (!aulaResultado.rows[0]) {
+      throw new BadRequestError("Aula nao encontrada para esta turma.");
+    }
+
+    return this.listarAlunosComPresenca(turmaId, aulaId);
+  }
+
+  async atualizarAvatar(instrutorId: string, avatarUrl: string): Promise<void> {
+    await this.db.query(
+      "UPDATE instrutores SET avatar_url = $1 WHERE id = $2",
+      [avatarUrl, instrutorId],
+    );
   }
 
   private mapearAula(linha: any): AulaResumo | null {

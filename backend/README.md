@@ -60,8 +60,13 @@ x-api-key: valor_do_ADMIN_API_KEY
 | PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
 | DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
 | GET | `/instrutores/:id/dashboard` | `Bearer` instrutor/coordenador/admin | Dashboard do instrutor |
+| POST | `/instrutores/:id/avatar` | `Bearer` instrutor/coordenador/admin | Atualiza a foto de perfil do instrutor |
 | POST | `/turmas/:turmaId/presencas` | `Bearer` instrutor/coordenador/admin | Registra presencas da turma |
+| GET | `/turmas/:turmaId/aulas/:aulaId/presencas` | `Bearer` instrutor/coordenador/admin | Lista a presenca dos alunos para uma aula especifica |
 | POST | `/turmas/:turmaId/materiais` | `Bearer` instrutor/coordenador/admin | Cadastra material e salva upload opcional |
+| DELETE | `/turmas/:turmaId/materiais/:materialId` | `Bearer` instrutor/coordenador/admin | Arquiva (remove da listagem) um material |
+| POST | `/turmas/:turmaId/aulas` | `Bearer` instrutor/coordenador/admin | Cadastra uma aula no cronograma da turma |
+| DELETE | `/turmas/:turmaId/aulas/:aulaId` | `Bearer` instrutor/coordenador/admin | Remove uma aula sem presenca registrada |
 
 ## Recuperacao de senha
 

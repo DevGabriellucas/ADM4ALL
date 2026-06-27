@@ -20,6 +20,7 @@ export interface InstrutorResumo {
   usuarioId: string;
   nome: string;
   areaAtuacao: string | null;
+  avatarUrl: string | null;
 }
 
 export interface TurmaResumo {
@@ -90,6 +91,14 @@ export interface AdicionarMaterialInput {
   publicadoPorId?: string | null;
 }
 
+export interface AdicionarAulaInput {
+  turmaId: string;
+  titulo: string;
+  data: string; // YYYY-MM-DD
+  horaInicio?: string | null;
+  horaFim?: string | null;
+}
+
 export interface InstrutorRepository {
   buscarDashboard(instrutorId: string): Promise<InstrutorDashboard | null>;
   turmaPertenceAoInstrutor(
@@ -98,4 +107,12 @@ export interface InstrutorRepository {
   ): Promise<boolean>;
   registrarPresencas(input: RegistrarPresencasInput): Promise<void>;
   adicionarMaterial(input: AdicionarMaterialInput): Promise<MaterialResumo>;
+  removerMaterial(materialId: string, turmaId: string): Promise<void>;
+  adicionarAula(input: AdicionarAulaInput): Promise<AulaResumo>;
+  removerAula(aulaId: string, turmaId: string): Promise<void>;
+  buscarPresencasPorAula(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<AlunoPresenca[]>;
+  atualizarAvatar(instrutorId: string, avatarUrl: string): Promise<void>;
 }

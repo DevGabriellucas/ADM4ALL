@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS instrutores (
     telefone       VARCHAR(11),
     area_atuacao   VARCHAR(120),
     formacao       VARCHAR(120),
+    avatar_url     VARCHAR(255),
     ativo          BOOLEAN      NOT NULL DEFAULT TRUE,
     data_cadastro  TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
