@@ -20,8 +20,10 @@ const jwtService = new JwtService(
   process.env.JWT_SECRET ?? "adm4all_dev_secret_change_me",
 );
 const emailService = new EmailService(
-  process.env.GMAIL_USER ?? "",
-  process.env.GMAIL_APP_PASSWORD ?? "",
+  process.env.EMAIL_USER ?? "",
+  process.env.EMAIL_PASS ?? "",
+  process.env.EMAIL_HOST,
+  process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : undefined,
 );
 
 const authUseCase = new AuthUseCase(authRepository, jwtService);

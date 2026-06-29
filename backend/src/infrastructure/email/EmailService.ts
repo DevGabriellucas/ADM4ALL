@@ -6,10 +6,17 @@ export class EmailService {
   constructor(
     private usuario: string,
     senhaApp: string,
+    host?: string,
+    port?: number,
   ) {
     this.transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: host || "smtp.gmail.com",
+      port: port ? Number(port) : 587,
+      secure: port ? Number(port) === 465 : false,
       auth: { user: usuario, pass: senhaApp },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 

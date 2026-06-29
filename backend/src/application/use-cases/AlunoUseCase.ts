@@ -6,6 +6,7 @@ import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import { EmailService } from "../../infrastructure/email/EmailService";
+import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 
@@ -240,9 +241,7 @@ export class AlunoUseCase {
     await this.emailService.enviar(
       usuario.email,
       "Recuperacao de Senha - ADM Para Todos",
-      `<p>Recebemos uma solicitacao para redefinir sua senha.</p>
-       <p><a href="${linkRedefinicao}">Clique aqui para criar uma nova senha</a></p>
-       <p>Este link expira em ${RECUPERACAO_SENHA_MINUTOS} minutos. Se voce nao solicitou, ignore este e-mail.</p>`,
+      gerarEmailRecuperacaoSenha(linkRedefinicao, RECUPERACAO_SENHA_MINUTOS),
     );
 
     console.log(`E-mail de recuperacao enviado para: ${usuario.email}`);
