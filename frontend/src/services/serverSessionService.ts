@@ -3,7 +3,7 @@ import { SESSION_COOKIE_NAMES } from "@/services/sessionService";
 
 export interface ServerSession {
   token: string;
-  perfil: "aluno" | "instrutor" | "coordenador";
+  perfil: "aluno" | "instrutor" | "coordenador" | "admin";
   usuarioId: string;
   alunoId?: string;
   instrutorId?: string;
@@ -19,7 +19,10 @@ export const getServerSession = async (): Promise<ServerSession | null> => {
   if (
     !token ||
     !usuarioId ||
-    (perfil !== "aluno" && perfil !== "instrutor" && perfil !== "coordenador")
+    (perfil !== "aluno" &&
+      perfil !== "instrutor" &&
+      perfil !== "coordenador" &&
+      perfil !== "admin")
   ) {
     return null;
   }

@@ -47,7 +47,8 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       const destinoPorPerfil = {
         aluno: "/aluno/dashboard",
         instrutor: "/instrutor/dashboard",
-        coordenador: "/",
+        coordenador: "/coordenador/dashboard",
+        admin: "/coordenador/dashboard",
       } as const;
 
       router.push(destinoPorPerfil[result.usuario.perfil]);
@@ -109,7 +110,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       </Button>
 
       {message?.type === "success" && (
-        <output className="text-center font-medium text-green-800 text-sm" role="status">
+        <output className="text-center font-medium text-green-800 text-sm">
           {message.text}
         </output>
       )}
