@@ -19,6 +19,27 @@ export interface RecuperacaoSenhaValida {
   usuarioId: string;
 }
 
+export type AlunoMatriculaStatus =
+  | "em_andamento"
+  | "aprovado"
+  | "reprovado_falta"
+  | "cancelado";
+
+export interface AlunoDashboard {
+  nome: string;
+  matricula: string | null;
+  cursoDeExtensao: {
+    nomeCurso: string;
+    qtdFaltas: number;
+    qtdTotalAulas: number;
+    qtdAulasConcluidas: number;
+    progresso: number;
+    status: AlunoMatriculaStatus;
+  };
+  certificadoDisponivel: boolean;
+  certificadoUrl: string | null;
+}
+
 export interface AlunoRepository {
   cadastrar(aluno: Aluno): Promise<Aluno>;
   buscarPorId(id: string): Promise<Aluno | null>;
@@ -29,6 +50,7 @@ export interface AlunoRepository {
   existeRecuperacaoSenhaRecente(usuarioId: string, intervaloMinutos: number): Promise<boolean>;
   registrarRecuperacaoSenha(dados: RegistrarRecuperacaoSenhaInput): Promise<void>;
   buscarRecuperacaoValidaPorTokenHash(tokenHash: string): Promise<RecuperacaoSenhaValida | null>;
+  buscarDashboardPorAlunoId(alunoId: string): Promise<AlunoDashboard | null>;
   redefinirSenhaUsuario(
     usuarioId: string,
     novaSenhaHash: string,

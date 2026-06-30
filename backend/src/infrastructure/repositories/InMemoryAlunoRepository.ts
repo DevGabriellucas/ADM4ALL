@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { Aluno } from "../../domain/entities/Aluno";
 import {
+  AlunoDashboard,
   AlunoRepository,
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
@@ -37,6 +38,12 @@ export class InMemoryAlunoRepository implements AlunoRepository {
 
   async buscarPorEmailOuCpf(identificador: string): Promise<Aluno | null> {
     return this.alunos.find(a => a.email === identificador || a.cpf === identificador) || null;
+  }
+
+  async buscarDashboardPorAlunoId(
+    _alunoId: string,
+  ): Promise<AlunoDashboard | null> {
+    return null;
   }
 
   async buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null> {

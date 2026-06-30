@@ -263,6 +263,25 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/alunos/me/dashboard",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const dashboard = await this.alunoUseCase.obterDashboard(
+          usuario.alunoId,
+        );
+        res.json(dashboard);
+      }),
+    );
+
+    this.app.get(
       "/alunos",
       this.exigirApiKey,
       asyncHandler(async (_req: Request, res: Response) => {

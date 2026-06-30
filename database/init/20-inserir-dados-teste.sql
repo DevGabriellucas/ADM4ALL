@@ -104,7 +104,7 @@ VALUES
         '2000-09-30',
         TRUE,
         'Administracao',
-        'Assistente Administrativo',
+        'Excel Basico',
         '20231001'
     ),
     (
@@ -190,35 +190,36 @@ VALUES
         'Excel Basico 2026.1',
         'online',
         'Ambiente virtual',
-        'planejada',
+        'concluida',
         25,
-        '2026-07-15',
-        NULL
+        '2026-01-05',
+        '2026-03-09'
     )
 ON CONFLICT (codigo) DO NOTHING;
 
 INSERT INTO matriculas
     (id, aluno_id, treinamento_id, turma_id, status, progresso, data_matricula, data_conclusao)
 VALUES
+    -- Priscilla: dashboard em andamento, com uma falta e aulas pendentes.
     (
         '8d59600f-f3bf-4688-876b-01d30b22dcea',
         'ab34ec25-af9f-4e66-8e3d-48b38178f545',
         '524963bc-e82c-447f-8e6f-7fd567f99e87',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'em_andamento',
-        45,
+        60,
         '2026-03-02',
         NULL
     ),
     (
         '20b0624a-0d58-46db-bf19-ce4f548c1a6f',
         '61bd79eb-f54b-4992-bcf1-cf5857833356',
-        '524963bc-e82c-447f-8e6f-7fd567f99e87',
-        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        '3b4169fc-5a08-44aa-b03e-3b2620533378',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
         'aprovado',
         100,
-        '2026-02-03',
-        '2026-04-30'
+        '2026-01-05',
+        '2026-03-09'
     ),
     (
         'e7349796-aeb0-48c3-8516-72fb5d3d56c8',
@@ -344,6 +345,118 @@ VALUES
         '19:00',
         '21:00',
         'planejada'
+    ),
+    -- Diego: dashboard aprovado, turma concluida e certificado emitido.
+    (
+        '16507083-1f0c-4939-9b73-8f3bf4226a45',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        1,
+        'Introducao ao Excel',
+        'Interface, pastas de trabalho e navegacao em planilhas.',
+        '2026-01-05',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    -- Jose: dashboard reprovado por falta, sem certificado.
+    (
+        'c04b679c-45e3-493b-bb5f-e1252b32780e',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        2,
+        'Formatacao de planilhas',
+        'Formatacao de celulas, tabelas e dados.',
+        '2026-01-12',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '852c8a0b-6775-44e5-a7b0-a8009cfa44ba',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        3,
+        'Formulas basicas',
+        'Operadores e referencias de celulas.',
+        '2026-01-19',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '0240ca2b-6628-461b-b8ae-414f05249f01',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        4,
+        'Funcoes essenciais',
+        'Soma, media, minimo e maximo.',
+        '2026-01-26',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '1516575d-0b04-4178-ac36-48a0a8630ab1',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        5,
+        'Classificacao e filtros',
+        'Organizacao e consulta de conjuntos de dados.',
+        '2026-02-02',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '4050e40e-ba86-4571-82b9-31c9ef690b9e',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        6,
+        'Graficos',
+        'Criacao e personalizacao de graficos.',
+        '2026-02-09',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '1d658a15-3d6e-46df-bc76-5604ea7d7a7d',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        7,
+        'Validacao de dados',
+        'Listas, regras e mensagens de validacao.',
+        '2026-02-16',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        'db69fdaa-4e33-4909-abbe-490d6e689ac7',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        8,
+        'Funcoes condicionais',
+        'Uso das funcoes SE e CONT.SE.',
+        '2026-02-23',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        'bb46c457-ea72-49c4-a1e1-6d871318cce9',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        9,
+        'Impressao e compartilhamento',
+        'Configuracao de pagina e exportacao.',
+        '2026-03-02',
+        '19:00',
+        '21:00',
+        'realizada'
+    ),
+    (
+        '27f0ed23-e7b9-4d51-b3b6-84ea74b19b0c',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        10,
+        'Projeto final',
+        'Consolidacao dos conteudos em uma planilha completa.',
+        '2026-03-09',
+        '19:00',
+        '21:00',
+        'realizada'
     )
 ON CONFLICT (turma_id, numero_aula) DO NOTHING;
 
@@ -352,21 +465,25 @@ VALUES
     ('8d59600f-f3bf-4688-876b-01d30b22dcea', '833962df-4847-4c06-bc3f-c704dc11fdea', '2026-03-02', TRUE, NULL),
     ('8d59600f-f3bf-4688-876b-01d30b22dcea', '71527536-9f94-491c-8dff-12a5f49e68bf', '2026-03-09', TRUE, NULL),
     ('8d59600f-f3bf-4688-876b-01d30b22dcea', 'a16fdd4b-86e9-4f1a-b741-3f3d48189592', '2026-03-16', FALSE, 'Falta justificada em analise'),
-    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'caab179f-b787-4ca9-9c29-5282f5f0457c', '2026-02-03', TRUE, NULL),
-    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'ca514570-b649-4c78-bf8e-b7aacc74a6f4', '2026-02-10', TRUE, NULL),
-    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '16507083-1f0c-4939-9b73-8f3bf4226a45', '2026-01-05', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'c04b679c-45e3-493b-bb5f-e1252b32780e', '2026-01-12', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '852c8a0b-6775-44e5-a7b0-a8009cfa44ba', '2026-01-19', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '0240ca2b-6628-461b-b8ae-414f05249f01', '2026-01-26', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '1516575d-0b04-4178-ac36-48a0a8630ab1', '2026-02-02', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '4050e40e-ba86-4571-82b9-31c9ef690b9e', '2026-02-09', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '1d658a15-3d6e-46df-bc76-5604ea7d7a7d', '2026-02-16', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'db69fdaa-4e33-4909-abbe-490d6e689ac7', '2026-02-23', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'bb46c457-ea72-49c4-a1e1-6d871318cce9', '2026-03-02', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '27f0ed23-e7b9-4d51-b3b6-84ea74b19b0c', '2026-03-09', TRUE, NULL),
     ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'caab179f-b787-4ca9-9c29-5282f5f0457c', '2026-02-03', FALSE, 'Ausente'),
     ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'ca514570-b649-4c78-bf8e-b7aacc74a6f4', '2026-02-10', FALSE, 'Ausente'),
-    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', FALSE, 'Ausente'),
-    ('8d59600f-f3bf-4688-876b-01d30b22dcea', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', TRUE, NULL),
-    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', TRUE, NULL),
-    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', FALSE, 'Falta justificada')
+    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', FALSE, 'Ausente')
 ON CONFLICT (matricula_id, data_aula) DO NOTHING;
 
 INSERT INTO avaliacoes (id, matricula_id, aula_id, descricao, nota, data_avaliacao)
 VALUES
     ('49605b6a-f82f-49dc-a7b6-1d0b11b0c9b1', '8d59600f-f3bf-4688-876b-01d30b22dcea', 'a16fdd4b-86e9-4f1a-b741-3f3d48189592', 'Avaliacao parcial', 8.50, '2026-03-18'),
-    ('a0bc6ca1-a669-42c9-88f4-91167d1a09bb', '20b0624a-0d58-46db-bf19-ce4f548c1a6f', '2e066384-6434-488f-8f6f-bdd411710bf3', 'Avaliacao final', 9.20, '2026-04-25'),
+    ('a0bc6ca1-a669-42c9-88f4-91167d1a09bb', '20b0624a-0d58-46db-bf19-ce4f548c1a6f', '27f0ed23-e7b9-4d51-b3b6-84ea74b19b0c', 'Avaliacao final', 9.20, '2026-03-09'),
     ('17d10dc1-977f-44ca-b5fd-436cd6ef5c82', 'e7349796-aeb0-48c3-8516-72fb5d3d56c8', '2e066384-6434-488f-8f6f-bdd411710bf3', 'Avaliacao parcial', 6.00, '2026-03-10')
 ON CONFLICT DO NOTHING;
 

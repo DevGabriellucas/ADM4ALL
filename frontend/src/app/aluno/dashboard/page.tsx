@@ -4,7 +4,6 @@ import { AlunoHeader } from "@/components/aluno/AlunoHeader";
 import { AlunoStatusPanel } from "@/components/aluno/AlunoStatusPanel";
 import { getAlunoDashboard } from "@/services/alunoService";
 import { getAlunoSession } from "@/services/serverSessionService";
-import { getAlunoStatus } from "@/utils/getAlunoStatus";
 
 export default async function AlunoDashboardPage() {
   const session = await getAlunoSession();
@@ -13,8 +12,7 @@ export default async function AlunoDashboardPage() {
     redirect("/");
   }
 
-  const aluno = await getAlunoDashboard(session);
-  const status = getAlunoStatus(aluno);
+  const aluno = await getAlunoDashboard();
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 font-poppins text-slate-950 sm:px-6 lg:px-8">
@@ -32,10 +30,10 @@ export default async function AlunoDashboardPage() {
             Curso: {aluno.curso}
           </h2>
 
-          <AlunoStatusPanel aluno={aluno} status={status} />
+          <AlunoStatusPanel aluno={aluno} />
         </section>
 
-        {status === "reprovadoPorFalta" && (
+        {aluno.status === "reprovado_falta" && (
           <section
             className="mx-auto max-w-3xl text-center font-medium text-red-800 text-xs leading-6 tracking-[0.25em]"
             role="alert"
@@ -45,8 +43,12 @@ export default async function AlunoDashboardPage() {
           </section>
         )}
 
-        {status === "aprovado" && (
-          <AlunoCompletionMessage curso={aluno.curso} />
+        {aluno.status === "aprovado" && (
+          <AlunoCompletionMessage
+            curso={aluno.curso}
+            certificadoDisponivel={aluno.certificadoDisponivel}
+            certificadoUrl={aluno.certificadoUrl}
+          />
         )}
       </div>
     </main>

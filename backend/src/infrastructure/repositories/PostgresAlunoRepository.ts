@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { Aluno } from "../../domain/entities/Aluno";
 import {
+  AlunoDashboard,
   AlunoRepository,
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
@@ -78,6 +79,83 @@ export class PostgresAlunoRepository implements AlunoRepository {
 
     if (resultado.rows.length === 0) return null;
     return this.mapearLinhaParaAluno(resultado.rows[0]);
+  }
+
+  async buscarDashboardPorAlunoId(
+    alunoId: string,
+  ): Promise<AlunoDashboard | null> {
+    const query = `
+      WITH matricula_selecionada AS (
+        SELECT m.*
+        FROM matriculas m
+        WHERE m.aluno_id = $1
+        ORDER BY
+          CASE m.status
+            WHEN 'em_andamento' THEN 0
+            WHEN 'aprovado' THEN 1
+            WHEN 'reprovado_falta' THEN 2
+            ELSE 3
+          END,
+          m.data_matricula DESC
+        LIMIT 1
+      )
+      SELECT
+        u.nome,
+        a.rgm AS matricula,
+        tr.nome AS nome_curso,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM frequencias f
+          WHERE f.matricula_id = m.id
+            AND f.presente = FALSE
+        ) AS qtd_faltas,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM aulas au
+          WHERE au.turma_id = m.turma_id
+            AND au.status <> 'cancelada'
+        ) AS qtd_total_aulas,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM aulas au
+          WHERE au.turma_id = m.turma_id
+            AND au.status = 'realizada'
+        ) AS qtd_aulas_concluidas,
+        m.progresso,
+        m.status,
+        COALESCE(c.status = 'emitido', FALSE) AS certificado_disponivel,
+        CASE WHEN c.status = 'emitido' THEN c.url_arquivo ELSE NULL END
+          AS certificado_url
+      FROM alunos a
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN matricula_selecionada m ON m.aluno_id = a.id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      LEFT JOIN certificados c ON c.matricula_id = m.id
+      WHERE a.id = $1
+      LIMIT 1
+    `;
+
+    const resultado = await this.db.query(query, [alunoId]);
+    const linha = resultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    return {
+      nome: linha.nome,
+      matricula: linha.matricula ?? null,
+      cursoDeExtensao: {
+        nomeCurso: linha.nome_curso,
+        qtdFaltas: Number(linha.qtd_faltas),
+        qtdTotalAulas: Number(linha.qtd_total_aulas),
+        qtdAulasConcluidas: Number(linha.qtd_aulas_concluidas),
+        progresso: Number(linha.progresso),
+        status: linha.status,
+      },
+      certificadoDisponivel: linha.certificado_disponivel,
+      certificadoUrl: linha.certificado_url ?? null,
+    };
   }
 
   async buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null> {

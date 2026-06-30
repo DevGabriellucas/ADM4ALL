@@ -1,7 +1,10 @@
 import bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
 import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
-import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
+import {
+  AlunoDashboard,
+  AlunoRepository,
+} from "../../domain/repositories/AlunoRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
@@ -118,6 +121,19 @@ export class AlunoUseCase {
       throw new BadRequestError("Aluno nao encontrado.");
     }
     return aluno;
+  }
+
+  async obterDashboard(alunoId: string): Promise<AlunoDashboard> {
+    const dashboard =
+      await this.alunoRepository.buscarDashboardPorAlunoId(alunoId);
+
+    if (!dashboard) {
+      throw new BadRequestError(
+        "O aluno nao possui matricula disponivel para o dashboard.",
+      );
+    }
+
+    return dashboard;
   }
 
   async atualizar(
