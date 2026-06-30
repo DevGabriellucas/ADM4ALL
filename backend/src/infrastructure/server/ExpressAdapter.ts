@@ -146,6 +146,35 @@ export class ExpressAdapter {
     };
   }
 
+  private async salvarAvatarInstrutor(
+    arquivo: ArquivoUploadJson,
+  ): Promise<string> {
+    const tiposPermitidos = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+    if (!tiposPermitidos.has(arquivo.tipoMime)) {
+      throw new BadRequestError("Envie uma imagem em JPG, PNG ou WEBP.");
+    }
+
+    const conteudo = Buffer.from(arquivo.conteudoBase64, "base64");
+    const limiteBytes = 5 * 1024 * 1024;
+
+    if (conteudo.length === 0 || conteudo.length > limiteBytes) {
+      throw new BadRequestError("A foto deve ter ate 5MB.");
+    }
+
+    const avataresDir = path.resolve(process.cwd(), "uploads", "avatares");
+    await fs.mkdir(avataresDir, { recursive: true });
+
+    const extensaoOriginal = path.extname(arquivo.nome).toLowerCase();
+    const extensao = extensaoOriginal.replace(/[^a-z0-9.]/g, "") || ".jpg";
+    const nomeArquivo = `${randomUUID()}${extensao}`;
+    const destino = path.join(avataresDir, nomeArquivo);
+
+    await fs.writeFile(destino, conteudo);
+
+    return `/uploads/avatares/${nomeArquivo}`;
+  }
+
   private configurarRotas() {
     this.app.post(
       "/auth/login",
@@ -215,6 +244,21 @@ export class ExpressAdapter {
         res.status(200).json({
           mensagem: "Se o e-mail estiver cadastrado, as instrucoes foram enviadas.",
         });
+      }),
+    );
+
+    this.app.post(
+      "/auth/redefinir-senha",
+      asyncHandler(async (req: Request, res: Response) => {
+        const { token, novaSenha } = req.body;
+
+        if (!token || !novaSenha) {
+          throw new BadRequestError("Token e nova senha sao obrigatorios.");
+        }
+
+        await this.alunoUseCase.redefinirSenha(token, novaSenha);
+
+        res.status(200).json({ mensagem: "Senha redefinida com sucesso." });
       }),
     );
 
@@ -478,6 +522,91 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.delete(
+      "/turmas/:turmaId/materiais/:materialId",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, materialId } = req.params as {
+          turmaId: string;
+          materialId: string;
+        };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !materialId) {
+          throw new BadRequestError("Turma e material sao obrigatorios.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        await this.instrutorUseCase.removerMaterial(materialId, turmaId);
+
+        res.status(200).json({ mensagem: "Material removido com sucesso." });
+      }),
+    );
+
+    this.app.post(
+      "/turmas/:turmaId/aulas",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const { titulo, data, horaInicio, horaFim } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const aula = await this.instrutorUseCase.adicionarAula({
+          turmaId,
+          titulo,
+          data,
+          horaInicio: horaInicio ?? null,
+          horaFim: horaFim ?? null,
+        });
+
+        res.status(201).json(aula);
+      }),
+    );
+
+    this.app.delete(
+      "/turmas/:turmaId/aulas/:aulaId",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, aulaId } = req.params as {
+          turmaId: string;
+          aulaId: string;
+        };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !aulaId) {
+          throw new BadRequestError("Turma e aula sao obrigatorias.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        await this.instrutorUseCase.removerAula(aulaId, turmaId);
+
+        res.status(200).json({ mensagem: "Aula removida com sucesso." });
+      }),
+    );
+
     this.app.get(
       "/turmas/:id",
       this.exigirPerfis(["coordenador", "admin"]),
@@ -485,6 +614,65 @@ export class ExpressAdapter {
         const { id } = req.params as { id: string };
         const turma = await this.coordenadorUseCase.buscarTurmaDetalhe(id);
         res.json(turma);
+      }),
+    );
+
+    this.app.get(
+      "/turmas/:turmaId/aulas/:aulaId/presencas",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, aulaId } = req.params as {
+          turmaId: string;
+          aulaId: string;
+        };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !aulaId) {
+          throw new BadRequestError("Turma e aula sao obrigatorias.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const alunos = await this.instrutorUseCase.obterPresencasPorAula(
+          turmaId,
+          aulaId,
+        );
+
+        res.json({ alunos });
+      }),
+    );
+
+    this.app.post(
+      "/instrutores/:id/avatar",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const { arquivo } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do instrutor e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor" && usuario.instrutorId !== id) {
+          throw new UnauthorizedError(
+            "Instrutor sem permissao para alterar este perfil.",
+          );
+        }
+
+        if (!arquivo) {
+          throw new BadRequestError("Envie uma foto.");
+        }
+
+        const avatarUrl = await this.salvarAvatarInstrutor(arquivo);
+        await this.instrutorUseCase.atualizarAvatar(id, avatarUrl);
+
+        res.status(200).json({ avatarUrl });
       }),
     );
   }

@@ -6,9 +6,15 @@ export class EmailService {
   constructor(
     private usuario: string,
     senhaApp: string,
+    host?: string,
+    port?: number,
   ) {
+    const smtpPort = port ?? 587;
+
     this.transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: host ?? "smtp.gmail.com",
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: { user: usuario, pass: senhaApp },
     });
   }

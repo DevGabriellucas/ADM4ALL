@@ -13,7 +13,7 @@ export interface InstrutorResumo {
   usuarioId: string;
   nome: string;
   areaAtuacao: string | null;
-  avatarUrl?: string;
+  avatarUrl: string | null;
 }
 
 export interface TurmaResumo {
@@ -87,4 +87,21 @@ export interface AdicionarMaterialInput {
     tipoMime: string;
     conteudoBase64: string;
   } | null;
+}
+
+export interface AdicionarAulaInput {
+  turmaId: string;
+  titulo: string;
+  data: string; // YYYY-MM-DD
+  horaInicio?: string | null;
+  horaFim?: string | null;
+}
+
+export interface AtualizarAvatarInput {
+  instrutorId: string;
+  arquivo: {
+    nome: string;
+    tipoMime: string;
+    conteudoBase64: string;
+  };
 }

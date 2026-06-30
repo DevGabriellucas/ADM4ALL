@@ -5,6 +5,8 @@ import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { EmailService } from "../../infrastructure/email/EmailService";
+import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 
@@ -43,7 +45,10 @@ const RECUPERACAO_SENHA_MINUTOS = 15;
 const SALT_ROUNDS = 10;
 
 export class AlunoUseCase {
-  constructor(private alunoRepository: AlunoRepository) {}
+  constructor(
+    private alunoRepository: AlunoRepository,
+    private emailService: EmailService,
+  ) {}
 
   async login(identificador: string, senhaBruta: string): Promise<Aluno> {
     let idLimpo = identificador.trim().toLowerCase();
@@ -231,10 +236,44 @@ export class AlunoUseCase {
     });
 
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkRedefinicao = `${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}`;
 
-    console.log(`Para: ${usuario.email}`);
-    console.log("Assunto: Recuperacao de Senha - ADM Para Todos");
-    console.log(`${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}\n`);
+    await this.emailService.enviar(
+      usuario.email,
+      "Recuperacao de Senha - ADM Para Todos",
+      gerarEmailRecuperacaoSenha(linkRedefinicao, RECUPERACAO_SENHA_MINUTOS),
+    );
+
+    console.log(`E-mail de recuperacao enviado para: ${usuario.email}`);
+  }
+
+  async redefinirSenha(tokenBruto: string, novaSenha: string): Promise<void> {
+    if (!tokenBruto || tokenBruto.trim() === "") {
+      throw new BadRequestError("O token de redefinicao e obrigatorio.");
+    }
+
+    if (!novaSenha || novaSenha.length < 8) {
+      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
+    }
+
+    const tokenHash = createHash("sha256")
+      .update(tokenBruto.trim())
+      .digest("hex");
+
+    const recuperacao =
+      await this.alunoRepository.buscarRecuperacaoValidaPorTokenHash(tokenHash);
+
+    if (!recuperacao) {
+      throw new BadRequestError("Link de redefinicao invalido ou expirado.");
+    }
+
+    const novaSenhaCriptografada = await this.criptografarSenha(novaSenha);
+
+    await this.alunoRepository.redefinirSenhaUsuario(
+      recuperacao.usuarioId,
+      novaSenhaCriptografada,
+      recuperacao.recuperacaoId,
+    );
   }
 
   private normalizarDataNascimento(data: Date | string): Date {
@@ -242,6 +281,15 @@ export class AlunoUseCase {
 
     if (isNaN(dataNascimento.getTime())) {
       throw new BadRequestError("A data de nascimento e invalida.");
+    }
+
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const dataNascimentoIso = dataNascimento.toISOString().slice(0, 10);
+
+    if (dataNascimentoIso >= hojeIso) {
+      throw new BadRequestError(
+        "A data de nascimento deve ser anterior a hoje.",
+      );
     }
 
     return dataNascimento;

@@ -4,7 +4,11 @@
 import { cookies } from "next/headers";
 import { instrutorDashboardMock } from "@/mocks/instrutorDashboardMock";
 import type {
+  AdicionarAulaInput,
   AdicionarMaterialInput,
+  AlunoPresenca,
+  AtualizarAvatarInput,
+  AulaResumo,
   InstrutorDashboard,
   MaterialResumo,
   RegistrarPresencasInput,
@@ -92,9 +96,7 @@ export const registrarPresencas = async (
   const config = await getApiConfig();
 
   if (!config) {
-    throw new Error(
-      "Faca login como instrutor para salvar a presenca.",
-    );
+    throw new Error("Faca login como instrutor para salvar a presenca.");
   }
 
   const response = await fetch(
@@ -122,9 +124,7 @@ export const adicionarMaterial = async (
   const config = await getApiConfig();
 
   if (!config) {
-    throw new Error(
-      "Faca login como instrutor para adicionar materiais.",
-    );
+    throw new Error("Faca login como instrutor para adicionar materiais.");
   }
 
   const response = await fetch(
@@ -150,4 +150,136 @@ export const adicionarMaterial = async (
   }
 
   return (await response.json()) as MaterialResumo;
+};
+
+export const removerMaterial = async (
+  turmaId: string,
+  materialId: string,
+): Promise<void> => {
+  const config = await getApiConfig();
+
+  if (!config) {
+    throw new Error("Faca login como instrutor para remover materiais.");
+  }
+
+  const response = await fetch(
+    `${config.baseUrl}/turmas/${turmaId}/materiais/${materialId}`,
+    {
+      method: "DELETE",
+      headers: montarHeaders(config),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extrairErro(response, "Falha ao remover o material."),
+    );
+  }
+};
+
+export const adicionarAula = async (
+  input: AdicionarAulaInput,
+): Promise<AulaResumo> => {
+  const config = await getApiConfig();
+
+  if (!config) {
+    throw new Error("Faca login como instrutor para adicionar aulas.");
+  }
+
+  const response = await fetch(
+    `${config.baseUrl}/turmas/${input.turmaId}/aulas`,
+    {
+      method: "POST",
+      headers: montarHeaders(config),
+      body: JSON.stringify({
+        titulo: input.titulo,
+        data: input.data,
+        horaInicio: input.horaInicio ?? null,
+        horaFim: input.horaFim ?? null,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extrairErro(response, "Falha ao adicionar a aula."));
+  }
+
+  return (await response.json()) as AulaResumo;
+};
+
+export const removerAula = async (
+  turmaId: string,
+  aulaId: string,
+): Promise<void> => {
+  const config = await getApiConfig();
+
+  if (!config) {
+    throw new Error("Faca login como instrutor para remover aulas.");
+  }
+
+  const response = await fetch(
+    `${config.baseUrl}/turmas/${turmaId}/aulas/${aulaId}`,
+    {
+      method: "DELETE",
+      headers: montarHeaders(config),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extrairErro(response, "Falha ao remover a aula."));
+  }
+};
+
+export const getPresencasPorAula = async (
+  turmaId: string,
+  aulaId: string,
+): Promise<AlunoPresenca[]> => {
+  const config = await getApiConfig();
+
+  if (!config) {
+    throw new Error("Faca login como instrutor para consultar a presenca.");
+  }
+
+  const response = await fetch(
+    `${config.baseUrl}/turmas/${turmaId}/aulas/${aulaId}/presencas`,
+    {
+      headers: montarHeaders(config),
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extrairErro(response, "Falha ao consultar a presenca da aula."),
+    );
+  }
+
+  const data = (await response.json()) as { alunos: AlunoPresenca[] };
+  return data.alunos;
+};
+
+export const atualizarAvatarInstrutor = async (
+  input: AtualizarAvatarInput,
+): Promise<string> => {
+  const config = await getApiConfig();
+
+  if (!config) {
+    throw new Error("Faca login como instrutor para atualizar a foto.");
+  }
+
+  const response = await fetch(
+    `${config.baseUrl}/instrutores/${input.instrutorId}/avatar`,
+    {
+      method: "POST",
+      headers: montarHeaders(config),
+      body: JSON.stringify({ arquivo: input.arquivo }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await extrairErro(response, "Falha ao atualizar a foto."));
+  }
+
+  const data = (await response.json()) as { avatarUrl: string };
+  return data.avatarUrl;
 };

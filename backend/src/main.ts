@@ -4,7 +4,7 @@ import { AuthUseCase } from "./application/use-cases/AuthUseCase";
 import { CoordenadorUseCase } from "./application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
-//import { InMemoryAlunoRepository } from "./infrastructure/database/InMemoryAlunoRepository";
+//import { InMemoryAlunoRepository } from "./infrastructure/repositories/InMemoryAlunoRepository";
 import { pool } from "./infrastructure/database/database";
 import { EmailService } from "./infrastructure/email/EmailService";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
@@ -23,12 +23,14 @@ const jwtService = new JwtService(
   process.env.JWT_SECRET ?? "adm4all_dev_secret_change_me",
 );
 const emailService = new EmailService(
-  process.env.GMAIL_USER ?? "",
-  process.env.GMAIL_APP_PASSWORD ?? "",
+  process.env.GMAIL_USER ?? process.env.EMAIL_USER ?? "",
+  process.env.GMAIL_APP_PASSWORD ?? process.env.EMAIL_PASS ?? "",
+  process.env.EMAIL_HOST,
+  process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : undefined,
 );
 
 const authUseCase = new AuthUseCase(authRepository, jwtService);
-const alunoUseCase = new AlunoUseCase(alunoRepository);
+const alunoUseCase = new AlunoUseCase(alunoRepository, emailService);
 const instrutorUseCase = new InstrutorUseCase(instrutorRepository);
 const coordenadorUseCase = new CoordenadorUseCase(coordenadorRepository, emailService);
 

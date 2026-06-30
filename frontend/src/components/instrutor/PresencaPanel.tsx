@@ -1,16 +1,21 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { salvarPresencasAction } from "@/app/instrutor/actions";
+import {
+  buscarPresencasPorAulaAction,
+  salvarPresencasAction,
+} from "@/app/instrutor/actions";
 import type {
   AlunoPresenca,
   AulaResumo,
   StatusPresenca,
 } from "@/types/instrutor";
+import { formatData } from "@/utils/format";
 
 interface PresencaPanelProps {
   turmaId: string;
   aulaReferencia: AulaResumo | null;
+  cronograma: AulaResumo[];
   alunos: AlunoPresenca[];
 }
 
@@ -34,37 +39,71 @@ const OPCOES: { valor: StatusPresenca; label: string; classes: string }[] = [
   },
 ];
 
+const paraStatuses = (alunos: AlunoPresenca[]) =>
+  Object.fromEntries(
+    alunos.map((aluno) => [aluno.matriculaId, aluno.statusPresenca]),
+  );
+
 export const PresencaPanel = ({
   turmaId,
   aulaReferencia,
+  cronograma,
   alunos,
 }: PresencaPanelProps) => {
+  const [aulaSelecionadaId, setAulaSelecionadaId] = useState<string | null>(
+    aulaReferencia?.id ?? cronograma[0]?.id ?? null,
+  );
+  const [alunosAtuais, setAlunosAtuais] = useState<AlunoPresenca[]>(alunos);
   const [statuses, setStatuses] = useState<
     Record<string, StatusPresenca | null>
-  >(() =>
-    Object.fromEntries(
-      alunos.map((aluno) => [aluno.matriculaId, aluno.statusPresenca]),
-    ),
-  );
+  >(() => paraStatuses(alunos));
   const [busca, setBusca] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isSalvando, startSalvando] = useTransition();
+  const [isTrocandoAula, startTrocaAula] = useTransition();
 
   const alunosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) {
-      return alunos;
+      return alunosAtuais;
     }
-    return alunos.filter((aluno) => aluno.nome.toLowerCase().includes(termo));
-  }, [alunos, busca]);
+    return alunosAtuais.filter((aluno) =>
+      aluno.nome.toLowerCase().includes(termo),
+    );
+  }, [alunosAtuais, busca]);
 
   const definirStatus = (matriculaId: string, status: StatusPresenca) => {
     setStatuses((anterior) => ({ ...anterior, [matriculaId]: status }));
     setFeedback(null);
   };
 
+  // Troca de aula: zera qualquer selecao em andamento e busca a presenca
+  // ja salva (se houver) para a aula escolhida, sem herdar nada da anterior.
+  const trocarAula = (novaAulaId: string) => {
+    setAulaSelecionadaId(novaAulaId);
+    setBusca("");
+    setFeedback(null);
+    setStatuses({});
+    setAlunosAtuais([]);
+
+    startTrocaAula(async () => {
+      const resultado = await buscarPresencasPorAulaAction(turmaId, novaAulaId);
+
+      if (resultado.ok) {
+        setAlunosAtuais(resultado.alunos);
+        setStatuses(paraStatuses(resultado.alunos));
+      } else {
+        setAlunosAtuais(alunos);
+        setStatuses(
+          Object.fromEntries(alunos.map((aluno) => [aluno.matriculaId, null])),
+        );
+        setFeedback({ tipo: "erro", texto: resultado.erro });
+      }
+    });
+  };
+
   const salvar = () => {
-    if (!aulaReferencia) {
+    if (!aulaSelecionadaId) {
       setFeedback({
         tipo: "erro",
         texto: "Nenhuma aula disponível para registrar presença.",
@@ -72,7 +111,7 @@ export const PresencaPanel = ({
       return;
     }
 
-    const registros = alunos
+    const registros = alunosAtuais
       .map((aluno) => ({
         matriculaId: aluno.matriculaId,
         status: statuses[aluno.matriculaId],
@@ -92,10 +131,10 @@ export const PresencaPanel = ({
       return;
     }
 
-    startTransition(async () => {
+    startSalvando(async () => {
       const resultado = await salvarPresencasAction({
         turmaId,
-        aulaId: aulaReferencia.id,
+        aulaId: aulaSelecionadaId,
         registros,
       });
 
@@ -106,6 +145,8 @@ export const PresencaPanel = ({
       );
     });
   };
+
+  const desabilitado = isSalvando || isTrocandoAula;
 
   return (
     <section
@@ -134,16 +175,55 @@ export const PresencaPanel = ({
         </div>
       </div>
 
-      <input
-        type="search"
-        value={busca}
-        onChange={(evento) => setBusca(evento.target.value)}
-        placeholder="Buscar alunos"
-        className="mt-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-medium"
-      />
+      {cronograma.length > 0 && (
+        <label className="mt-4 flex flex-col gap-y-1 text-slate-600 text-xs">
+          Aula
+          <select
+            value={aulaSelecionadaId ?? ""}
+            onChange={(evento) => trocarAula(evento.target.value)}
+            disabled={desabilitado}
+            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {cronograma.map((aula) => (
+              <option key={aula.id} value={aula.id}>
+                Aula {aula.numero} - {aula.titulo} ({formatData(aula.data)})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <div className="relative mt-4">
+        <svg
+          viewBox="0 0 24 24"
+          className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 size-4 text-slate-400"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        >
+          <title>Buscar</title>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+
+        <input
+          type="search"
+          value={busca}
+          onChange={(evento) => setBusca(evento.target.value)}
+          placeholder="Buscar alunos"
+          disabled={isTrocandoAula}
+          className="w-full rounded-md border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+        />
+      </div>
 
       <ul className="mt-4 flex flex-col divide-y divide-slate-100">
-        {alunosFiltrados.length === 0 ? (
+        {isTrocandoAula ? (
+          <li className="py-4 text-slate-500 text-sm">
+            Carregando presença da aula...
+          </li>
+        ) : alunosFiltrados.length === 0 ? (
           <li className="py-4 text-slate-500 text-sm">
             Nenhum aluno encontrado.
           </li>
@@ -202,10 +282,10 @@ export const PresencaPanel = ({
         <button
           type="button"
           onClick={salvar}
-          disabled={isPending}
+          disabled={desabilitado}
           className="rounded-md bg-brand-dark px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "Salvando..." : "Salvar Presença"}
+          {isSalvando ? "Salvando..." : "Salvar Presença"}
         </button>
       </div>
     </section>

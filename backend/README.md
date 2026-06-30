@@ -53,14 +53,20 @@ x-api-key: valor_do_ADMIN_API_KEY
 |---|---|---|---|
 | POST | `/auth/login` | Publica | Realiza login e retorna token/perfil |
 | POST | `/auth/recuperar-senha` | Publica | Solicita recuperacao de senha |
+| POST | `/auth/redefinir-senha` | Publica | Redefine a senha a partir do token recebido por e-mail |
 | POST | `/alunos` | Publica | Cadastra novo aluno |
 | GET | `/alunos` | `x-api-key` | Lista alunos |
 | GET | `/alunos/:id` | `x-api-key` | Busca aluno por ID |
 | PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
 | DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
 | GET | `/instrutores/:id/dashboard` | `Bearer` instrutor/coordenador/admin | Dashboard do instrutor |
+| POST | `/instrutores/:id/avatar` | `Bearer` instrutor/coordenador/admin | Atualiza a foto de perfil do instrutor |
 | POST | `/turmas/:turmaId/presencas` | `Bearer` instrutor/coordenador/admin | Registra presencas da turma |
+| GET | `/turmas/:turmaId/aulas/:aulaId/presencas` | `Bearer` instrutor/coordenador/admin | Lista a presenca dos alunos para uma aula especifica |
 | POST | `/turmas/:turmaId/materiais` | `Bearer` instrutor/coordenador/admin | Cadastra material e salva upload opcional |
+| DELETE | `/turmas/:turmaId/materiais/:materialId` | `Bearer` instrutor/coordenador/admin | Arquiva (remove da listagem) um material |
+| POST | `/turmas/:turmaId/aulas` | `Bearer` instrutor/coordenador/admin | Cadastra uma aula no cronograma da turma |
+| DELETE | `/turmas/:turmaId/aulas/:aulaId` | `Bearer` instrutor/coordenador/admin | Remove uma aula sem presenca registrada |
 
 ## Recuperacao de senha
 
@@ -75,6 +81,15 @@ O endpoint `POST /auth/recuperar-senha`:
 
 Ainda nao ha envio real de e-mail. Para producao, adicionar um servico de
 envio e manter o token puro fora do banco.
+
+O endpoint `POST /auth/redefinir-senha`:
+
+- recebe o `token` puro (da URL do e-mail) e a `novaSenha`;
+- calcula o hash do token e busca em `recuperacoes_senha` um registro
+  correspondente, nao usado e nao expirado;
+- se nao encontrar, retorna erro generico (link invalido ou expirado);
+- atualiza a senha em `usuarios` (e em `alunos`, quando aplicavel) com bcrypt;
+- marca o token como usado (`usado_em`), impedindo reuso.
 
 ## Exemplos
 
@@ -119,6 +134,15 @@ Resposta:
   "isAlunoUnipe": true,
   "rgm": "12345678",
   "cursoUnipe": "Administracao"
+}
+```
+
+### POST /auth/redefinir-senha
+
+```json
+{
+  "token": "token_recebido_no_link_do_email",
+  "novaSenha": "novaSenhaSegura123"
 }
 ```
 

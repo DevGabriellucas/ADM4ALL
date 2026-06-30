@@ -13,6 +13,11 @@ interface ForgotPasswordPayload {
   email: string;
 }
 
+interface ResetPasswordPayload {
+  token: string;
+  novaSenha: string;
+}
+
 export interface LoginResponse {
   mensagem: string;
   token: string;
@@ -28,6 +33,10 @@ export interface LoginResponse {
 }
 
 export interface ForgotPasswordResponse {
+  mensagem: string;
+}
+
+export interface ResetPasswordResponse {
   mensagem: string;
 }
 
@@ -118,6 +127,35 @@ export const forgotPassword = async ({
     return result;
   } catch (error: unknown) {
     console.error("Erro ao tentar recuperar senha", error);
+    throw error;
+  }
+};
+
+export const resetPassword = async (
+  data: ResetPasswordPayload,
+): Promise<ResetPasswordResponse> => {
+  try {
+    const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: data.token,
+        novaSenha: data.novaSenha,
+      }),
+    });
+
+    if (!response.ok) {
+      const error: ApiErrorResponse = await response.json();
+      throw new Error(error.erro);
+    }
+
+    const result: ResetPasswordResponse = await response.json();
+
+    return result;
+  } catch (error: unknown) {
+    console.error("Erro ao tentar redefinir senha", error);
     throw error;
   }
 };
