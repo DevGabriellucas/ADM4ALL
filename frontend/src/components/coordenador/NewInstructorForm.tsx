@@ -15,12 +15,14 @@ interface NewInstructorFormProps {
 interface InstructorFormData {
   nome: string;
   email: string;
+  cpf: string;
   telefone: string;
 }
 
 const INITIAL_FORM_DATA: InstructorFormData = {
   nome: "",
   email: "",
+  cpf: "",
   telefone: "",
 };
 
@@ -50,6 +52,7 @@ export const NewInstructorForm = ({
     const resultado = await convidarInstrutorAction({
       nome: formData.nome,
       email: formData.email,
+      cpf: formData.cpf,
       telefone: formData.telefone || undefined,
     });
 
@@ -132,6 +135,22 @@ export const NewInstructorForm = ({
                 setFormData({ ...formData, email: event.target.value })
               }
               placeholder="instrutor@email.com"
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+            CPF
+            <input
+              required
+              type="text"
+              inputMode="numeric"
+              maxLength={14}
+              value={formData.cpf}
+              onChange={(event) =>
+                setFormData({ ...formData, cpf: event.target.value })
+              }
+              placeholder="000.000.000-00"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
           </label>

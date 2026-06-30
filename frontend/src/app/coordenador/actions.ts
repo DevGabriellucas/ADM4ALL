@@ -35,6 +35,7 @@ export async function criarCursoAction(input: {
 export async function convidarInstrutorAction(input: {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string;
 }): Promise<ResultadoAction> {
   try {

@@ -14,116 +14,117 @@ VALUES
     ('dd3f203e-b35b-4065-af3a-c78af1852159', 'admin', 'Acesso administrativo geral e configuracoes', 100)
 ON CONFLICT (nome) DO NOTHING;
 
+INSERT INTO usuarios
+    (id, perfil_id, nome, email, cpf, senha, status)
+SELECT
+    dados.id,
+    perfis.id,
+    dados.nome,
+    dados.email,
+    dados.cpf,
+    dados.senha,
+    dados.status
+FROM (
+    VALUES
+        (
+            'ec9c6235-8532-47e6-bca7-6b58ba85a51f'::UUID,
+            'aluno',
+            'Priscilla Cahino',
+            'priscilla.cahino@example.com',
+            '12345678909',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        ),
+        (
+            '9da009a4-e4d3-4602-a0dc-7c6d7bfafb99'::UUID,
+            'aluno',
+            'Diego Martins',
+            'diego.martins@example.com',
+            '98765432100',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        ),
+        (
+            '10a081dc-89b5-4a59-847a-99095c2110f2'::UUID,
+            'aluno',
+            'Jose Santos',
+            'jose.santos@example.com',
+            '52998224725',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        ),
+        (
+            'ddba5066-6c5f-4989-b715-638a0b9a8d58'::UUID,
+            'instrutor',
+            'Eduardo Lima',
+            'eduardo.lima@example.com',
+            '24681357928',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        ),
+        (
+            '0befab74-8720-40e2-8a9a-14530f9f7f08'::UUID,
+            'coordenador',
+            'Amanda Souza',
+            'amanda.souza@example.com',
+            '13579246828',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        ),
+        (
+            'fe768204-7110-45b1-ab1a-94ac9cfde2ef'::UUID,
+            'admin',
+            'Administrador TI',
+            'admin.ti@example.com',
+            '86420975310',
+            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            'ativo'
+        )
+) AS dados(id, perfil_nome, nome, email, cpf, senha, status)
+JOIN perfis ON perfis.nome = dados.perfil_nome
+ON CONFLICT DO NOTHING;
+
 INSERT INTO alunos
-    (id, nome, cpf, telefone, email, data_nascimento, is_aluno_unipe, curso_unipe, senha, treinamento, rgm)
+    (id, usuario_id, telefone, data_nascimento, is_aluno_unipe, curso_unipe, treinamento, rgm)
 VALUES
     (
         'ab34ec25-af9f-4e66-8e3d-48b38178f545',
-        'Priscilla Cahino',
-        '12345678909',
+        'ec9c6235-8532-47e6-bca7-6b58ba85a51f',
         '83999990001',
-        'priscilla.cahino@example.com',
         '2001-04-12',
         FALSE,
         NULL,
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'Assistente Administrativo',
         NULL
     ),
     (
         '61bd79eb-f54b-4992-bcf1-cf5857833356',
-        'Diego Martins',
-        '98765432100',
+        '9da009a4-e4d3-4602-a0dc-7c6d7bfafb99',
         '83988880002',
-        'diego.martins@example.com',
         '2000-09-30',
         TRUE,
         'Administracao',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'Assistente Administrativo',
         '20231001'
     ),
     (
         'bd306ba1-4eda-4882-9920-d95ac43684b1',
-        'Jose Santos',
-        '52998224725',
+        '10a081dc-89b5-4a59-847a-99095c2110f2',
         '83977770003',
-        'jose.santos@example.com',
         '1999-02-18',
         FALSE,
         NULL,
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'Assistente Administrativo',
         NULL
     )
-ON CONFLICT (cpf) DO NOTHING;
-
-INSERT INTO usuarios
-    (id, perfil_id, aluno_id, nome, email, senha, status)
-VALUES
-    (
-        'ec9c6235-8532-47e6-bca7-6b58ba85a51f',
-        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
-        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
-        'Priscilla Cahino',
-        'priscilla.cahino@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    ),
-    (
-        '9da009a4-e4d3-4602-a0dc-7c6d7bfafb99',
-        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
-        '61bd79eb-f54b-4992-bcf1-cf5857833356',
-        'Diego Martins',
-        'diego.martins@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    ),
-    (
-        '10a081dc-89b5-4a59-847a-99095c2110f2',
-        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
-        'bd306ba1-4eda-4882-9920-d95ac43684b1',
-        'Jose Santos',
-        'jose.santos@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    ),
-    (
-        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        '36e6ad50-2a3f-4500-bd1f-0cd799d4207d',
-        NULL,
-        'Eduardo Lima',
-        'eduardo.lima@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    ),
-    (
-        '0befab74-8720-40e2-8a9a-14530f9f7f08',
-        '29b6bec8-1701-463e-95af-c4eaf026ed7f',
-        NULL,
-        'Amanda Souza',
-        'amanda.souza@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    ),
-    (
-        'fe768204-7110-45b1-ab1a-94ac9cfde2ef',
-        'dd3f203e-b35b-4065-af3a-c78af1852159',
-        NULL,
-        'Administrador TI',
-        'admin.ti@example.com',
-        '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
-        'ativo'
-    )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (usuario_id) DO NOTHING;
 
 INSERT INTO instrutores
-    (id, usuario_id, nome, telefone, area_atuacao, formacao)
+    (id, usuario_id, telefone, area_atuacao, formacao)
 VALUES
     (
         '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        'Eduardo Lima',
         '83996660004',
         'Administracao',
         'Gestao Empresarial'
@@ -131,12 +132,11 @@ VALUES
 ON CONFLICT (usuario_id) DO NOTHING;
 
 INSERT INTO coordenadores
-    (id, usuario_id, nome, telefone, area_coordenacao)
+    (id, usuario_id, telefone, area_coordenacao)
 VALUES
     (
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         '0befab74-8720-40e2-8a9a-14530f9f7f08',
-        'Amanda Souza',
         '83995550005',
         'Cursos profissionalizantes'
     )

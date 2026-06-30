@@ -465,11 +465,12 @@ export class ExpressAdapter {
       "/instrutores",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
-        const { nome, email, telefone } = req.body;
+        const { nome, email, cpf, telefone } = req.body;
 
         const convite = await this.coordenadorUseCase.convidarInstrutor({
           nome,
           email,
+          cpf,
           telefone,
         });
 

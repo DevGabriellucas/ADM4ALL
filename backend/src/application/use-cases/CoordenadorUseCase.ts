@@ -9,6 +9,7 @@ import {
   TurmaDetalhe,
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
+import { Cpf } from "../../domain/value-objects/Cpf";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 
@@ -22,6 +23,7 @@ export interface CriarCursoEntrada {
 export interface ConvidarInstrutorEntrada {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string | null;
 }
 
@@ -109,11 +111,28 @@ export class CoordenadorUseCase {
     }
 
     const emailNormalizado = input.email.trim().toLowerCase();
+    let cpfNormalizado: string;
+
+    try {
+      cpfNormalizado = new Cpf(input.cpf).value;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Informe um CPF valido.",
+      );
+    }
+
     const usuarioExistente =
       await this.coordenadorRepository.buscarUsuarioPorEmail(emailNormalizado);
 
     if (usuarioExistente) {
       throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const usuarioComCpf =
+      await this.coordenadorRepository.buscarUsuarioPorCpf(cpfNormalizado);
+
+    if (usuarioComCpf) {
+      throw new BadRequestError("Ja existe um usuario com este CPF.");
     }
 
     const senhaTemporaria = randomBytes(32).toString("hex");
@@ -133,6 +152,7 @@ export class CoordenadorUseCase {
     const convite = await this.coordenadorRepository.convidarInstrutor({
       nome: input.nome.trim(),
       email: emailNormalizado,
+      cpf: cpfNormalizado,
       telefone: input.telefone ?? null,
       senhaTemporariaCriptografada,
       tokenAtivacaoHash,

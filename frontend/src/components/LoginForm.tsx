@@ -45,11 +45,10 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       saveSession(result);
 
       const destinoPorPerfil = {
-        aluno: "/aluno",
-        instrutor: "/instrutor",
-        coordenador: "/coordenador",
-        // A rota /dashboard ainda nao existe; o admin reutiliza a area de gestao.
-        admin: "/coordenador",
+        aluno: "/aluno/dashboard",
+        instrutor: "/instrutor/dashboard",
+        coordenador: "/coordenador/dashboard",
+        admin: "/coordenador/dashboard",
       } as const;
 
       router.replace(destinoPorPerfil[result.usuario.perfil]);

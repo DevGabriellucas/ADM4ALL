@@ -42,6 +42,7 @@ export interface InstrutorListagem {
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string | null;
   senhaTemporariaCriptografada: string;
   tokenAtivacaoHash: string;
@@ -115,6 +116,7 @@ export interface CoordenadorRepository {
   listarInstrutores(): Promise<InstrutorListagem[]>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
+  buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
   convidarInstrutor(input: ConvidarInstrutorInput): Promise<ConviteCriado>;
 
   listarTurmas(): Promise<TurmaListagem[]>;

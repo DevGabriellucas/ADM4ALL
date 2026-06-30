@@ -166,6 +166,7 @@ export const getInstructors = async (): Promise<Instructor[]> => {
 export const inviteInstructor = async (input: {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string;
 }): Promise<{ id: string; nome: string }> => {
   return await authenticatedRequest<{ id: string; nome: string }>(

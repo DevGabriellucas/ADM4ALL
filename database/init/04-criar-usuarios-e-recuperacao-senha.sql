@@ -3,9 +3,9 @@
 CREATE TABLE IF NOT EXISTS usuarios (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     perfil_id     UUID         NOT NULL REFERENCES perfis(id) ON DELETE RESTRICT,
-    aluno_id      UUID         UNIQUE REFERENCES alunos(id) ON DELETE SET NULL,
     nome          VARCHAR(255) NOT NULL,
     email         VARCHAR(255) NOT NULL,
+    cpf           VARCHAR(11)  NOT NULL UNIQUE,
     senha         VARCHAR(255) NOT NULL,
     status        VARCHAR(20)  NOT NULL DEFAULT 'ativo',
     data_criacao  TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
         CHECK (length(trim(nome)) > 0),
     CONSTRAINT chk_usuarios_email_formato
         CHECK (email = lower(trim(email)) AND email ~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'),
+    CONSTRAINT chk_usuarios_cpf_digitos
+        CHECK (cpf ~ '^[0-9]{11}$'),
+    CONSTRAINT chk_usuarios_cpf_nao_repetido
+        CHECK (cpf !~ '^([0-9])\1{10}$'),
     CONSTRAINT chk_usuarios_status
         CHECK (status IN ('ativo', 'inativo', 'bloqueado', 'pendente_ativacao'))
 );
@@ -25,6 +29,22 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_perfil
     ON usuarios (perfil_id);
 CREATE INDEX IF NOT EXISTS idx_usuarios_status
     ON usuarios (status);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_alunos_usuario'
+    ) THEN
+        ALTER TABLE alunos
+            ADD CONSTRAINT fk_alunos_usuario
+            FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id)
+            ON DELETE CASCADE;
+    END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS recuperacoes_senha (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),

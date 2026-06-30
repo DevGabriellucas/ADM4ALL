@@ -1,15 +1,14 @@
 # Modelo entidade-relacionamento - ADM4All
 
-Este documento descreve o modelo de dados planejado para suportar aluno,
-instrutor, coordenacao e administrador geral. A tabela `alunos` segue
-compativel com o backend atual; `usuarios` e `perfis` preparam a evolucao do
-login por tipo de usuario.
+Este documento descreve o modelo de dados para suportar aluno, instrutor,
+coordenacao e administrador geral. `usuarios` centraliza autenticacao e cada
+tabela de perfil guarda os dados especificos da sua funcao.
 
 ```mermaid
 erDiagram
     PERFIS ||--o{ USUARIOS : define
-    ALUNOS ||--o| USUARIOS : acessa
     USUARIOS ||--o{ RECUPERACOES_SENHA : solicita
+    USUARIOS ||--o| ALUNOS : representa
     USUARIOS ||--o| INSTRUTORES : representa
     USUARIOS ||--o| COORDENADORES : representa
 
@@ -45,9 +44,9 @@ erDiagram
     USUARIOS {
         uuid id PK
         uuid perfil_id FK
-        uuid aluno_id FK
         varchar nome
         varchar email UK
+        varchar cpf UK
         varchar senha
         varchar status
         timestamptz data_criacao
@@ -67,14 +66,11 @@ erDiagram
 
     ALUNOS {
         uuid id PK
-        varchar nome
-        varchar cpf UK
+        uuid usuario_id FK
         varchar telefone
-        varchar email UK
         date data_nascimento
         boolean is_aluno_unipe
         varchar curso_unipe
-        varchar senha
         varchar treinamento
         varchar rgm UK
         timestamptz data_cadastro
@@ -83,7 +79,6 @@ erDiagram
     INSTRUTORES {
         uuid id PK
         uuid usuario_id FK
-        varchar nome
         varchar telefone
         varchar area_atuacao
         varchar formacao
@@ -93,7 +88,6 @@ erDiagram
     COORDENADORES {
         uuid id PK
         uuid usuario_id FK
-        varchar nome
         varchar telefone
         varchar area_coordenacao
         boolean ativo
@@ -211,6 +205,7 @@ erDiagram
 - `ativo`
 - `inativo`
 - `bloqueado`
+- `pendente_ativacao`
 
 `turmas.status`:
 
@@ -247,8 +242,10 @@ erDiagram
 
 ## Observacoes para integracao
 
-- O backend atual ainda autentica usando `alunos.email` e `alunos.senha`.
-  A tabela `usuarios` prepara a migracao para login por perfil.
+- Todo usuario possui CPF unico. O login universal consulta e-mail ou CPF em `usuarios`, valida
+  `usuarios.senha` e usa `perfis.nome` para determinar a area de destino.
+- `alunos`, `instrutores` e `coordenadores` apontam para `usuarios` por
+  `usuario_id`; o contrato de login retorna tambem o ID do perfil especifico.
 - `recuperacoes_senha` deve armazenar apenas o hash do token. O token puro
   deve existir somente no link enviado ao usuario.
 - A expiracao padrao de recuperacao de senha e de 15 minutos. O backend deve

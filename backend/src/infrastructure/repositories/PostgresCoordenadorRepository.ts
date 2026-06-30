@@ -94,7 +94,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     const query = `
       SELECT
         i.id,
-        i.nome,
+        u.nome,
         u.email,
         i.telefone,
         u.status,
@@ -103,8 +103,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       FROM instrutores i
       JOIN usuarios u ON u.id = i.usuario_id
       LEFT JOIN turmas tu ON tu.instrutor_id = i.id
-      GROUP BY i.id, i.nome, u.email, i.telefone, u.status, i.data_cadastro
-      ORDER BY i.nome ASC
+      GROUP BY i.id, u.nome, u.email, i.telefone, u.status, i.data_cadastro
+      ORDER BY u.nome ASC
     `;
     const resultado = await this.db.query(query);
 
@@ -123,7 +123,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     nome: string,
   ): Promise<IdentificadorPorNome | null> {
     const resultado = await this.db.query(
-      "SELECT id FROM instrutores WHERE nome = $1 AND ativo = TRUE LIMIT 1",
+      `SELECT i.id
+       FROM instrutores i
+       JOIN usuarios u ON u.id = i.usuario_id
+       WHERE u.nome = $1 AND i.ativo = TRUE
+       LIMIT 1`,
       [nome],
     );
     return resultado.rows[0] ? { id: resultado.rows[0].id } : null;
@@ -133,6 +137,14 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     const resultado = await this.db.query(
       "SELECT id FROM usuarios WHERE lower(email) = lower($1) LIMIT 1",
       [email],
+    );
+    return resultado.rows[0] ? { id: resultado.rows[0].id } : null;
+  }
+
+  async buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null> {
+    const resultado = await this.db.query(
+      "SELECT id FROM usuarios WHERE cpf = $1 LIMIT 1",
+      [cpf],
     );
     return resultado.rows[0] ? { id: resultado.rows[0].id } : null;
   }
@@ -156,24 +168,30 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       let usuarioId: string;
       try {
         const usuarioResultado = await cliente.query(
-          `INSERT INTO usuarios (perfil_id, nome, email, senha, status)
-           VALUES ($1, $2, $3, $4, 'pendente_ativacao')
+          `INSERT INTO usuarios (perfil_id, nome, email, cpf, senha, status)
+           VALUES ($1, $2, $3, $4, $5, 'pendente_ativacao')
            RETURNING id`,
-          [perfilId, input.nome, input.email, input.senhaTemporariaCriptografada],
+          [
+            perfilId,
+            input.nome,
+            input.email,
+            input.cpf,
+            input.senhaTemporariaCriptografada,
+          ],
         );
         usuarioId = usuarioResultado.rows[0].id;
       } catch (error: any) {
         if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
-          throw new Error("Ja existe um usuario cadastrado com este e-mail.");
+          throw new Error("Ja existe um usuario cadastrado com este e-mail ou CPF.");
         }
         throw error;
       }
 
       const instrutorResultado = await cliente.query(
-        `INSERT INTO instrutores (usuario_id, nome, telefone)
-         VALUES ($1, $2, $3)
+        `INSERT INTO instrutores (usuario_id, telefone)
+         VALUES ($1, $2)
          RETURNING id`,
-        [usuarioId, input.nome, input.telefone ?? null],
+        [usuarioId, input.telefone ?? null],
       );
       const instrutorId = instrutorResultado.rows[0].id;
 
@@ -205,7 +223,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.id,
         t.nome,
         tr.nome AS curso,
-        i.nome AS instrutor,
+        ui.nome AS instrutor,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -214,9 +232,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
-      GROUP BY t.id, t.nome, tr.nome, i.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query);
@@ -230,7 +249,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.id,
         t.nome,
         tr.nome AS curso,
-        i.nome AS instrutor,
+        ui.nome AS instrutor,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -239,10 +258,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.id = $1
-      GROUP BY t.id, t.nome, tr.nome, i.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
       `,
       [id],
     );
@@ -257,17 +277,18 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         `
         SELECT
           a.id,
-          a.nome,
-          a.email,
+          u.nome,
+          u.email,
           a.telefone,
           m.status,
           COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia
         FROM matriculas m
         JOIN alunos a ON a.id = m.aluno_id
+        JOIN usuarios u ON u.id = a.usuario_id
         LEFT JOIN frequencias f ON f.matricula_id = m.id
         WHERE m.turma_id = $1
-        GROUP BY a.id, a.nome, a.email, a.telefone, m.status
-        ORDER BY a.nome ASC
+        GROUP BY a.id, u.nome, u.email, a.telefone, m.status
+        ORDER BY u.nome ASC
         `,
         [id],
       ),
