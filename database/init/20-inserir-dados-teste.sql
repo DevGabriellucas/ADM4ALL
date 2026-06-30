@@ -3,21 +3,22 @@
 --
 --  Estes dados ajudam a testar login por perfil, dashboard, turmas,
 --  cronograma, frequencia, materiais, documentos e certificados.
+--  Os UUIDs v4 sao fixos para manter as chaves estrangeiras reproduziveis.
 -- =====================================================================
 
 INSERT INTO perfis (id, nome, descricao, nivel_acesso)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'aluno', 'Acesso do aluno ao proprio curso', 10),
-    ('00000000-0000-0000-0000-000000000002', 'instrutor', 'Acesso do instrutor as turmas e presencas', 40),
-    ('00000000-0000-0000-0000-000000000003', 'coordenador', 'Acesso de coordenacao aos cursos, turmas e relatorios', 70),
-    ('00000000-0000-0000-0000-000000000004', 'admin', 'Acesso administrativo geral e configuracoes', 100)
+    ('f2b625c7-acbe-4b14-9046-c80c4a04eda4', 'aluno', 'Acesso do aluno ao proprio curso', 10),
+    ('36e6ad50-2a3f-4500-bd1f-0cd799d4207d', 'instrutor', 'Acesso do instrutor as turmas e presencas', 40),
+    ('29b6bec8-1701-463e-95af-c4eaf026ed7f', 'coordenador', 'Acesso de coordenacao aos cursos, turmas e relatorios', 70),
+    ('dd3f203e-b35b-4065-af3a-c78af1852159', 'admin', 'Acesso administrativo geral e configuracoes', 100)
 ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO alunos
     (id, nome, cpf, telefone, email, data_nascimento, is_aluno_unipe, curso_unipe, senha, treinamento, rgm)
 VALUES
     (
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
         'Priscilla Cahino',
         '12345678909',
         '83999990001',
@@ -30,7 +31,7 @@ VALUES
         NULL
     ),
     (
-        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        '61bd79eb-f54b-4992-bcf1-cf5857833356',
         'Diego Martins',
         '98765432100',
         '83988880002',
@@ -43,7 +44,7 @@ VALUES
         '20231001'
     ),
     (
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        'bd306ba1-4eda-4882-9920-d95ac43684b1',
         'Jose Santos',
         '52998224725',
         '83977770003',
@@ -61,35 +62,35 @@ INSERT INTO usuarios
     (id, perfil_id, aluno_id, nome, email, senha, status)
 VALUES
     (
-        '10000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000001',
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'ec9c6235-8532-47e6-bca7-6b58ba85a51f',
+        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
+        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
         'Priscilla Cahino',
         'priscilla.cahino@example.com',
         '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'ativo'
     ),
     (
-        '10000000-0000-0000-0000-000000000002',
-        '00000000-0000-0000-0000-000000000001',
-        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        '9da009a4-e4d3-4602-a0dc-7c6d7bfafb99',
+        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
+        '61bd79eb-f54b-4992-bcf1-cf5857833356',
         'Diego Martins',
         'diego.martins@example.com',
         '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'ativo'
     ),
     (
-        '10000000-0000-0000-0000-000000000003',
-        '00000000-0000-0000-0000-000000000001',
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        '10a081dc-89b5-4a59-847a-99095c2110f2',
+        'f2b625c7-acbe-4b14-9046-c80c4a04eda4',
+        'bd306ba1-4eda-4882-9920-d95ac43684b1',
         'Jose Santos',
         'jose.santos@example.com',
         '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
         'ativo'
     ),
     (
-        '10000000-0000-0000-0000-000000000004',
-        '00000000-0000-0000-0000-000000000002',
+        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
+        '36e6ad50-2a3f-4500-bd1f-0cd799d4207d',
         NULL,
         'Eduardo Lima',
         'eduardo.lima@example.com',
@@ -97,8 +98,8 @@ VALUES
         'ativo'
     ),
     (
-        '10000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000003',
+        '0befab74-8720-40e2-8a9a-14530f9f7f08',
+        '29b6bec8-1701-463e-95af-c4eaf026ed7f',
         NULL,
         'Amanda Souza',
         'amanda.souza@example.com',
@@ -106,8 +107,8 @@ VALUES
         'ativo'
     ),
     (
-        '10000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000004',
+        'fe768204-7110-45b1-ab1a-94ac9cfde2ef',
+        'dd3f203e-b35b-4065-af3a-c78af1852159',
         NULL,
         'Administrador TI',
         'admin.ti@example.com',
@@ -120,8 +121,8 @@ INSERT INTO instrutores
     (id, usuario_id, nome, telefone, area_atuacao, formacao)
 VALUES
     (
-        '20000000-0000-0000-0000-000000000001',
-        '10000000-0000-0000-0000-000000000004',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
         'Eduardo Lima',
         '83996660004',
         'Administracao',
@@ -133,8 +134,8 @@ INSERT INTO coordenadores
     (id, usuario_id, nome, telefone, area_coordenacao)
 VALUES
     (
-        '30000000-0000-0000-0000-000000000001',
-        '10000000-0000-0000-0000-000000000005',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
+        '0befab74-8720-40e2-8a9a-14530f9f7f08',
         'Amanda Souza',
         '83995550005',
         'Cursos profissionalizantes'
@@ -144,19 +145,19 @@ ON CONFLICT (usuario_id) DO NOTHING;
 INSERT INTO treinamentos (id, nome, descricao, carga_horaria)
 VALUES
     (
-        '11111111-1111-1111-1111-111111111111',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
         'Assistente Administrativo',
         'Formacao inicial para rotinas administrativas, documentos e atendimento.',
         40
     ),
     (
-        '22222222-2222-2222-2222-222222222222',
+        '3b4169fc-5a08-44aa-b03e-3b2620533378',
         'Excel Basico',
         'Planilhas, formulas simples e organizacao de dados.',
         20
     ),
     (
-        '33333333-3333-3333-3333-333333333333',
+        '2f9a746b-70dc-4261-b150-2ec16d2b842c',
         'Power BI',
         'Introducao a paineis, indicadores e visualizacao de dados.',
         30
@@ -167,10 +168,10 @@ INSERT INTO turmas
     (id, treinamento_id, instrutor_id, coordenador_id, codigo, nome, turno, local, status, capacidade, data_inicio, data_fim)
 VALUES
     (
-        '40000000-0000-0000-0000-000000000001',
-        '11111111-1111-1111-1111-111111111111',
-        '20000000-0000-0000-0000-000000000001',
-        '30000000-0000-0000-0000-000000000001',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'ADM-2026-01',
         'Assistente Administrativo 2026.1',
         'noite',
@@ -181,10 +182,10 @@ VALUES
         '2026-06-30'
     ),
     (
-        '40000000-0000-0000-0000-000000000002',
-        '22222222-2222-2222-2222-222222222222',
-        '20000000-0000-0000-0000-000000000001',
-        '30000000-0000-0000-0000-000000000001',
+        '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
+        '3b4169fc-5a08-44aa-b03e-3b2620533378',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'EXCEL-2026-01',
         'Excel Basico 2026.1',
         'online',
@@ -200,30 +201,30 @@ INSERT INTO matriculas
     (id, aluno_id, treinamento_id, turma_id, status, progresso, data_matricula, data_conclusao)
 VALUES
     (
-        'dddddddd-dddd-dddd-dddd-dddddddddddd',
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        '11111111-1111-1111-1111-111111111111',
-        '40000000-0000-0000-0000-000000000001',
+        '8d59600f-f3bf-4688-876b-01d30b22dcea',
+        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'em_andamento',
         45,
         '2026-03-02',
         NULL
     ),
     (
-        'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-        '11111111-1111-1111-1111-111111111111',
-        '40000000-0000-0000-0000-000000000001',
+        '20b0624a-0d58-46db-bf19-ce4f548c1a6f',
+        '61bd79eb-f54b-4992-bcf1-cf5857833356',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'aprovado',
         100,
         '2026-02-03',
         '2026-04-30'
     ),
     (
-        'ffffffff-ffff-ffff-ffff-ffffffffffff',
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
-        '11111111-1111-1111-1111-111111111111',
-        '40000000-0000-0000-0000-000000000001',
+        'e7349796-aeb0-48c3-8516-72fb5d3d56c8',
+        'bd306ba1-4eda-4882-9920-d95ac43684b1',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'reprovado_falta',
         30,
         '2026-02-03',
@@ -235,8 +236,8 @@ INSERT INTO aulas
     (id, turma_id, numero_aula, titulo, conteudo, data_aula, hora_inicio, hora_fim, status)
 VALUES
     (
-        '50000000-0000-0000-0000-000000000001',
-        '40000000-0000-0000-0000-000000000001',
+        'caab179f-b787-4ca9-9c29-5282f5f0457c',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         1,
         'Introducao a administracao',
         'Conceitos iniciais e papel do assistente administrativo.',
@@ -246,8 +247,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000002',
-        '40000000-0000-0000-0000-000000000001',
+        'ca514570-b649-4c78-bf8e-b7aacc74a6f4',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         2,
         'Planejamento e organizacao',
         'Rotinas de planejamento, agenda e organizacao documental.',
@@ -257,8 +258,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000003',
-        '40000000-0000-0000-0000-000000000001',
+        '2e066384-6434-488f-8f6f-bdd411710bf3',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         3,
         'Gestao empresarial',
         'Processos administrativos e fluxo de informacoes.',
@@ -268,8 +269,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000004',
-        '40000000-0000-0000-0000-000000000001',
+        '833962df-4847-4c06-bc3f-c704dc11fdea',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         4,
         'Rotinas administrativas',
         'Atendimento, controle de documentos e comunicacao.',
@@ -279,8 +280,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000005',
-        '40000000-0000-0000-0000-000000000001',
+        '71527536-9f94-491c-8dff-12a5f49e68bf',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         5,
         'Atendimento',
         'Boas praticas de atendimento presencial e digital.',
@@ -290,8 +291,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000006',
-        '40000000-0000-0000-0000-000000000001',
+        'a16fdd4b-86e9-4f1a-b741-3f3d48189592',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         6,
         'Controle de documentos',
         'Organizacao, recebimento e validacao de documentos.',
@@ -301,8 +302,8 @@ VALUES
         'realizada'
     ),
     (
-        '50000000-0000-0000-0000-000000000007',
-        '40000000-0000-0000-0000-000000000001',
+        'b799294c-ac81-4db5-8846-6d2eb464526c',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         7,
         'Etica profissional',
         'Conduta profissional, postura no atendimento e sigilo de informacoes.',
@@ -312,8 +313,8 @@ VALUES
         'planejada'
     ),
     (
-        '50000000-0000-0000-0000-000000000008',
-        '40000000-0000-0000-0000-000000000001',
+        '7151df23-1bf5-4226-95d9-3f83b0a94d3c',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         8,
         'Nocoes financeiras',
         'Controle simples de entradas, saidas, recibos e organizacao financeira.',
@@ -323,8 +324,8 @@ VALUES
         'planejada'
     ),
     (
-        '50000000-0000-0000-0000-000000000009',
-        '40000000-0000-0000-0000-000000000001',
+        'b7f358d8-cf1e-46e8-943c-3f4069a32449',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         9,
         'Tecnologia no ambiente administrativo',
         'Ferramentas digitais para produtividade e organizacao do trabalho.',
@@ -334,8 +335,8 @@ VALUES
         'planejada'
     ),
     (
-        '50000000-0000-0000-0000-000000000010',
-        '40000000-0000-0000-0000-000000000001',
+        'ac2fbc63-4bbb-4f71-9a33-7c46d8d1cb8c',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
         10,
         'Revisao e encerramento',
         'Revisao geral dos conteudos e orientacoes finais.',
@@ -348,34 +349,34 @@ ON CONFLICT (turma_id, numero_aula) DO NOTHING;
 
 INSERT INTO frequencias (matricula_id, aula_id, data_aula, presente, observacao)
 VALUES
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000004', '2026-03-02', TRUE, NULL),
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000005', '2026-03-09', TRUE, NULL),
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000006', '2026-03-16', FALSE, 'Falta justificada em analise'),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000001', '2026-02-03', TRUE, NULL),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000002', '2026-02-10', TRUE, NULL),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000003', '2026-02-17', TRUE, NULL),
-    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000001', '2026-02-03', FALSE, 'Ausente'),
-    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000002', '2026-02-10', FALSE, 'Ausente'),
-    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000003', '2026-02-17', FALSE, 'Ausente'),
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000007', '2026-06-24', TRUE, NULL),
-    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000007', '2026-06-24', TRUE, NULL),
-    ('ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000007', '2026-06-24', FALSE, 'Falta justificada')
+    ('8d59600f-f3bf-4688-876b-01d30b22dcea', '833962df-4847-4c06-bc3f-c704dc11fdea', '2026-03-02', TRUE, NULL),
+    ('8d59600f-f3bf-4688-876b-01d30b22dcea', '71527536-9f94-491c-8dff-12a5f49e68bf', '2026-03-09', TRUE, NULL),
+    ('8d59600f-f3bf-4688-876b-01d30b22dcea', 'a16fdd4b-86e9-4f1a-b741-3f3d48189592', '2026-03-16', FALSE, 'Falta justificada em analise'),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'caab179f-b787-4ca9-9c29-5282f5f0457c', '2026-02-03', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'ca514570-b649-4c78-bf8e-b7aacc74a6f4', '2026-02-10', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', TRUE, NULL),
+    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'caab179f-b787-4ca9-9c29-5282f5f0457c', '2026-02-03', FALSE, 'Ausente'),
+    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'ca514570-b649-4c78-bf8e-b7aacc74a6f4', '2026-02-10', FALSE, 'Ausente'),
+    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', FALSE, 'Ausente'),
+    ('8d59600f-f3bf-4688-876b-01d30b22dcea', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', TRUE, NULL),
+    ('20b0624a-0d58-46db-bf19-ce4f548c1a6f', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', TRUE, NULL),
+    ('e7349796-aeb0-48c3-8516-72fb5d3d56c8', 'b799294c-ac81-4db5-8846-6d2eb464526c', '2026-06-24', FALSE, 'Falta justificada')
 ON CONFLICT (matricula_id, data_aula) DO NOTHING;
 
 INSERT INTO avaliacoes (id, matricula_id, aula_id, descricao, nota, data_avaliacao)
 VALUES
-    ('80000000-0000-0000-0000-000000000001', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '50000000-0000-0000-0000-000000000006', 'Avaliacao parcial', 8.50, '2026-03-18'),
-    ('80000000-0000-0000-0000-000000000002', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '50000000-0000-0000-0000-000000000003', 'Avaliacao final', 9.20, '2026-04-25'),
-    ('80000000-0000-0000-0000-000000000003', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '50000000-0000-0000-0000-000000000003', 'Avaliacao parcial', 6.00, '2026-03-10')
+    ('49605b6a-f82f-49dc-a7b6-1d0b11b0c9b1', '8d59600f-f3bf-4688-876b-01d30b22dcea', 'a16fdd4b-86e9-4f1a-b741-3f3d48189592', 'Avaliacao parcial', 8.50, '2026-03-18'),
+    ('a0bc6ca1-a669-42c9-88f4-91167d1a09bb', '20b0624a-0d58-46db-bf19-ce4f548c1a6f', '2e066384-6434-488f-8f6f-bdd411710bf3', 'Avaliacao final', 9.20, '2026-04-25'),
+    ('17d10dc1-977f-44ca-b5fd-436cd6ef5c82', 'e7349796-aeb0-48c3-8516-72fb5d3d56c8', '2e066384-6434-488f-8f6f-bdd411710bf3', 'Avaliacao parcial', 6.00, '2026-03-10')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO materiais
     (id, turma_id, publicado_por_id, titulo, tipo, url_arquivo, tamanho_bytes, status)
 VALUES
     (
-        '60000000-0000-0000-0000-000000000001',
-        '40000000-0000-0000-0000-000000000001',
-        '10000000-0000-0000-0000-000000000004',
+        'fa2d5097-5f45-404c-b201-b0635f436c12',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
         'Introducao a administracao',
         'pdf',
         '/materiais/introducao-administracao.pdf',
@@ -383,9 +384,9 @@ VALUES
         'ativo'
     ),
     (
-        '60000000-0000-0000-0000-000000000002',
-        '40000000-0000-0000-0000-000000000001',
-        '10000000-0000-0000-0000-000000000004',
+        'abf3710c-895e-446e-880d-7f8eb231747d',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
         'Video - O que e administracao',
         'video',
         '/materiais/video-o-que-e-administracao.mp4',
@@ -393,9 +394,9 @@ VALUES
         'ativo'
     ),
     (
-        '60000000-0000-0000-0000-000000000003',
-        '40000000-0000-0000-0000-000000000001',
-        '10000000-0000-0000-0000-000000000004',
+        'bdfd0211-81d8-4cd1-9e88-2075bff1465a',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        'ddba5066-6c5f-4989-b715-638a0b9a8d58',
         'Atividade de fixacao',
         'documento',
         '/materiais/atividade-fixacao.docx',
@@ -408,7 +409,7 @@ INSERT INTO documentos_aluno
     (aluno_id, tipo, status, data_envio, data_validacao, observacao)
 VALUES
     (
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
         'Documento de identificacao',
         'aprovado',
         '2026-03-01',
@@ -416,7 +417,7 @@ VALUES
         NULL
     ),
     (
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'ab34ec25-af9f-4e66-8e3d-48b38178f545',
         'Comprovante de residencia',
         'aprovado',
         '2026-03-01',
@@ -424,7 +425,7 @@ VALUES
         NULL
     ),
     (
-        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        '61bd79eb-f54b-4992-bcf1-cf5857833356',
         'Comprovante de matricula Unipe',
         'aprovado',
         '2026-02-01',
@@ -432,7 +433,7 @@ VALUES
         NULL
     ),
     (
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        'bd306ba1-4eda-4882-9920-d95ac43684b1',
         'Comprovante de residencia',
         'pendente',
         NULL,
@@ -445,13 +446,13 @@ INSERT INTO certificados
     (id, matricula_id, codigo, status, data_emissao, url_arquivo, emitido_por_id, observacao)
 VALUES
     (
-        '70000000-0000-0000-0000-000000000001',
-        'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+        '1451f3ea-8766-423b-a3ab-758baa8299ac',
+        '20b0624a-0d58-46db-bf19-ce4f548c1a6f',
         'CERT-ADM-2026-0001',
         'emitido',
         '2026-05-02',
         '/certificados/cert-adm-2026-0001.pdf',
-        '10000000-0000-0000-0000-000000000005',
+        '0befab74-8720-40e2-8a9a-14530f9f7f08',
         'Certificado emitido apos conclusao do curso'
     )
 ON CONFLICT (codigo) DO NOTHING;

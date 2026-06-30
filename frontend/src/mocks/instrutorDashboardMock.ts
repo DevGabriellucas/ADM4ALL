@@ -15,14 +15,14 @@ const eduardoAvatarSvg = encodeURIComponent(`
 // Usado enquanto a API real nao esta configurada (mesmo padrao da tela do aluno).
 export const instrutorDashboardMock: InstrutorDashboard = {
   instrutor: {
-    id: "20000000-0000-0000-0000-000000000001",
-    usuarioId: "10000000-0000-0000-0000-000000000004",
+    id: "9ab264bc-036b-4e62-ba6b-6a93d2da94c2",
+    usuarioId: "ddba5066-6c5f-4989-b715-638a0b9a8d58",
     nome: "Eduardo Lima",
     areaAtuacao: "Administracao",
     avatarUrl: `data:image/svg+xml,${eduardoAvatarSvg}`,
   },
   turma: {
-    id: "40000000-0000-0000-0000-000000000001",
+    id: "df349e38-0e92-4971-b67b-2deb56b90c7b",
     codigo: "ADM-2026-01",
     nome: "Assistente Administrativo 2026.1",
     curso: "Assistente Administrativo",
@@ -30,14 +30,14 @@ export const instrutorDashboardMock: InstrutorDashboard = {
     local: "Sala 01",
   },
   aulaReferencia: {
-    id: "50000000-0000-0000-0000-000000000003",
+    id: "2e066384-6434-488f-8f6f-bdd411710bf3",
     numero: 3,
     titulo: "Gestao Empresarial",
     data: "2026-06-22",
     status: "realizada",
   },
   proximaAula: {
-    id: "50000000-0000-0000-0000-000000000004",
+    id: "833962df-4847-4c06-bc3f-c704dc11fdea",
     numero: 4,
     titulo: "Rotinas Administrativas",
     data: "2026-06-28",
@@ -148,7 +148,7 @@ export const instrutorDashboardMock: InstrutorDashboard = {
   ],
   materiais: [
     {
-      id: "60000000-0000-0000-0000-000000000001",
+      id: "fa2d5097-5f45-404c-b201-b0635f436c12",
       titulo: "Introducao a administracao",
       tipo: "pdf",
       tamanhoBytes: 2097152,
@@ -156,7 +156,7 @@ export const instrutorDashboardMock: InstrutorDashboard = {
       urlArquivo: "/materiais/introducao-administracao.pdf",
     },
     {
-      id: "60000000-0000-0000-0000-000000000002",
+      id: "abf3710c-895e-446e-880d-7f8eb231747d",
       titulo: "Video - O que e Administracao",
       tipo: "video",
       tamanhoBytes: 5242880,
@@ -164,7 +164,7 @@ export const instrutorDashboardMock: InstrutorDashboard = {
       urlArquivo: "/materiais/video-o-que-e-administracao.mp4",
     },
     {
-      id: "60000000-0000-0000-0000-000000000003",
+      id: "bdfd0211-81d8-4cd1-9e88-2075bff1465a",
       titulo: "Atividade de fixacao",
       tipo: "documento",
       tamanhoBytes: 1572864,

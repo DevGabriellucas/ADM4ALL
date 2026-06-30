@@ -16,7 +16,7 @@ import type {
 } from "@/types/instrutor";
 
 const INSTRUTOR_ID_DEMO =
-  process.env.INSTRUTOR_ID ?? "20000000-0000-0000-0000-000000000001";
+  process.env.INSTRUTOR_ID ?? "9ab264bc-036b-4e62-ba6b-6a93d2da94c2";
 
 export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
   const session = await getServerSession();
