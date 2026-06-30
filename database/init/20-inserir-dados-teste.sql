@@ -32,7 +32,7 @@ FROM (
             'Priscilla Cahino',
             'priscilla.cahino@example.com',
             '12345678909',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha: Aluno@123
             'ativo'
         ),
         (
@@ -41,7 +41,7 @@ FROM (
             'Diego Martins',
             'diego.martins@example.com',
             '98765432100',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha: Aluno@123
             'ativo'
         ),
         (
@@ -50,7 +50,7 @@ FROM (
             'Jose Santos',
             'jose.santos@example.com',
             '52998224725',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha: Aluno@123
             'ativo'
         ),
         (
@@ -59,7 +59,7 @@ FROM (
             'Eduardo Lima',
             'eduardo.lima@example.com',
             '24681357928',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu', -- senha: Instrutor@123
             'ativo'
         ),
         (
@@ -68,7 +68,7 @@ FROM (
             'Amanda Souza',
             'amanda.souza@example.com',
             '13579246828',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$hX7nJ9VTWUKkqAmxarLlVeN6ptuUU0qW3utKTyuWyRsPiD3oEHvwO', -- senha: Coordenador@123
             'ativo'
         ),
         (
@@ -77,7 +77,7 @@ FROM (
             'Administrador TI',
             'admin.ti@example.com',
             '86420975310',
-            '$2b$10$CwTycUXWue0Thq9StjUM0uJ8UgzdbzR56jWfGSu2zWTFP1xHda9gW',
+            '$2b$10$WsQRiIcbE8o5oyx5IUVSdeoXAWfCBunjvfHpePT1VMq4fazEZRaXm', -- senha: Admin@123
             'ativo'
         )
 ) AS dados(id, perfil_nome, nome, email, cpf, senha, status)
