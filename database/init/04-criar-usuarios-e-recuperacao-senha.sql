@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     CONSTRAINT chk_usuarios_email_formato
         CHECK (email = lower(trim(email)) AND email ~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'),
     CONSTRAINT chk_usuarios_status
-        CHECK (status IN ('ativo', 'inativo', 'bloqueado'))
+        CHECK (status IN ('ativo', 'inativo', 'bloqueado', 'pendente_ativacao'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_email_lower

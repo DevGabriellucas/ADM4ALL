@@ -6,6 +6,7 @@ import path from "path";
 import { JwtService, TokenPayload } from "../../application/security/JwtService";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
+import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
 import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
@@ -28,6 +29,7 @@ export class ExpressAdapter {
     private authUseCase: AuthUseCase,
     private alunoUseCase: AlunoUseCase,
     private instrutorUseCase: InstrutorUseCase,
+    private coordenadorUseCase: CoordenadorUseCase,
     private jwtService: JwtService,
   ) {
     this.app.use(express.json({ limit: "60mb" }));
@@ -401,6 +403,125 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.post(
+      "/auth/ativar-conta",
+      asyncHandler(async (req: Request, res: Response) => {
+        const { token, novaSenha } = req.body;
+
+        if (!token) {
+          throw new BadRequestError("O token de ativacao e obrigatorio.");
+        }
+
+        await this.coordenadorUseCase.ativarConta(token, novaSenha);
+        res.status(200).json({ mensagem: "Conta ativada com sucesso." });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/dashboard",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const dashboard = await this.coordenadorUseCase.obterDashboard();
+        res.json(dashboard);
+      }),
+    );
+
+    this.app.get(
+      "/cursos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const cursos = await this.coordenadorUseCase.listarCursos();
+        res.json(cursos);
+      }),
+    );
+
+    this.app.post(
+      "/cursos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { nome, descricao, cargaHoraria, status } = req.body;
+
+        const curso = await this.coordenadorUseCase.criarCurso({
+          nome,
+          descricao,
+          cargaHoraria: Number(cargaHoraria),
+          status,
+        });
+
+        res.status(201).json(curso);
+      }),
+    );
+
+    this.app.get(
+      "/instrutores",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const instrutores = await this.coordenadorUseCase.listarInstrutores();
+        res.json(instrutores);
+      }),
+    );
+
+    this.app.post(
+      "/instrutores",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { nome, email, telefone } = req.body;
+
+        const convite = await this.coordenadorUseCase.convidarInstrutor({
+          nome,
+          email,
+          telefone,
+        });
+
+        res.status(201).json({
+          id: convite.instrutorId,
+          nome: convite.nome,
+          mensagem: "Convite de ativacao enviado por e-mail.",
+        });
+      }),
+    );
+
+    this.app.get(
+      "/turmas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const turmas = await this.coordenadorUseCase.listarTurmas();
+        res.json(turmas);
+      }),
+    );
+
+    this.app.post(
+      "/turmas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const {
+          curso,
+          nome,
+          instrutor,
+          dataInicio,
+          dataTermino,
+          horarios,
+          limiteAlunos,
+          status,
+        } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        const turma = await this.coordenadorUseCase.criarTurma({
+          curso,
+          nome,
+          instrutor,
+          dataInicio,
+          dataTermino,
+          horario: horarios,
+          limiteAlunos: Number(limiteAlunos),
+          status,
+          coordenadorId: usuario.coordenadorId,
+        });
+
+        res.status(201).json(turma);
+      }),
+    );
+
     this.app.delete(
       "/turmas/:turmaId/materiais/:materialId",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
@@ -483,6 +604,16 @@ export class ExpressAdapter {
         await this.instrutorUseCase.removerAula(aulaId, turmaId);
 
         res.status(200).json({ mensagem: "Aula removida com sucesso." });
+      }),
+    );
+
+    this.app.get(
+      "/turmas/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const turma = await this.coordenadorUseCase.buscarTurmaDetalhe(id);
+        res.json(turma);
       }),
     );
 

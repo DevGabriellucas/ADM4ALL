@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { SubmitEvent } from "react";
 import { useState } from "react";
+import { criarTurmaAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import type { ClassStatus, Course, Instructor } from "@/types/coordinator";
 
@@ -40,8 +42,11 @@ export const NewClassForm = ({
   isOpen,
   onCancel,
 }: NewClassFormProps) => {
+  const router = useRouter();
   const [formData, setFormData] = useState<ClassFormData>(INITIAL_FORM_DATA);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeInstructors = instructors.filter(
     (instructor) => instructor.status === "ativo",
@@ -50,17 +55,36 @@ export const NewClassForm = ({
   const handleCancel = () => {
     setFormData(INITIAL_FORM_DATA);
     setSuccessMessage(null);
+    setErrorMessage(null);
     onCancel();
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // MOCK TEMPORARIO: a API de cadastro substituirá esta confirmação local.
-    setSuccessMessage(
-      `Turma "${formData.nome}" pronta para ser enviada quando a API estiver disponível.`,
-    );
+    const resultado = await criarTurmaAction({
+      curso: formData.curso,
+      nome: formData.nome,
+      instrutor: formData.instrutor,
+      dataInicio: formData.dataInicio,
+      dataTermino: formData.dataTermino,
+      horarios: formData.horarios,
+      limiteAlunos: Number(formData.limiteAlunos),
+      status: formData.status,
+    });
+
+    setIsSubmitting(false);
+
+    if (!resultado.sucesso) {
+      setErrorMessage(resultado.mensagem);
+      return;
+    }
+
+    setSuccessMessage(resultado.mensagem);
     setFormData(INITIAL_FORM_DATA);
+    router.refresh();
   };
 
   if (!isOpen) {
@@ -90,6 +114,15 @@ export const NewClassForm = ({
           className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
         >
           {successMessage}
+        </output>
+      )}
+
+      {errorMessage && (
+        <output
+          aria-live="polite"
+          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {errorMessage}
         </output>
       )}
 
@@ -227,8 +260,9 @@ export const NewClassForm = ({
         </div>
 
         <CoordinatorFormActions
-          submitLabel="Salvar turma"
+          submitLabel={isSubmitting ? "Salvando..." : "Salvar turma"}
           onCancel={handleCancel}
+          disabled={isSubmitting}
         />
       </form>
     </section>

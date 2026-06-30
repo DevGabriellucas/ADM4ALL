@@ -9,14 +9,13 @@ export class EmailService {
     host?: string,
     port?: number,
   ) {
+    const smtpPort = port ?? 587;
+
     this.transporter = nodemailer.createTransport({
-      host: host || "smtp.gmail.com",
-      port: port ? Number(port) : 587,
-      secure: port ? Number(port) === 465 : false,
+      host: host ?? "smtp.gmail.com",
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: { user: usuario, pass: senhaApp },
-      tls: {
-        rejectUnauthorized: false,
-      },
     });
   }
 

@@ -5,8 +5,7 @@ import {
   getCertificates,
   getClassById,
   getClassMaterials,
-  getLessons,
-  getStudents,
+  getClassStudentsAndLessons,
 } from "@/services/coordinatorService";
 
 interface CoordinatorClassDetailsPageProps {
@@ -23,10 +22,9 @@ export default async function CoordinatorClassDetailsPage({
     notFound();
   }
 
-  const [students, lessons, attendance, materials, certificates] =
+  const [{ students, lessons }, attendance, materials, certificates] =
     await Promise.all([
-      getStudents(),
-      getLessons(),
+      getClassStudentsAndLessons(id),
       getAttendanceSummary(),
       getClassMaterials(classGroup.nome),
       getCertificates(),
@@ -35,8 +33,8 @@ export default async function CoordinatorClassDetailsPage({
   return (
     <ClassDetailsContent
       classGroup={classGroup}
-      students={students.filter((student) => student.turma === classGroup.nome)}
-      lessons={lessons.filter((lesson) => lesson.turma === classGroup.nome)}
+      students={students}
+      lessons={lessons}
       attendance={attendance.filter(
         (record) => record.turma === classGroup.nome,
       )}
