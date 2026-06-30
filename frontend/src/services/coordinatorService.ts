@@ -1,7 +1,6 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
-import { cookies } from "next/headers";
 import {
   coordinatorAttendanceMock,
   coordinatorCertificatesMock,
@@ -13,6 +12,7 @@ import {
   coordinatorStudentsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
+import { ApiError, authenticatedRequest } from "@/services/apiClient";
 import type {
   AttendanceSummary,
   BaseUser,
@@ -33,42 +33,6 @@ import type {
 // processos, relatorios, usuarios, configuracoes) ainda nao tem backend e
 // continuam retornando mock. Dashboard, cursos, instrutores e turmas ja
 // consultam a API real.
-
-interface ApiConfig {
-  baseUrl: string;
-  token: string;
-}
-
-const getApiConfig = async (): Promise<ApiConfig | null> => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!baseUrl) {
-    return null;
-  }
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get("adm4all_token")?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  return { baseUrl, token };
-};
-
-const montarHeaders = (config: ApiConfig): HeadersInit => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${config.token}`,
-});
-
-const extrairErro = async (response: Response, fallback: string) => {
-  try {
-    const data = await response.json();
-    return data?.erro ?? data?.mensagem ?? fallback;
-  } catch {
-    return fallback;
-  }
-};
 
 interface CursoApi {
   id: string;
@@ -153,56 +117,22 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
 
 export const getDashboardSummary =
   async (): Promise<CoordinatorDashboardSummary> => {
-    const config = await getApiConfig();
-
-    if (!config) {
-      return {
-        totalCursos: 0,
-        totalTurmas: 0,
-        totalAlunos: 0,
-        totalInstrutores: 0,
-        frequenciaMedia: 0,
-        certificadosPendentes: 0,
-        processosAbertos: 0,
-        usuariosPendentes: 0,
-        relatorios: [],
-      };
-    }
-
-    const response = await fetch(`${config.baseUrl}/coordenador/dashboard`, {
-      headers: montarHeaders(config),
+    const dados = await authenticatedRequest<
+      Omit<CoordinatorDashboardSummary, "relatorios">
+    >("/coordenador/dashboard", {
       cache: "no-store",
+      fallbackError: "Falha ao carregar o painel.",
     });
-
-    if (!response.ok) {
-      throw new Error(
-        await extrairErro(response, "Falha ao carregar o painel."),
-      );
-    }
-
-    const dados = await response.json();
 
     return { ...dados, relatorios: [] };
   };
 
 export const getCourses = async (): Promise<Course[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
-
-  const response = await fetch(`${config.baseUrl}/cursos`, {
-    headers: montarHeaders(config),
+  const cursos = await authenticatedRequest<CursoApi[]>("/cursos", {
     cache: "no-store",
+    fallbackError: "Falha ao carregar os cursos.",
   });
 
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar os cursos."),
-    );
-  }
-
-  const cursos: CursoApi[] = await response.json();
   return cursos.map(mapearCurso);
 };
 
@@ -212,42 +142,24 @@ export const createCourse = async (input: {
   cargaHoraria: number;
   status: Course["status"];
 }): Promise<Course> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para cadastrar um curso.");
-  }
-
-  const response = await fetch(`${config.baseUrl}/cursos`, {
+  const curso = await authenticatedRequest<CursoApi>("/cursos", {
     method: "POST",
-    headers: montarHeaders(config),
     body: JSON.stringify(input),
+    fallbackError: "Falha ao cadastrar o curso.",
   });
 
-  if (!response.ok) {
-    throw new Error(await extrairErro(response, "Falha ao cadastrar o curso."));
-  }
-
-  return mapearCurso(await response.json());
+  return mapearCurso(curso);
 };
 
 export const getInstructors = async (): Promise<Instructor[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
+  const instrutores = await authenticatedRequest<InstrutorApi[]>(
+    "/instrutores",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os instrutores.",
+    },
+  );
 
-  const response = await fetch(`${config.baseUrl}/instrutores`, {
-    headers: montarHeaders(config),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar os instrutores."),
-    );
-  }
-
-  const instrutores: InstrutorApi[] = await response.json();
   return instrutores.map(mapearInstrutor);
 };
 
@@ -256,44 +168,22 @@ export const inviteInstructor = async (input: {
   email: string;
   telefone?: string;
 }): Promise<{ id: string; nome: string }> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para convidar um instrutor.");
-  }
-
-  const response = await fetch(`${config.baseUrl}/instrutores`, {
-    method: "POST",
-    headers: montarHeaders(config),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao enviar o convite de ativacao."),
-    );
-  }
-
-  return await response.json();
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/instrutores",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de ativacao.",
+    },
+  );
 };
 
 export const getClasses = async (): Promise<ClassGroup[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
-
-  const response = await fetch(`${config.baseUrl}/turmas`, {
-    headers: montarHeaders(config),
+  const turmas = await authenticatedRequest<TurmaApi[]>("/turmas", {
     cache: "no-store",
+    fallbackError: "Falha ao carregar as turmas.",
   });
 
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar as turmas."),
-    );
-  }
-
-  const turmas: TurmaApi[] = await response.json();
   return turmas.map(mapearTurma);
 };
 
@@ -307,42 +197,33 @@ export const createClass = async (input: {
   limiteAlunos: number;
   status: ClassGroup["status"];
 }): Promise<ClassGroup> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para cadastrar uma turma.");
-  }
-
-  const response = await fetch(`${config.baseUrl}/turmas`, {
+  const turma = await authenticatedRequest<TurmaApi>("/turmas", {
     method: "POST",
-    headers: montarHeaders(config),
     body: JSON.stringify(input),
+    fallbackError: "Falha ao cadastrar a turma.",
   });
 
-  if (!response.ok) {
-    throw new Error(await extrairErro(response, "Falha ao cadastrar a turma."));
-  }
-
-  return mapearTurma(await response.json());
+  return mapearTurma(turma);
 };
 
 const buscarTurmaDetalheApi = async (
   id: string,
 ): Promise<TurmaDetalheApi | null> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return null;
+  try {
+    return await authenticatedRequest<TurmaDetalheApi>(`/turmas/${id}`, {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os detalhes da turma.",
+    });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
   }
-
-  const response = await fetch(`${config.baseUrl}/turmas/${id}`, {
-    headers: montarHeaders(config),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return await response.json();
 };
 
 export const getClassById = async (

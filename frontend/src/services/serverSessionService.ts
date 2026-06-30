@@ -1,9 +1,12 @@
 import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAMES } from "@/services/sessionService";
+import {
+  SESSION_COOKIE_NAMES,
+  type SessionProfile,
+} from "@/services/sessionService";
 
 export interface ServerSession {
   token: string;
-  perfil: "aluno" | "instrutor" | "coordenador" | "admin";
+  perfil: SessionProfile;
   usuarioId: string;
   alunoId?: string;
   instrutorId?: string;

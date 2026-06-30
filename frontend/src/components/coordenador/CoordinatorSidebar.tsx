@@ -25,7 +25,7 @@ export const CoordinatorSidebar = () => {
 
   const logout = () => {
     clearSession();
-    router.push("/");
+    router.replace("/");
   };
 
   return (
@@ -47,8 +47,7 @@ export const CoordinatorSidebar = () => {
       >
         {NAV_ITEMS.map((item) => {
           const isActive =
-            pathname === item.href ||
-            pathname.startsWith(`${item.href}/`);
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link

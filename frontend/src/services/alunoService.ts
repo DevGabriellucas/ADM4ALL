@@ -3,6 +3,7 @@ import {
   alunoEmProgressoMock,
   alunoReprovadoPorFaltaMock,
 } from "@/mocks/alunoDashboardMock";
+import { authenticatedRequest } from "@/services/apiClient";
 import type { getAlunoSession } from "@/services/serverSessionService";
 import type { AlunoDashboard } from "@/types/aluno";
 
@@ -28,43 +29,17 @@ const getAlunoDashboardMock = (): AlunoDashboard => {
   return alunoEmProgressoMock;
 };
 
-const montarHeaders = (session: AlunoSession): HeadersInit => {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.token}`,
-  };
-};
-
 export const getAlunoDashboard = async (
   session: AlunoSession,
 ): Promise<AlunoDashboard> => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!baseUrl) {
-    if (usarMockEmDesenvolvimento) {
-      console.warn(
-        "[alunoService] NEXT_PUBLIC_API_URL ausente; usando mock temporario do dashboard do aluno.",
-      );
-      return getAlunoDashboardMock();
-    }
-
-    throw new Error("URL da API nao configurada.");
-  }
-
   try {
-    const response = await fetch(
-      `${baseUrl}/alunos/${session.alunoId}`,
+    return await authenticatedRequest<AlunoDashboard>(
+      `/alunos/${session.alunoId}`,
       {
-        headers: montarHeaders(session),
         cache: "no-store",
+        fallbackError: "Falha ao carregar o painel do aluno.",
       },
     );
-
-    if (!response.ok) {
-      throw new Error(`A API respondeu com status ${response.status}.`);
-    }
-
-    return (await response.json()) as AlunoDashboard;
   } catch (error) {
     if (usarMockEmDesenvolvimento) {
       console.warn(

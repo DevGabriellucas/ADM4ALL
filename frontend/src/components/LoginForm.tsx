@@ -45,13 +45,14 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
       saveSession(result);
 
       const destinoPorPerfil = {
-        aluno: "/aluno/dashboard",
-        instrutor: "/instrutor/dashboard",
-        coordenador: "/coordenador/dashboard",
-        admin: "/coordenador/dashboard",
+        aluno: "/aluno",
+        instrutor: "/instrutor",
+        coordenador: "/coordenador",
+        // A rota /dashboard ainda nao existe; o admin reutiliza a area de gestao.
+        admin: "/coordenador",
       } as const;
 
-      router.push(destinoPorPerfil[result.usuario.perfil]);
+      router.replace(destinoPorPerfil[result.usuario.perfil]);
     } catch (error: unknown) {
       setMessage({
         type: "error",
