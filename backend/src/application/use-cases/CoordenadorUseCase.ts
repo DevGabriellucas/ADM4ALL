@@ -4,7 +4,9 @@ import {
   CampoPendenteAtivacao,
 } from "../../domain/repositories/ActivationRepository";
 import {
+  AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
+  AtualizarAlunoCoordenadorInput,
   ConviteCriado,
   CoordenadorRepository,
   CursoResumo,
@@ -56,6 +58,13 @@ export interface CriarTurmaEntrada {
   coordenadorId?: string | null;
 }
 
+export interface AtualizarAlunoEntrada {
+  nome: string;
+  email: string;
+  telefone?: string | null;
+  statusConta: AlunoDetalheCoordenador["statusConta"];
+}
+
 const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "encerrado"];
 const TURMA_STATUS_VALIDOS = [
   "planejada",
@@ -64,6 +73,12 @@ const TURMA_STATUS_VALIDOS = [
   "cancelada",
 ];
 const SALT_ROUNDS = 10;
+const STATUS_CONTA_VALIDOS = [
+  "ativo",
+  "inativo",
+  "bloqueado",
+  "pendente_ativacao",
+] as const;
 
 export class CoordenadorUseCase {
   constructor(
@@ -118,6 +133,68 @@ export class CoordenadorUseCase {
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
     return await this.coordenadorRepository.listarAlunos();
+  }
+
+  async buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador> {
+    if (!id) {
+      throw new BadRequestError("O ID do aluno e obrigatorio.");
+    }
+
+    const aluno = await this.coordenadorRepository.buscarAlunoDetalhe(id);
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    return aluno;
+  }
+
+  async atualizarAluno(
+    id: string,
+    input: AtualizarAlunoEntrada,
+  ): Promise<AlunoDetalheCoordenador> {
+    const alunoAtual = await this.buscarAlunoDetalhe(id);
+
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do aluno e obrigatorio.");
+    }
+
+    let email: string;
+    let telefone: string | null;
+    try {
+      email = new Email(input.email).value;
+      telefone = input.telefone ? new Telefone(input.telefone).value : null;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados pessoais invalidos.",
+      );
+    }
+
+    if (!STATUS_CONTA_VALIDOS.includes(input.statusConta)) {
+      throw new BadRequestError("Status da conta invalido.");
+    }
+
+    const usuarioComEmail =
+      await this.coordenadorRepository.buscarUsuarioPorEmail(email);
+    if (usuarioComEmail && usuarioComEmail.id !== alunoAtual.usuarioId) {
+      throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const dadosAtualizados: AtualizarAlunoCoordenadorInput = {
+      nome: input.nome.trim(),
+      email,
+      telefone,
+      statusConta: input.statusConta,
+    };
+    const aluno = await this.coordenadorRepository.atualizarAluno(
+      id,
+      dadosAtualizados,
+    );
+
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    return aluno;
   }
 
   async convidarInstrutor(

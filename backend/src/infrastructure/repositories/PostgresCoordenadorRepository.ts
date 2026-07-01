@@ -1,6 +1,8 @@
 import { Pool } from "pg";
 import {
+  AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
+  AtualizarAlunoCoordenadorInput,
   AulaResumo,
   ConvidarAlunoInput,
   ConvidarInstrutorInput,
@@ -177,6 +179,133 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       statusMatricula: linha.status_matricula ?? null,
       dataCriacao: linha.data_criacao,
     }));
+  }
+
+  async buscarAlunoDetalhe(
+    id: string,
+  ): Promise<AlunoDetalheCoordenador | null> {
+    const alunoResultado = await this.db.query(
+      `
+      SELECT
+        a.id,
+        a.usuario_id,
+        u.nome,
+        u.email,
+        u.cpf,
+        a.telefone,
+        to_char(a.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
+        a.rgm,
+        a.curso_unipe,
+        u.status AS status_conta,
+        to_char(a.data_cadastro, 'YYYY-MM-DD') AS data_criacao
+      FROM alunos a
+      JOIN usuarios u ON u.id = a.usuario_id
+      WHERE a.id = $1
+      `,
+      [id],
+    );
+    const linha = alunoResultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    const matriculasResultado = await this.db.query(
+      `
+      SELECT
+        m.id,
+        m.turma_id,
+        t.nome AS turma,
+        tr.nome AS curso,
+        m.status,
+        COALESCE(
+          ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)),
+          0
+        ) AS frequencia,
+        to_char(m.data_matricula, 'YYYY-MM-DD') AS data_matricula
+      FROM matriculas m
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      LEFT JOIN turmas t ON t.id = m.turma_id
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      WHERE m.aluno_id = $1
+      GROUP BY
+        m.id,
+        m.turma_id,
+        t.nome,
+        tr.nome,
+        m.status,
+        m.data_matricula
+      ORDER BY m.data_matricula DESC, m.id DESC
+      `,
+      [id],
+    );
+
+    return {
+      id: linha.id,
+      usuarioId: linha.usuario_id,
+      nome: linha.nome,
+      email: linha.email,
+      cpf: linha.cpf ?? null,
+      telefone: linha.telefone ?? null,
+      dataNascimento: linha.data_nascimento ?? null,
+      rgm: linha.rgm ?? null,
+      cursoUnipe: linha.curso_unipe ?? null,
+      statusConta: linha.status_conta,
+      dataCriacao: linha.data_criacao,
+      matriculas: matriculasResultado.rows.map((matricula) => ({
+        id: matricula.id,
+        turmaId: matricula.turma_id ?? null,
+        turma: matricula.turma ?? null,
+        curso: matricula.curso ?? null,
+        status: matricula.status,
+        frequencia: Number(matricula.frequencia),
+        dataMatricula: matricula.data_matricula,
+      })),
+    };
+  }
+
+  async atualizarAluno(
+    id: string,
+    input: AtualizarAlunoCoordenadorInput,
+  ): Promise<AlunoDetalheCoordenador | null> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const alunoResultado = await cliente.query(
+        "SELECT usuario_id FROM alunos WHERE id = $1 FOR UPDATE",
+        [id],
+      );
+      const usuarioId = alunoResultado.rows[0]?.usuario_id;
+      if (!usuarioId) {
+        await cliente.query("ROLLBACK");
+        return null;
+      }
+
+      await cliente.query(
+        `UPDATE usuarios
+         SET nome = $1, email = $2, status = $3
+         WHERE id = $4`,
+        [input.nome, input.email, input.statusConta, usuarioId],
+      );
+      await cliente.query("UPDATE alunos SET telefone = $1 WHERE id = $2", [
+        input.telefone,
+        id,
+      ]);
+
+      await cliente.query("COMMIT");
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Ja existe um usuario com este e-mail.");
+      }
+      throw error;
+    } finally {
+      cliente.release();
+    }
+
+    return await this.buscarAlunoDetalhe(id);
   }
 
   async buscarInstrutorAtivoPorNome(

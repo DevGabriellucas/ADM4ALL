@@ -554,6 +554,32 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/alunos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const aluno = await this.coordenadorUseCase.buscarAlunoDetalhe(id);
+        res.json(aluno);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/alunos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, email, telefone, statusConta } = req.body ?? {};
+        const aluno = await this.coordenadorUseCase.atualizarAluno(id, {
+          nome,
+          email,
+          telefone,
+          statusConta,
+        });
+        res.json(aluno);
+      }),
+    );
+
+    this.app.get(
       "/turmas",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {

@@ -57,6 +57,38 @@ export interface AlunoListagemCoordenador {
   dataCriacao: string;
 }
 
+export interface MatriculaAlunoCoordenador {
+  id: string;
+  turmaId: string | null;
+  turma: string | null;
+  curso: string | null;
+  status: "em_andamento" | "aprovado" | "reprovado_falta" | "cancelado";
+  frequencia: number;
+  dataMatricula: string;
+}
+
+export interface AlunoDetalheCoordenador {
+  id: string;
+  usuarioId: string;
+  nome: string;
+  email: string;
+  cpf: string | null;
+  telefone: string | null;
+  dataNascimento: string | null;
+  rgm: string | null;
+  cursoUnipe: string | null;
+  statusConta: "ativo" | "inativo" | "bloqueado" | "pendente_ativacao";
+  dataCriacao: string;
+  matriculas: MatriculaAlunoCoordenador[];
+}
+
+export interface AtualizarAlunoCoordenadorInput {
+  nome: string;
+  email: string;
+  telefone: string | null;
+  statusConta: AlunoDetalheCoordenador["statusConta"];
+}
+
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
@@ -142,6 +174,11 @@ export interface CoordenadorRepository {
 
   listarInstrutores(): Promise<InstrutorListagem[]>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
+  buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
+  atualizarAluno(
+    id: string,
+    input: AtualizarAlunoCoordenadorInput,
+  ): Promise<AlunoDetalheCoordenador | null>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
