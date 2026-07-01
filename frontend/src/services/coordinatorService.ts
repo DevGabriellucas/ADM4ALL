@@ -27,6 +27,7 @@ import type {
   Lesson,
   ProcessRecord,
   Student,
+  StudentDetail,
   UserStatus,
 } from "@/types/coordinator";
 
@@ -364,6 +365,58 @@ export const getStudents = async (): Promise<Student[]> => {
       dataCriacao: aluno.dataCriacao,
     };
   });
+};
+
+export const getStudentById = async (
+  id: string,
+): Promise<StudentDetail | null> => {
+  try {
+    const aluno = await authenticatedRequest<StudentDetail>(
+      `/coordenador/alunos/${id}`,
+      {
+        cache: "no-store",
+        fallbackError: "Falha ao carregar os dados do aluno.",
+      },
+    );
+
+    for (const matricula of aluno.matriculas) {
+      if (!isMatriculaStatus(matricula.status)) {
+        throw new Error(
+          `Status de matrícula inválido recebido para ${aluno.nome}.`,
+        );
+      }
+    }
+
+    return aluno;
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+export const updateStudent = async (
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    telefone: string | null;
+    statusConta: UserStatus;
+  },
+): Promise<StudentDetail> => {
+  return await authenticatedRequest<StudentDetail>(
+    `/coordenador/alunos/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao atualizar os dados do aluno.",
+    },
+  );
 };
 
 export const getClassMaterials = async (

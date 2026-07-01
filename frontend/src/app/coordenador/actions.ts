@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import * as coordinatorService from "@/services/coordinatorService";
-import type { ClassGroup, Course } from "@/types/coordinator";
+import type { ClassGroup, Course, UserStatus } from "@/types/coordinator";
 
 interface ResultadoAction {
   sucesso: boolean;
@@ -81,6 +81,34 @@ export async function convidarAlunoAction(input: {
         error instanceof Error
           ? error.message
           : "Falha ao enviar o convite de ativacao.",
+    };
+  }
+}
+
+export async function atualizarAlunoAction(
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    telefone: string | null;
+    statusConta: UserStatus;
+  },
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateStudent(id, input);
+    revalidatePath("/coordenador/alunos");
+    revalidatePath(`/coordenador/alunos/${id}`);
+    return {
+      sucesso: true,
+      mensagem: "Dados do aluno atualizados com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar os dados do aluno.",
     };
   }
 }

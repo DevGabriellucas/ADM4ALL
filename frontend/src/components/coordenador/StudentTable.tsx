@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student } from "@/types/coordinator";
@@ -107,15 +108,12 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
-                      <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Funcionalidade ainda não disponível no MVP"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                      <Link
+                        href={`/coordenador/alunos/${student.id}`}
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Visualizar
-                      </button>
+                      </Link>
                       <button
                         type="button"
                         disabled

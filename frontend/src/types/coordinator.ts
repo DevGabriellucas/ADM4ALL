@@ -98,6 +98,31 @@ export interface Student {
   dataCriacao: string;
 }
 
+export interface StudentEnrollment {
+  id: string;
+  turmaId: string | null;
+  turma: string | null;
+  curso: string | null;
+  status: MatriculaStatus;
+  frequencia: number;
+  dataMatricula: string;
+}
+
+export interface StudentDetail {
+  id: string;
+  usuarioId: string;
+  nome: string;
+  email: string;
+  cpf: string | null;
+  telefone: string | null;
+  dataNascimento: string | null;
+  rgm: string | null;
+  cursoUnipe: string | null;
+  statusConta: UserStatus;
+  dataCriacao: string;
+  matriculas: StudentEnrollment[];
+}
+
 export interface Course {
   id: string;
   nome: string;
