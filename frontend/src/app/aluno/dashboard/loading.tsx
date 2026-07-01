@@ -1,5 +1,5 @@
 export default function AlunoDashboardLoading() {
-  const cards = ["faltas", "progresso", "planejadas", "concluidas", "status"];
+  const cards = ["faltas", "progresso", "aulas", "status"];
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 font-poppins text-slate-950 sm:px-6 lg:px-8">

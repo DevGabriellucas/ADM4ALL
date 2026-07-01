@@ -4,7 +4,6 @@ import { AuthUseCase } from "./application/use-cases/AuthUseCase";
 import { CoordenadorUseCase } from "./application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
-//import { InMemoryAlunoRepository } from "./infrastructure/repositories/InMemoryAlunoRepository";
 import { pool } from "./infrastructure/database/database";
 import { EmailService } from "./infrastructure/email/EmailService";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
@@ -13,7 +12,6 @@ import { PostgresCoordenadorRepository } from "./infrastructure/repositories/Pos
 import { PostgresInstrutorRepository } from "./infrastructure/repositories/PostgresInstrutorRepository";
 import { ExpressAdapter } from "./infrastructure/server/ExpressAdapter";
 
-//const alunoRepository = new InMemoryAlunoRepository();
 const authRepository = new PostgresAuthRepository(pool);
 const alunoRepository = new PostgresAlunoRepository(pool);
 const instrutorRepository = new PostgresInstrutorRepository(pool);

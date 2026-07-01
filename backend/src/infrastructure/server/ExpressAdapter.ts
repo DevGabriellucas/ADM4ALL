@@ -179,7 +179,7 @@ export class ExpressAdapter {
     this.app.post(
       "/auth/login",
       asyncHandler(async (req: Request, res: Response) => {
-        const { identifier, password } = req.body;
+        const { identifier, password } = req.body ?? {};
 
         if (!identifier || !password) {
           throw new BadRequestError("Identificador e senha sao obrigatorios.");

@@ -38,9 +38,10 @@ export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
 
         <AlunoInfoCard title="Progresso" value={`${aluno.progresso}%`} />
 
-        <AlunoInfoCard title="Aulas planejadas" value={aluno.aulasPlanejadas} />
-
-        <AlunoInfoCard title="Aulas concluidas" value={aluno.aulasConcluidas} />
+        <AlunoInfoCard
+          title="Aulas"
+          value={`${aluno.aulasConcluidas} de ${aluno.aulasPlanejadas}`}
+        />
 
         <AlunoInfoCard title="Status" value={STATUS_LABELS[aluno.status]} />
       </div>
