@@ -186,16 +186,19 @@ VALUES
 ON CONFLICT (usuario_id) DO NOTHING;
 
 -- Tokens puros apenas para testes locais das tres variacoes da tela:
--- ativacao-aluno-publico-2026
--- ativacao-aluno-coordenador-2026
--- ativacao-instrutor-coordenador-2026
+-- Aluno publico:
+-- fcb88731d54aea7ff9123168b77442bb7f7822f0beb4e71668d33f90d5f7ecef
+-- Aluno convidado pelo coordenador:
+-- ab29869ddce2d704033b0207aa5ecdd6f39103545d02e1b3e6f36b69842a168c
+-- Instrutor convidado pelo coordenador:
+-- 98fa8d3db1caa79c5070d6b613d215031d6c1d63746ccf083018bf0b6ae2b554
 INSERT INTO ativacoes_conta
     (id, usuario_id, token_hash, tipo, origem, campos_pendentes, expira_em)
 VALUES
     (
         '10a91765-d3a1-413c-b06c-b775646455ef',
         '744b59d4-4d69-4826-9d6c-5b70d7c5a4ce',
-        encode(digest('ativacao-aluno-publico-2026', 'sha256'), 'hex'),
+        encode(digest('fcb88731d54aea7ff9123168b77442bb7f7822f0beb4e71668d33f90d5f7ecef', 'sha256'), 'hex'),
         'ativacao',
         'cadastro_publico',
         '{}',
@@ -204,7 +207,7 @@ VALUES
     (
         'd2652436-371e-4e3a-a605-ce87bddf4992',
         'acbf238d-4461-4749-9fc9-53eb21a6da0f',
-        encode(digest('ativacao-aluno-coordenador-2026', 'sha256'), 'hex'),
+        encode(digest('ab29869ddce2d704033b0207aa5ecdd6f39103545d02e1b3e6f36b69842a168c', 'sha256'), 'hex'),
         'ativacao',
         'criado_por_coordenador',
         ARRAY['senha', 'whatsapp', 'rgm', 'cursoUnipe'],
@@ -213,7 +216,7 @@ VALUES
     (
         'f27fa95a-18d2-452e-861a-700a74be27cc',
         '74c65249-0017-4507-b17b-f080e770926f',
-        encode(digest('ativacao-instrutor-coordenador-2026', 'sha256'), 'hex'),
+        encode(digest('98fa8d3db1caa79c5070d6b613d215031d6c1d63746ccf083018bf0b6ae2b554', 'sha256'), 'hex'),
         'ativacao',
         'criado_por_coordenador',
         ARRAY['senha', 'whatsapp', 'areaAtuacao', 'formacao'],
