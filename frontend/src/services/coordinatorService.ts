@@ -1,6 +1,7 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
+import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
   coordinatorAttendanceMock,
   coordinatorCertificatesMock,
@@ -262,17 +263,26 @@ export const getClassStudentsAndLessons = async (
     return { students: [], lessons: [] };
   }
 
-  const students: Student[] = detalhe.alunos.map((aluno) => ({
-    id: aluno.id,
-    nome: aluno.nome,
-    email: aluno.email,
-    telefone: aluno.telefone ?? undefined,
-    turma: detalhe.turma.nome,
-    curso: detalhe.turma.curso,
-    frequencia: aluno.frequencia,
-    status: aluno.status as Student["status"],
-    dataCriacao: "",
-  }));
+  const students: Student[] = detalhe.alunos.map((aluno) => {
+    if (!isMatriculaStatus(aluno.status)) {
+      throw new Error(
+        `Status de matrícula inválido recebido para ${aluno.nome}.`,
+      );
+    }
+
+    return {
+      id: aluno.id,
+      nome: aluno.nome,
+      email: aluno.email,
+      telefone: aluno.telefone ?? undefined,
+      turma: detalhe.turma.nome,
+      curso: detalhe.turma.curso,
+      frequencia: aluno.frequencia,
+      statusConta: null,
+      statusMatricula: aluno.status,
+      dataCriacao: "",
+    };
+  });
 
   const lessons: Lesson[] = detalhe.cronograma.map((aula) => ({
     id: aula.id,

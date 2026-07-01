@@ -1,28 +1,25 @@
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student } from "@/types/coordinator";
 
 interface StudentTableProps {
   students: Student[];
 }
 
-const getStudentStatusInfo = (status: Student["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-
-  if (status === "pendente_ativacao") {
+const getStudentStatusInfo = (student: Student) => {
+  if (student.statusConta === "pendente_ativacao") {
     return { label: "Pendente de ativação", tone: "amber" as const };
   }
 
-  if (status === "reprovado_por_falta") {
-    return { label: "Reprovado por falta", tone: "red" as const };
+  if (student.statusConta === "inativo") {
+    return { label: "Inativo", tone: "slate" as const };
   }
 
-  if (status === "concluido") {
-    return { label: "Concluído", tone: "blue" as const };
+  if (student.statusMatricula) {
+    return getMatriculaStatusInfo(student.statusMatricula);
   }
 
-  return { label: "Inativo", tone: "slate" as const };
+  return { label: "Sem matrícula", tone: "slate" as const };
 };
 
 export const StudentTable = ({ students }: StudentTableProps) => {
@@ -70,7 +67,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
 
           <tbody>
             {students.map((student) => {
-              const status = getStudentStatusInfo(student.status);
+              const status = getStudentStatusInfo(student);
 
               return (
                 <tr key={student.id}>
@@ -87,12 +84,13 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                     <span
                       className={
                         student.frequencia < 75 &&
-                        student.status !== "pendente_ativacao"
+                        student.statusConta !== "pendente_ativacao"
                           ? "font-semibold text-red-700"
                           : "text-slate-700"
                       }
                     >
-                      {student.status === "pendente_ativacao"
+                      {student.statusConta === "pendente_ativacao" ||
+                      !student.statusMatricula
                         ? "Não iniciada"
                         : `${student.frequencia}%`}
                     </span>
@@ -123,7 +121,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                       >
                         Vincular à turma
                       </button>
-                      {student.status === "pendente_ativacao" && (
+                      {student.statusConta === "pendente_ativacao" && (
                         <button
                           type="button"
                           className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
@@ -131,7 +129,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                           Reenviar ativação
                         </button>
                       )}
-                      {student.status === "ativo" && (
+                      {student.statusConta === "ativo" && (
                         <button
                           type="button"
                           className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"

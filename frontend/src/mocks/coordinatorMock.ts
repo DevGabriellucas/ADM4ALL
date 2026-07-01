@@ -1,3 +1,4 @@
+import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type {
   AttendanceSummary,
   BaseUser,
@@ -79,7 +80,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ADM-2026-01",
     curso: "Assistente Administrativo",
     frequencia: 92,
-    status: "ativo",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.EM_ANDAMENTO,
     dataCriacao: "2026-05-20",
   },
   {
@@ -90,7 +92,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ADM-2026-01",
     curso: "Assistente Administrativo",
     frequencia: 78,
-    status: "ativo",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.EM_ANDAMENTO,
     dataCriacao: "2026-05-20",
   },
   {
@@ -100,7 +103,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ADM-2026-01",
     curso: "Assistente Administrativo",
     frequencia: 70,
-    status: "reprovado_por_falta",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.REPROVADO_FALTA,
     dataCriacao: "2026-05-21",
   },
   {
@@ -111,7 +115,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ATD-2026-01",
     curso: "Atendimento ao Cliente",
     frequencia: 96,
-    status: "ativo",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.EM_ANDAMENTO,
     dataCriacao: "2026-05-22",
   },
   {
@@ -122,7 +127,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "Não vinculada",
     curso: "Noções Financeiras",
     frequencia: 0,
-    status: "pendente_ativacao",
+    statusConta: "pendente_ativacao",
+    statusMatricula: null,
     dataCriacao: "2026-06-24",
   },
   {
@@ -132,7 +138,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ATD-2026-01",
     curso: "Atendimento ao Cliente",
     frequencia: 72,
-    status: "ativo",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.EM_ANDAMENTO,
     dataCriacao: "2026-05-24",
   },
   {
@@ -142,7 +149,8 @@ export const coordinatorStudentsMock: Student[] = [
     turma: "ATD-2026-01",
     curso: "Atendimento ao Cliente",
     frequencia: 85,
-    status: "ativo",
+    statusConta: "ativo",
+    statusMatricula: MATRICULA_STATUS.EM_ANDAMENTO,
     dataCriacao: "2026-05-25",
   },
 ];
@@ -307,7 +315,7 @@ export const coordinatorAttendanceMock: AttendanceSummary[] = [
     presencas: 8,
     faltas: 4,
     frequencia: 70,
-    situacao: "reprovado_por_falta",
+    situacao: MATRICULA_STATUS.REPROVADO_FALTA,
   },
   {
     aluno: "Priscila Cahino",
@@ -512,7 +520,10 @@ export const coordinatorReportsMock: CoordinatorReportData[] = [
       { key: "frequencia", label: "Frequência" },
     ],
     rows: coordinatorStudentsMock
-      .filter((student) => student.status === "reprovado_por_falta")
+      .filter(
+        (student) =>
+          student.statusMatricula === MATRICULA_STATUS.REPROVADO_FALTA,
+      )
       .map((student) => ({
         id: `report-failed-${student.id}`,
         data: student.dataCriacao,

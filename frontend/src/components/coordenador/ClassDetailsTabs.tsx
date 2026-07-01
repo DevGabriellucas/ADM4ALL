@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type {
   AttendanceSummary,
   CertificateRecord,
@@ -38,22 +39,6 @@ const formatDate = (date: string) => {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
     new Date(date),
   );
-};
-
-const getStudentStatus = (status: Student["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-  if (status === "pendente_ativacao") {
-    return { label: "Pendente de ativação", tone: "amber" as const };
-  }
-  if (status === "reprovado_por_falta") {
-    return { label: "Reprovado por falta", tone: "red" as const };
-  }
-  if (status === "concluido") {
-    return { label: "Concluído", tone: "blue" as const };
-  }
-  return { label: "Inativo", tone: "slate" as const };
 };
 
 const getLessonStatus = (status: Lesson["status"]) => {
@@ -138,7 +123,9 @@ export const ClassDetailsTabs = ({
               </thead>
               <tbody>
                 {students.map((student) => {
-                  const status = getStudentStatus(student.status);
+                  const status = student.statusMatricula
+                    ? getMatriculaStatusInfo(student.statusMatricula)
+                    : { label: "Sem matrícula", tone: "slate" as const };
 
                   return (
                     <tr key={student.id}>

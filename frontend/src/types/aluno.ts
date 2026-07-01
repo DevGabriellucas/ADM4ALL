@@ -1,8 +1,6 @@
-export type AlunoStatus =
-  | "em_andamento"
-  | "aprovado"
-  | "reprovado_falta"
-  | "cancelado";
+import type { MatriculaStatus } from "@/constants/matriculaStatus";
+
+export type AlunoStatus = MatriculaStatus;
 
 export interface AlunoDashboardResponse {
   nome: string;

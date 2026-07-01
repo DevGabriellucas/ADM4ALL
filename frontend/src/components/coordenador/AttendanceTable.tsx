@@ -1,4 +1,8 @@
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import {
+  getMatriculaStatusInfo,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import type {
   AttendanceSituation,
   AttendanceSummary,
@@ -19,7 +23,7 @@ const getSituationInfo = (situation: AttendanceSituation) => {
   if (situation === "risco_reprovacao") {
     return { label: "Risco de reprovação", tone: "red" as const };
   }
-  return { label: "Reprovado por falta", tone: "red" as const };
+  return getMatriculaStatusInfo(MATRICULA_STATUS.REPROVADO_FALTA);
 };
 
 export const AttendanceTable = ({ attendance }: AttendanceTableProps) => {

@@ -1,8 +1,11 @@
+import type {
+  MATRICULA_STATUS,
+  MatriculaStatus,
+} from "@/constants/matriculaStatus";
+
 export type UserRole = "administrador" | "coordenador" | "instrutor" | "aluno";
 
 export type UserStatus = "ativo" | "pendente_ativacao" | "inativo";
-
-export type StudentStatus = UserStatus | "reprovado_por_falta" | "concluido";
 
 export type CourseStatus = "ativo" | "em_planejamento" | "encerrado";
 
@@ -26,7 +29,7 @@ export type AttendanceSituation =
   | "regular"
   | "atencao"
   | "risco_reprovacao"
-  | "reprovado_por_falta";
+  | typeof MATRICULA_STATUS.REPROVADO_FALTA;
 
 export type CertificateStatus =
   | "elegivel"
@@ -84,7 +87,8 @@ export interface Student {
   turma: string;
   curso: string;
   frequencia: number;
-  status: StudentStatus;
+  statusConta: UserStatus | null;
+  statusMatricula: MatriculaStatus | null;
   dataCriacao: string;
 }
 

@@ -1,4 +1,8 @@
 import { AlunoInfoCard } from "@/components/aluno/AlunoInfoCard";
+import {
+  getMatriculaStatusInfo,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import type { AlunoDashboard } from "@/types/aluno";
 
 interface AlunoStatusPanelProps {
@@ -8,15 +12,8 @@ interface AlunoStatusPanelProps {
   >;
 }
 
-const STATUS_LABELS: Record<AlunoDashboard["status"], string> = {
-  em_andamento: "Em andamento",
-  aprovado: "Aprovado",
-  reprovado_falta: "Reprovado por falta",
-  cancelado: "Cancelado",
-};
-
 const getFaltasHelperText = (status: AlunoDashboard["status"]) => {
-  if (status !== "reprovado_falta") {
+  if (status !== MATRICULA_STATUS.REPROVADO_FALTA) {
     return undefined;
   }
 
@@ -24,7 +21,7 @@ const getFaltasHelperText = (status: AlunoDashboard["status"]) => {
 };
 
 export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
-  const faltasEmAtencao = aluno.status === "reprovado_falta";
+  const faltasEmAtencao = aluno.status === MATRICULA_STATUS.REPROVADO_FALTA;
 
   return (
     <div className="bg-[#F1F4FC] px-5 py-8 sm:px-10 lg:px-16">
@@ -43,7 +40,10 @@ export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
           value={`${aluno.aulasConcluidas} de ${aluno.aulasPlanejadas}`}
         />
 
-        <AlunoInfoCard title="Status" value={STATUS_LABELS[aluno.status]} />
+        <AlunoInfoCard
+          title="Status"
+          value={getMatriculaStatusInfo(aluno.status).label}
+        />
       </div>
     </div>
   );

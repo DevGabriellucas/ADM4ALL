@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AlunoCompletionMessage } from "@/components/aluno/AlunoCompletionMessage";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
 import { AlunoStatusPanel } from "@/components/aluno/AlunoStatusPanel";
+import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import { getAlunoDashboard } from "@/services/alunoService";
 import { getAlunoSession } from "@/services/serverSessionService";
 
@@ -33,7 +34,7 @@ export default async function AlunoDashboardPage() {
           <AlunoStatusPanel aluno={aluno} />
         </section>
 
-        {aluno.status === "reprovado_falta" && (
+        {aluno.status === MATRICULA_STATUS.REPROVADO_FALTA && (
           <section
             className="mx-auto max-w-3xl text-center font-medium text-red-800 text-xs leading-6 tracking-[0.25em]"
             role="alert"
@@ -43,7 +44,7 @@ export default async function AlunoDashboardPage() {
           </section>
         )}
 
-        {aluno.status === "aprovado" && (
+        {aluno.status === MATRICULA_STATUS.APROVADO && (
           <AlunoCompletionMessage
             curso={aluno.curso}
             certificadoDisponivel={aluno.certificadoDisponivel}
