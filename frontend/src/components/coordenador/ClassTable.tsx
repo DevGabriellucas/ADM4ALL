@@ -114,7 +114,10 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                       </Link>
                       <button
                         type="button"
-                        className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Editar
                       </button>
@@ -122,7 +125,10 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                         classGroup.status !== "concluida" && (
                           <button
                             type="button"
-                            className="font-semibold text-violet-700 text-xs transition-colors hover:text-violet-900"
+                            disabled
+                            aria-disabled="true"
+                            title="Funcionalidade ainda não disponível no MVP"
+                            className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                           >
                             Gerenciar alunos
                           </button>
@@ -130,7 +136,10 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                       {classGroup.status === "em_andamento" && (
                         <button
                           type="button"
-                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Encerrar turma
                         </button>

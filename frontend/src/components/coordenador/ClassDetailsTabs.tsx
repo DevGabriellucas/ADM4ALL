@@ -151,7 +151,10 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Visualizar
                         </button>
@@ -323,7 +326,10 @@ export const ClassDetailsTabs = ({
                     <td className="border-slate-100 border-b px-3 py-3">
                       <button
                         type="button"
-                        className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Visualizar
                       </button>
@@ -387,7 +393,10 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           {certificateStatus === "emitido"
                             ? "Visualizar"
