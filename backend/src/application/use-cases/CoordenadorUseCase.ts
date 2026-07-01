@@ -1,5 +1,8 @@
 import bcrypt from "bcrypt";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
+import {
+  CampoPendenteAtivacao,
+} from "../../domain/repositories/ActivationRepository";
 import {
   ConviteCriado,
   CoordenadorRepository,
@@ -10,8 +13,11 @@ import {
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
+import { Email } from "../../domain/value-objects/Email";
+import { Telefone } from "../../domain/value-objects/Telefone";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CriarCursoEntrada {
   nome: string;
@@ -25,6 +31,16 @@ export interface ConvidarInstrutorEntrada {
   email: string;
   cpf: string;
   telefone?: string | null;
+}
+
+export interface ConvidarAlunoEntrada {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  dataNascimento: string;
+  curso: string;
+  turma: string;
 }
 
 export interface CriarTurmaEntrada {
@@ -46,13 +62,13 @@ const TURMA_STATUS_VALIDOS = [
   "encerrada",
   "cancelada",
 ];
-const ATIVACAO_TOKEN_MINUTOS = 60 * 24 * 3; // 3 dias para aceitar o convite
 const SALT_ROUNDS = 10;
 
 export class CoordenadorUseCase {
   constructor(
     private coordenadorRepository: CoordenadorRepository,
     private emailService: EmailService,
+    private activationUseCase: ActivationUseCase,
   ) {}
 
   async obterDashboard(): Promise<DashboardResumo> {
@@ -141,23 +157,23 @@ export class CoordenadorUseCase {
       SALT_ROUNDS,
     );
 
-    const tokenAtivacao = randomBytes(32).toString("hex");
-    const tokenAtivacaoHash = createHash("sha256")
-      .update(tokenAtivacao)
-      .digest("hex");
-    const tokenExpiraEm = new Date(
-      Date.now() + ATIVACAO_TOKEN_MINUTOS * 60 * 1000,
-    );
-
     const convite = await this.coordenadorRepository.convidarInstrutor({
       nome: input.nome.trim(),
       email: emailNormalizado,
       cpf: cpfNormalizado,
       telefone: input.telefone ?? null,
       senhaTemporariaCriptografada,
-      tokenAtivacaoHash,
-      tokenExpiraEm,
     });
+    const camposPendentes: CampoPendenteAtivacao[] = ["senha"];
+    if (!input.telefone) {
+      camposPendentes.push("whatsapp");
+    }
+    camposPendentes.push("areaAtuacao", "formacao");
+    const tokenAtivacao = await this.activationUseCase.criar(
+      convite.usuarioId,
+      "criado_por_coordenador",
+      camposPendentes,
+    );
 
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${tokenAtivacao}`;
@@ -174,6 +190,76 @@ export class CoordenadorUseCase {
     } catch (error) {
       // A conta ja foi criada no banco; o e-mail e um efeito colateral best-effort.
       // Uma falha de envio nao deve desfazer o convite ja persistido.
+      console.error("Falha ao enviar e-mail de convite:", error);
+    }
+
+    return convite;
+  }
+
+  async convidarAluno(input: ConvidarAlunoEntrada): Promise<ConviteCriado> {
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do aluno e obrigatorio.");
+    }
+
+    let email: string;
+    let cpf: string;
+    let telefone: string | null;
+    try {
+      email = new Email(input.email).value;
+      cpf = new Cpf(input.cpf).value;
+      telefone = input.telefone ? new Telefone(input.telefone).value : null;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados pessoais invalidos.",
+      );
+    }
+
+    const dataNascimento = new Date(input.dataNascimento);
+    if (
+      Number.isNaN(dataNascimento.getTime()) ||
+      dataNascimento.toISOString().slice(0, 10) >=
+        new Date().toISOString().slice(0, 10)
+    ) {
+      throw new BadRequestError("Informe uma data de nascimento valida.");
+    }
+    if (!input.curso?.trim() || !input.turma?.trim()) {
+      throw new BadRequestError("Informe o curso e a turma.");
+    }
+
+    const convite = await this.coordenadorRepository.convidarAluno({
+      nome: input.nome.trim(),
+      email,
+      cpf,
+      telefone,
+      dataNascimento: input.dataNascimento,
+      treinamento: input.curso.trim(),
+      turma: input.turma.trim(),
+      senhaTemporariaCriptografada: await bcrypt.hash(
+        randomBytes(32).toString("hex"),
+        SALT_ROUNDS,
+      ),
+    });
+    const camposPendentes: CampoPendenteAtivacao[] = ["senha"];
+    if (!telefone) camposPendentes.push("whatsapp");
+    camposPendentes.push("rgm", "cursoUnipe");
+    const token = await this.activationUseCase.criar(
+      convite.usuarioId,
+      "criado_por_coordenador",
+      camposPendentes,
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        convite.email,
+        "Convite para acessar o ADM Para Todos",
+        `<p>Ola, ${convite.nome}!</p>
+         <p>Voce foi cadastrado como aluno no ADM Para Todos.</p>
+         <p><a href="${linkAtivacao}">Complete seu cadastro e ative sua conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch (error) {
       console.error("Falha ao enviar e-mail de convite:", error);
     }
 
@@ -268,27 +354,4 @@ export class CoordenadorUseCase {
     }
   }
 
-  async ativarConta(tokenBruto: string, novaSenha: string): Promise<void> {
-    if (!tokenBruto || tokenBruto.trim() === "") {
-      throw new BadRequestError("O token de ativacao e obrigatorio.");
-    }
-
-    if (!novaSenha || novaSenha.length < 8) {
-      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
-    }
-
-    const tokenHash = createHash("sha256")
-      .update(tokenBruto.trim())
-      .digest("hex");
-    const senhaCriptografada = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-
-    const sucesso = await this.coordenadorRepository.ativarConta(
-      tokenHash,
-      senhaCriptografada,
-    );
-
-    if (!sucesso) {
-      throw new BadRequestError("Link de ativacao invalido ou expirado.");
-    }
-  }
 }

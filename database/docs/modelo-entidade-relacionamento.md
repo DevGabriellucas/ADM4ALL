@@ -8,6 +8,7 @@ tabela de perfil guarda os dados especificos da sua funcao.
 erDiagram
     PERFIS ||--o{ USUARIOS : define
     USUARIOS ||--o{ RECUPERACOES_SENHA : solicita
+    USUARIOS ||--o{ ATIVACOES_CONTA : ativa
     USUARIOS ||--o| ALUNOS : representa
     USUARIOS ||--o| INSTRUTORES : representa
     USUARIOS ||--o| COORDENADORES : representa
@@ -62,6 +63,18 @@ erDiagram
         timestamptz usado_em
         varchar ip_solicitante
         text user_agent
+    }
+
+    ATIVACOES_CONTA {
+        uuid id PK
+        uuid usuario_id FK
+        varchar token_hash UK
+        varchar tipo
+        varchar origem
+        text[] campos_pendentes
+        timestamptz criado_em
+        timestamptz expira_em
+        timestamptz usado_em
     }
 
     ALUNOS {
@@ -248,6 +261,8 @@ erDiagram
   `usuario_id`; o contrato de login retorna tambem o ID do perfil especifico.
 - `recuperacoes_senha` deve armazenar apenas o hash do token. O token puro
   deve existir somente no link enviado ao usuario.
+- `ativacoes_conta` mantem convites separados da recuperacao de senha,
+  registra a origem e informa quais dados devem ser completados na ativacao.
 - A expiracao padrao de recuperacao de senha e de 15 minutos. O backend deve
   consultar a ultima solicitacao do usuario antes de criar um novo token.
 - `matriculas.turma_id` permite alimentar a tela do aluno e as telas do

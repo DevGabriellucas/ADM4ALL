@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import {
   AulaResumo,
+  ConvidarAlunoInput,
   ConvidarInstrutorInput,
   ConviteCriado,
   CoordenadorRepository,
@@ -195,12 +196,6 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       );
       const instrutorId = instrutorResultado.rows[0].id;
 
-      await cliente.query(
-        `INSERT INTO recuperacoes_senha (usuario_id, token_hash, expira_em)
-         VALUES ($1, $2, $3)`,
-        [usuarioId, input.tokenAtivacaoHash, input.tokenExpiraEm],
-      );
-
       await cliente.query("COMMIT");
 
       return {
@@ -211,6 +206,81 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       };
     } catch (error) {
       await cliente.query("ROLLBACK");
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
+  async convidarAluno(input: ConvidarAlunoInput): Promise<ConviteCriado> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+      const referencias = await cliente.query(
+        `SELECT
+           (SELECT id FROM perfis WHERE nome = 'aluno' LIMIT 1) AS perfil_id,
+           t.id AS treinamento_id,
+           tu.id AS turma_id
+         FROM treinamentos t
+         JOIN turmas tu ON tu.treinamento_id = t.id
+         WHERE t.nome = $1 AND tu.nome = $2
+         LIMIT 1`,
+        [input.treinamento, input.turma],
+      );
+      const referencia = referencias.rows[0];
+      if (!referencia?.perfil_id || !referencia?.turma_id) {
+        throw new Error("Curso ou turma nao encontrado.");
+      }
+
+      const usuario = await cliente.query(
+        `INSERT INTO usuarios (perfil_id, nome, email, cpf, senha, status)
+         VALUES ($1, $2, $3, $4, $5, 'pendente_ativacao')
+         RETURNING id`,
+        [
+          referencia.perfil_id,
+          input.nome,
+          input.email,
+          input.cpf,
+          input.senhaTemporariaCriptografada,
+        ],
+      );
+      const usuarioId = usuario.rows[0].id;
+      const aluno = await cliente.query(
+        `INSERT INTO alunos (
+           usuario_id, telefone, data_nascimento, is_aluno_unipe, treinamento
+         )
+         VALUES ($1, $2, $3, FALSE, $4)
+         RETURNING id`,
+        [
+          usuarioId,
+          input.telefone ?? null,
+          input.dataNascimento,
+          input.treinamento,
+        ],
+      );
+      const alunoId = aluno.rows[0].id;
+
+      await cliente.query(
+        `INSERT INTO matriculas (
+           aluno_id, treinamento_id, turma_id, status, progresso
+         )
+         VALUES ($1, $2, $3, 'em_andamento', 0)`,
+        [alunoId, referencia.treinamento_id, referencia.turma_id],
+      );
+
+      await cliente.query("COMMIT");
+      return {
+        usuarioId,
+        instrutorId: alunoId,
+        nome: input.nome,
+        email: input.email,
+      };
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Ja existe um usuario com este e-mail ou CPF.");
+      }
       throw error;
     } finally {
       cliente.release();
@@ -358,47 +428,6 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       [nome],
     );
     return resultado.rows[0] ? { id: resultado.rows[0].id } : null;
-  }
-
-  async ativarConta(
-    tokenHash: string,
-    senhaCriptografada: string,
-  ): Promise<boolean> {
-    const cliente = await this.db.connect();
-
-    try {
-      await cliente.query("BEGIN");
-
-      const tokenResultado = await cliente.query(
-        `SELECT id, usuario_id FROM recuperacoes_senha
-         WHERE token_hash = $1 AND usado_em IS NULL AND expira_em > now()
-         LIMIT 1`,
-        [tokenHash],
-      );
-
-      const linha = tokenResultado.rows[0];
-      if (!linha) {
-        await cliente.query("ROLLBACK");
-        return false;
-      }
-
-      await cliente.query(
-        `UPDATE usuarios SET senha = $1, status = 'ativo' WHERE id = $2`,
-        [senhaCriptografada, linha.usuario_id],
-      );
-      await cliente.query(
-        `UPDATE recuperacoes_senha SET usado_em = now() WHERE id = $1`,
-        [linha.id],
-      );
-
-      await cliente.query("COMMIT");
-      return true;
-    } catch (error) {
-      await cliente.query("ROLLBACK");
-      throw error;
-    } finally {
-      cliente.release();
-    }
   }
 
   private mapearCurso(linha: any): CursoResumo {

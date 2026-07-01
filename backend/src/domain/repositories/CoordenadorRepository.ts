@@ -45,8 +45,6 @@ export interface ConvidarInstrutorInput {
   cpf: string;
   telefone?: string | null;
   senhaTemporariaCriptografada: string;
-  tokenAtivacaoHash: string;
-  tokenExpiraEm: Date;
 }
 
 export interface ConviteCriado {
@@ -54,6 +52,17 @@ export interface ConviteCriado {
   instrutorId: string;
   nome: string;
   email: string;
+}
+
+export interface ConvidarAlunoInput {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  dataNascimento: string;
+  treinamento: string;
+  turma: string;
+  senhaTemporariaCriptografada: string;
 }
 
 export interface TurmaListagem {
@@ -118,11 +127,11 @@ export interface CoordenadorRepository {
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
   convidarInstrutor(input: ConvidarInstrutorInput): Promise<ConviteCriado>;
+  convidarAluno(input: ConvidarAlunoInput): Promise<ConviteCriado>;
 
   listarTurmas(): Promise<TurmaListagem[]>;
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;
   criarTurma(input: CriarTurmaInput): Promise<TurmaListagem>;
   buscarTreinamentoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
 
-  ativarConta(tokenHash: string, senhaCriptografada: string): Promise<boolean>;
 }

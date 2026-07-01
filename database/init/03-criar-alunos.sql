@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS alunos (
     id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id       UUID         NOT NULL UNIQUE,
-    telefone         VARCHAR(11)  NOT NULL,
+    telefone         VARCHAR(11),
     data_nascimento  DATE         NOT NULL,
     is_aluno_unipe   BOOLEAN      NOT NULL DEFAULT FALSE,
     curso_unipe      VARCHAR(255),

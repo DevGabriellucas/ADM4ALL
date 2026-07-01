@@ -81,6 +81,14 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return this.mapearLinhaParaAluno(resultado.rows[0]);
   }
 
+  async buscarUsuarioIdPorAlunoId(alunoId: string): Promise<string | null> {
+    const resultado = await this.db.query(
+      "SELECT usuario_id FROM alunos WHERE id = $1 LIMIT 1",
+      [alunoId],
+    );
+    return resultado.rows[0]?.usuario_id ?? null;
+  }
+
   async buscarDashboardPorAlunoId(
     alunoId: string,
   ): Promise<AlunoDashboard | null> {
@@ -279,7 +287,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
 
       const inserirUsuario = `
         INSERT INTO usuarios (perfil_id, nome, email, cpf, senha, status)
-        SELECT id, $1, $2, $3, $4, 'ativo'
+        SELECT id, $1, $2, $3, $4, 'pendente_ativacao'
         FROM perfis
         WHERE nome = 'aluno'
         RETURNING id

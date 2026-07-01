@@ -73,3 +73,33 @@ CREATE INDEX IF NOT EXISTS idx_recuperacoes_senha_expira_em
 CREATE INDEX IF NOT EXISTS idx_recuperacoes_senha_pendentes
     ON recuperacoes_senha (usuario_id, expira_em)
     WHERE usado_em IS NULL;
+
+-- Tokens de ativacao sao separados dos tokens de recuperacao de senha.
+CREATE TABLE IF NOT EXISTS ativacoes_conta (
+    id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id        UUID         NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token_hash        VARCHAR(255) NOT NULL UNIQUE,
+    tipo              VARCHAR(20)  NOT NULL DEFAULT 'ativacao',
+    origem            VARCHAR(30)  NOT NULL,
+    campos_pendentes  TEXT[]       NOT NULL DEFAULT '{}',
+    criado_em         TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    expira_em         TIMESTAMPTZ  NOT NULL,
+    usado_em          TIMESTAMPTZ,
+
+    CONSTRAINT chk_ativacoes_tipo
+        CHECK (tipo = 'ativacao'),
+    CONSTRAINT chk_ativacoes_origem
+        CHECK (origem IN ('cadastro_publico', 'criado_por_coordenador', 'criado_por_admin')),
+    CONSTRAINT chk_ativacoes_token_hash
+        CHECK (length(trim(token_hash)) > 0),
+    CONSTRAINT chk_ativacoes_expiracao
+        CHECK (expira_em > criado_em),
+    CONSTRAINT chk_ativacoes_usado
+        CHECK (usado_em IS NULL OR usado_em >= criado_em)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ativacoes_conta_usuario
+    ON ativacoes_conta (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_ativacoes_conta_pendentes
+    ON ativacoes_conta (usuario_id, expira_em)
+    WHERE usado_em IS NULL;

@@ -79,6 +79,33 @@ FROM (
             '86420975310',
             '$2b$10$WsQRiIcbE8o5oyx5IUVSdeoXAWfCBunjvfHpePT1VMq4fazEZRaXm', -- senha: Admin@123
             'ativo'
+        ),
+        (
+            '744b59d4-4d69-4826-9d6c-5b70d7c5a4ce'::UUID,
+            'aluno',
+            'Joao Ativacao',
+            'joao.ativacao@example.com',
+            '11144477735',
+            '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha definida no cadastro publico: Aluno@123
+            'pendente_ativacao'
+        ),
+        (
+            'acbf238d-4461-4749-9fc9-53eb21a6da0f'::UUID,
+            'aluno',
+            'Maria Convite',
+            'maria.convite@example.com',
+            '93541134780',
+            '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha temporaria, substituida na ativacao
+            'pendente_ativacao'
+        ),
+        (
+            '74c65249-0017-4507-b17b-f080e770926f'::UUID,
+            'instrutor',
+            'Eduardo Convite',
+            'eduardo.convite@example.com',
+            '39053344705',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu', -- senha temporaria, substituida na ativacao
+            'pendente_ativacao'
         )
 ) AS dados(id, perfil_nome, nome, email, cpf, senha, status)
 JOIN perfis ON perfis.nome = dados.perfil_nome
@@ -116,6 +143,26 @@ VALUES
         NULL,
         'Assistente Administrativo',
         NULL
+    ),
+    (
+        'f765e463-5eaf-4bbf-84ee-c8a78872114a',
+        '744b59d4-4d69-4826-9d6c-5b70d7c5a4ce',
+        '83994440006',
+        '2002-05-16',
+        FALSE,
+        NULL,
+        'Assistente Administrativo',
+        NULL
+    ),
+    (
+        '3aa75cc6-8a7d-43a9-8b5d-e25cf9b527ae',
+        'acbf238d-4461-4749-9fc9-53eb21a6da0f',
+        NULL,
+        '2001-08-20',
+        FALSE,
+        NULL,
+        'Assistente Administrativo',
+        NULL
     )
 ON CONFLICT (usuario_id) DO NOTHING;
 
@@ -128,8 +175,51 @@ VALUES
         '83996660004',
         'Administracao',
         'Gestao Empresarial'
+    ),
+    (
+        '28a1d4d4-fd35-4dcf-8e2a-536f038ff9b8',
+        '74c65249-0017-4507-b17b-f080e770926f',
+        NULL,
+        NULL,
+        NULL
     )
 ON CONFLICT (usuario_id) DO NOTHING;
+
+-- Tokens puros apenas para testes locais das tres variacoes da tela:
+-- ativacao-aluno-publico-2026
+-- ativacao-aluno-coordenador-2026
+-- ativacao-instrutor-coordenador-2026
+INSERT INTO ativacoes_conta
+    (id, usuario_id, token_hash, tipo, origem, campos_pendentes, expira_em)
+VALUES
+    (
+        '10a91765-d3a1-413c-b06c-b775646455ef',
+        '744b59d4-4d69-4826-9d6c-5b70d7c5a4ce',
+        encode(digest('ativacao-aluno-publico-2026', 'sha256'), 'hex'),
+        'ativacao',
+        'cadastro_publico',
+        '{}',
+        now() + interval '3 days'
+    ),
+    (
+        'd2652436-371e-4e3a-a605-ce87bddf4992',
+        'acbf238d-4461-4749-9fc9-53eb21a6da0f',
+        encode(digest('ativacao-aluno-coordenador-2026', 'sha256'), 'hex'),
+        'ativacao',
+        'criado_por_coordenador',
+        ARRAY['senha', 'whatsapp', 'rgm', 'cursoUnipe'],
+        now() + interval '3 days'
+    ),
+    (
+        'f27fa95a-18d2-452e-861a-700a74be27cc',
+        '74c65249-0017-4507-b17b-f080e770926f',
+        encode(digest('ativacao-instrutor-coordenador-2026', 'sha256'), 'hex'),
+        'ativacao',
+        'criado_por_coordenador',
+        ARRAY['senha', 'whatsapp', 'areaAtuacao', 'formacao'],
+        now() + interval '3 days'
+    )
+ON CONFLICT (token_hash) DO NOTHING;
 
 INSERT INTO coordenadores
     (id, usuario_id, telefone, area_coordenacao)

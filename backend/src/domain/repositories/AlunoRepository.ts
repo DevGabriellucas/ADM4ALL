@@ -46,6 +46,7 @@ export interface AlunoRepository {
   buscarPorCpf(cpf: string): Promise<Aluno | null>;
   buscarPorEmail(email: string): Promise<Aluno | null>;
   buscarPorEmailOuCpf(identificador: string): Promise<Aluno | null>;
+  buscarUsuarioIdPorAlunoId(alunoId: string): Promise<string | null>;
   buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null>;
   existeRecuperacaoSenhaRecente(usuarioId: string, intervaloMinutos: number): Promise<boolean>;
   registrarRecuperacaoSenha(dados: RegistrarRecuperacaoSenhaInput): Promise<void>;

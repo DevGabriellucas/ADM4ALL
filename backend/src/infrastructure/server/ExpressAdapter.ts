@@ -6,6 +6,7 @@ import path from "path";
 import { JwtService, TokenPayload } from "../../application/security/JwtService";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
+import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
 import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
 import { BadRequestError } from "../errors/BadRequestError";
@@ -27,6 +28,7 @@ export class ExpressAdapter {
 
   constructor(
     private authUseCase: AuthUseCase,
+    private activationUseCase: ActivationUseCase,
     private alunoUseCase: AlunoUseCase,
     private instrutorUseCase: InstrutorUseCase,
     private coordenadorUseCase: CoordenadorUseCase,
@@ -176,6 +178,28 @@ export class ExpressAdapter {
   }
 
   private configurarRotas() {
+    this.app.get(
+      "/auth/ativacoes/:token",
+      asyncHandler(async (req: Request, res: Response) => {
+        const token = Array.isArray(req.params.token)
+          ? req.params.token[0]
+          : req.params.token;
+        const ativacao = await this.activationUseCase.validar(token ?? "");
+        res.status(200).json(ativacao);
+      }),
+    );
+
+    this.app.post(
+      "/auth/ativacoes/:token",
+      asyncHandler(async (req: Request, res: Response) => {
+        const token = Array.isArray(req.params.token)
+          ? req.params.token[0]
+          : req.params.token;
+        await this.activationUseCase.confirmar(token ?? "", req.body ?? {});
+        res.status(200).json({ mensagem: "Conta ativada com sucesso." });
+      }),
+    );
+
     this.app.post(
       "/auth/login",
       asyncHandler(async (req: Request, res: Response) => {
@@ -222,7 +246,8 @@ export class ExpressAdapter {
         res.status(201).json({
           id: aluno.id,
           nome: aluno.nome,
-          mensagem: "Aluno cadastrado com sucesso!",
+          mensagem:
+            "Cadastro realizado. Verifique seu e-mail para ativar sua conta.",
         });
       }),
     );
@@ -425,13 +450,16 @@ export class ExpressAdapter {
     this.app.post(
       "/auth/ativar-conta",
       asyncHandler(async (req: Request, res: Response) => {
-        const { token, novaSenha } = req.body;
+        const { token, novaSenha } = req.body ?? {};
 
         if (!token) {
           throw new BadRequestError("O token de ativacao e obrigatorio.");
         }
 
-        await this.coordenadorUseCase.ativarConta(token, novaSenha);
+        await this.activationUseCase.confirmar(token, {
+          senha: novaSenha,
+          confirmarSenha: novaSenha,
+        });
         res.status(200).json({ mensagem: "Conta ativada com sucesso." });
       }),
     );
@@ -493,6 +521,21 @@ export class ExpressAdapter {
           telefone,
         });
 
+        res.status(201).json({
+          id: convite.instrutorId,
+          nome: convite.nome,
+          mensagem: "Convite de ativacao enviado por e-mail.",
+        });
+      }),
+    );
+
+    this.app.post(
+      "/alunos/convites",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const convite = await this.coordenadorUseCase.convidarAluno(
+          req.body ?? {},
+        );
         res.status(201).json({
           id: convite.instrutorId,
           nome: convite.nome,
