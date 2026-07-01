@@ -57,7 +57,7 @@ export const coordinatorInstructorsMock: Instructor[] = [
     nome: "Camila Souza",
     email: "camila.souza@example.com",
     telefone: "(83) 99999-2222",
-    status: "ativo",
+    status: "bloqueado",
     turmasVinculadas: 1,
     dataCriacao: "2026-05-14",
   },
@@ -197,7 +197,7 @@ export const coordinatorClassesMock: ClassGroup[] = [
     alunos: 16,
     dataInicio: "2025-10-06",
     dataTermino: "2025-11-24",
-    status: "encerrada",
+    status: "concluida",
     frequenciaMedia: 89,
   },
 ];
@@ -349,7 +349,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 92,
-    status: "elegivel",
+    status: null,
     certificado: null,
   },
   {
@@ -357,7 +357,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 78,
-    status: "nao_elegivel",
+    status: null,
     certificado: null,
   },
   {
@@ -365,7 +365,7 @@ export const coordinatorCertificatesMock: CertificateRecord[] = [
     curso: "Assistente Administrativo",
     turma: "ADM-2026-01",
     frequencia: 70,
-    status: "nao_elegivel",
+    status: "cancelado",
     certificado: null,
   },
   {
@@ -478,6 +478,15 @@ export const coordinatorUsersMock: BaseUser[] = [
     status: "inativo",
     dataCriacao: "2026-04-28",
     ultimoAcesso: "2026-05-30T10:05:00-03:00",
+  },
+  {
+    id: "user-007",
+    nome: "Carlos Bloqueado",
+    email: "carlos.bloqueado@example.com",
+    role: "instrutor",
+    status: "bloqueado",
+    dataCriacao: "2026-05-02",
+    ultimoAcesso: "2026-06-02T09:30:00-03:00",
   },
 ];
 

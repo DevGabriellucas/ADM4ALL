@@ -15,6 +15,10 @@ const getStudentStatusInfo = (student: Student) => {
     return { label: "Inativo", tone: "slate" as const };
   }
 
+  if (student.statusConta === "bloqueado") {
+    return { label: "Bloqueado", tone: "red" as const };
+  }
+
   if (student.statusMatricula) {
     return getMatriculaStatusInfo(student.statusMatricula);
   }

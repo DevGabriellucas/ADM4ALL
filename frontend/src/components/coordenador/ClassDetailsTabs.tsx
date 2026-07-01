@@ -5,6 +5,7 @@ import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStat
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type {
   AttendanceSummary,
+  CertificateDisplayStatus,
   CertificateRecord,
   ClassMaterial,
   Lesson,
@@ -51,7 +52,7 @@ const getLessonStatus = (status: Lesson["status"]) => {
   return { label: "Planejada", tone: "amber" as const };
 };
 
-const getCertificateStatus = (status: CertificateRecord["status"]) => {
+const getCertificateStatus = (status: CertificateDisplayStatus) => {
   if (status === "emitido") {
     return { label: "Emitido", tone: "green" as const };
   }
@@ -60,6 +61,9 @@ const getCertificateStatus = (status: CertificateRecord["status"]) => {
   }
   if (status === "elegivel") {
     return { label: "Elegível", tone: "blue" as const };
+  }
+  if (status === "cancelado") {
+    return { label: "Cancelado", tone: "red" as const };
   }
   return { label: "Pendente", tone: "amber" as const };
 };

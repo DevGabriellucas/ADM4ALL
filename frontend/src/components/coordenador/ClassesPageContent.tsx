@@ -24,7 +24,7 @@ export const ClassesPageContent = ({
     (classGroup) => classGroup.status === "em_andamento",
   );
   const completedClasses = classes.filter(
-    (classGroup) => classGroup.status === "encerrada",
+    (classGroup) => classGroup.status === "concluida",
   ).length;
   const enrolledStudents = classes
     .filter(

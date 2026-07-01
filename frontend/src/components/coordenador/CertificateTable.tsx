@@ -1,12 +1,15 @@
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
-import type { CertificateRecord, CertificateStatus } from "@/types/coordinator";
+import type {
+  CertificateDisplayStatus,
+  CertificateRecord,
+} from "@/types/coordinator";
 import { getCertificateStatus } from "@/utils/getCertificateStatus";
 
 interface CertificateTableProps {
   certificates: CertificateRecord[];
 }
 
-const getStatusInfo = (status: CertificateStatus) => {
+const getStatusInfo = (status: CertificateDisplayStatus) => {
   if (status === "elegivel") {
     return { label: "Elegível", tone: "blue" as const };
   }
@@ -16,18 +19,24 @@ const getStatusInfo = (status: CertificateStatus) => {
   if (status === "emitido") {
     return { label: "Emitido", tone: "green" as const };
   }
+  if (status === "cancelado") {
+    return { label: "Cancelado", tone: "red" as const };
+  }
   return { label: "Não elegível", tone: "red" as const };
 };
 
 const getCertificateLabel = (
   certificate: CertificateRecord,
-  status: CertificateStatus,
+  status: CertificateDisplayStatus,
 ) => {
   if (certificate.certificado) {
     return certificate.certificado;
   }
   if (status === "nao_elegivel") {
     return "Indisponível";
+  }
+  if (status === "cancelado") {
+    return "Cancelado";
   }
   return "Aguardando emissão";
 };

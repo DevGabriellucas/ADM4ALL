@@ -62,7 +62,7 @@ interface TurmaApi {
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
-  status: ClassGroup["status"];
+  status: string;
   frequenciaMedia: number;
 }
 
@@ -104,6 +104,24 @@ const mapearInstrutor = (instrutor: InstrutorApi): Instructor => ({
   dataCriacao: instrutor.dataCriacao,
 });
 
+const normalizeClassStatus = (status: string): ClassGroup["status"] => {
+  const normalizedStatus = status === "encerrada" ? "concluida" : status;
+
+  if (
+    normalizedStatus === "planejada" ||
+    normalizedStatus === "em_andamento" ||
+    normalizedStatus === "concluida" ||
+    normalizedStatus === "cancelada"
+  ) {
+    return normalizedStatus;
+  }
+
+  throw new Error(`Status de turma inválido recebido: ${status}.`);
+};
+
+const serializeClassStatus = (status: ClassGroup["status"]): string =>
+  status === "concluida" ? "encerrada" : status;
+
 const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
   nome: turma.nome,
@@ -112,7 +130,7 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   alunos: turma.alunos,
   dataInicio: turma.dataInicio,
   dataTermino: turma.dataTermino ?? "",
-  status: turma.status,
+  status: normalizeClassStatus(turma.status),
   frequenciaMedia: turma.frequenciaMedia,
 });
 
@@ -220,7 +238,10 @@ export const createClass = async (input: {
 }): Promise<ClassGroup> => {
   const turma = await authenticatedRequest<TurmaApi>("/turmas", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      status: serializeClassStatus(input.status),
+    }),
     fallbackError: "Falha ao cadastrar a turma.",
   });
 

@@ -122,7 +122,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                         Editar
                       </button>
                       {classGroup.status !== "cancelada" &&
-                        classGroup.status !== "encerrada" && (
+                        classGroup.status !== "concluida" && (
                           <button
                             type="button"
                             className="font-semibold text-violet-700 text-xs transition-colors hover:text-violet-900"

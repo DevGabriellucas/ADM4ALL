@@ -52,9 +52,10 @@ export const ClassDetailsContent = ({
   const completedLessons = lessons.filter(
     (lesson) => lesson.status === "realizada",
   ).length;
-  const eligibleCertificates = certificates.filter(
-    (certificate) => getCertificateStatus(certificate) !== "nao_elegivel",
-  ).length;
+  const eligibleCertificates = certificates.filter((certificate) => {
+    const status = getCertificateStatus(certificate);
+    return status !== "nao_elegivel" && status !== "cancelado";
+  }).length;
 
   return (
     <>

@@ -5,14 +5,18 @@ import type {
 
 export type UserRole = "administrador" | "coordenador" | "instrutor" | "aluno";
 
-export type UserStatus = "ativo" | "pendente_ativacao" | "inativo";
+export type UserStatus =
+  | "ativo"
+  | "pendente_ativacao"
+  | "inativo"
+  | "bloqueado";
 
 export type CourseStatus = "ativo" | "em_planejamento" | "encerrado";
 
 export type ClassStatus =
   | "planejada"
   | "em_andamento"
-  | "encerrada"
+  | "concluida"
   | "cancelada";
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
@@ -31,11 +35,13 @@ export type AttendanceSituation =
   | "risco_reprovacao"
   | typeof MATRICULA_STATUS.REPROVADO_FALTA;
 
-export type CertificateStatus =
-  | "elegivel"
-  | "pendente"
-  | "emitido"
-  | "nao_elegivel";
+export type CertificateStatus = "pendente" | "emitido" | "cancelado";
+
+export type CertificateEligibilityStatus = "elegivel" | "nao_elegivel";
+
+export type CertificateDisplayStatus =
+  | CertificateStatus
+  | CertificateEligibilityStatus;
 
 export type ProcessStatus = "aberto" | "em_analise" | "concluido" | "cancelado";
 
@@ -147,7 +153,7 @@ export interface CertificateRecord {
   curso: string;
   turma: string;
   frequencia: number;
-  status: CertificateStatus;
+  status: CertificateStatus | null;
   certificado: string | null;
 }
 

@@ -120,6 +120,7 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
               <option value="ativo">Ativo</option>
               <option value="pendente_ativacao">Pendente de ativação</option>
               <option value="inativo">Inativo</option>
+              <option value="bloqueado">Bloqueado</option>
             </select>
           </label>
         </div>

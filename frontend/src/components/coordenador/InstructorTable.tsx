@@ -14,6 +14,10 @@ const getInstructorStatusInfo = (status: Instructor["status"]) => {
     return { label: "Pendente de ativação", tone: "amber" as const };
   }
 
+  if (status === "bloqueado") {
+    return { label: "Bloqueado", tone: "red" as const };
+  }
+
   return { label: "Inativo", tone: "slate" as const };
 };
 
