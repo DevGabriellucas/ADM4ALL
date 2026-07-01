@@ -563,6 +563,28 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.post(
+      "/coordenador/alunos/:id/reenviar-ativacao",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        await this.coordenadorUseCase.reenviarAtivacao(id);
+        res.json({ mensagem: "Link de ativacao reenviado com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/matriculas/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { status } = req.body ?? {};
+        const matricula =
+          await this.coordenadorUseCase.atualizarStatusMatricula(id, status);
+        res.json(matricula);
+      }),
+    );
+
     this.app.patch(
       "/coordenador/alunos/:id",
       this.exigirPerfis(["coordenador", "admin"]),

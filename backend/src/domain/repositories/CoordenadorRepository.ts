@@ -1,6 +1,10 @@
 // Repositorio usado pela area do coordenador/admin.
 // Dashboard e listagens sao majoritariamente agregacao de leitura sobre
 // tabelas ja existentes (treinamentos, turmas, instrutores, alunos, etc.).
+import type {
+  CampoPendenteAtivacao,
+  OrigemAtivacao,
+} from "./ActivationRepository";
 
 export interface DashboardResumo {
   totalCursos: number;
@@ -89,6 +93,15 @@ export interface AtualizarAlunoCoordenadorInput {
   statusConta: AlunoDetalheCoordenador["statusConta"];
 }
 
+export interface AlunoParaReenvioAtivacao {
+  usuarioId: string;
+  nome: string;
+  email: string;
+  status: string;
+  origem: OrigemAtivacao | null;
+  camposPendentes: CampoPendenteAtivacao[];
+}
+
 export interface VincularAlunoInput {
   alunoId: string;
   turmaId: string;
@@ -115,6 +128,25 @@ export interface MatriculaEncontrada {
   id: string;
   turmaId: string | null;
   status: string;
+}
+
+export type StatusMatriculaEditavel =
+  | "em_andamento"
+  | "aprovado"
+  | "reprovado_falta";
+
+export interface AtualizarStatusMatriculaInput {
+  status: StatusMatriculaEditavel;
+}
+
+export interface MatriculaStatusAtualizado {
+  id: string;
+  status:
+    | "em_andamento"
+    | "aprovado"
+    | "reprovado_falta"
+    | "cancelado";
+  dataConclusao: string | null;
 }
 
 export interface ConvidarInstrutorInput {
@@ -207,6 +239,10 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarAlunoCoordenadorInput,
   ): Promise<AlunoDetalheCoordenador | null>;
+  buscarUsuarioPorAlunoId(
+    alunoId: string,
+  ): Promise<AlunoParaReenvioAtivacao | null>;
+  invalidarAtivacoesPendentes(usuarioId: string): Promise<void>;
   buscarTurmaPorId(id: string): Promise<TurmaParaMatricula | null>;
   verificarAlunoExiste(alunoId: string): Promise<boolean>;
   contarMatriculasAtivas(turmaId: string): Promise<number>;
@@ -220,6 +256,13 @@ export interface CoordenadorRepository {
   ): Promise<MatriculaEncontrada | null>;
   vincularAluno(input: VincularAlunoInput): Promise<MatriculaCriada>;
   removerMatricula(turmaId: string, matriculaId: string): Promise<boolean>;
+  buscarMatriculaPorId(
+    id: string,
+  ): Promise<{ id: string; status: string } | null>;
+  atualizarStatusMatricula(
+    id: string,
+    input: AtualizarStatusMatriculaInput,
+  ): Promise<MatriculaStatusAtualizado | null>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;

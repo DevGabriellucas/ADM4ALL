@@ -6,6 +6,8 @@ import {
 import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
+  AlunoParaReenvioAtivacao,
+  AtualizarStatusMatriculaInput,
   AtualizarAlunoCoordenadorInput,
   ConviteCriado,
   CoordenadorRepository,
@@ -13,6 +15,8 @@ import {
   DashboardResumo,
   InstrutorListagem,
   MatriculaCriada,
+  MatriculaStatusAtualizado,
+  StatusMatriculaEditavel,
   TurmaDetalhe,
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
@@ -82,6 +86,16 @@ const STATUS_CONTA_VALIDOS = [
 ] as const;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const STATUS_MATRICULA_EDITAVEIS: readonly StatusMatriculaEditavel[] = [
+  "em_andamento",
+  "aprovado",
+  "reprovado_falta",
+];
+
+const isStatusMatriculaEditavel = (
+  status: string,
+): status is StatusMatriculaEditavel =>
+  STATUS_MATRICULA_EDITAVEIS.includes(status as StatusMatriculaEditavel);
 
 export class CoordenadorUseCase {
   constructor(
@@ -200,6 +214,55 @@ export class CoordenadorUseCase {
     return aluno;
   }
 
+  async reenviarAtivacao(alunoId: string): Promise<void> {
+    if (!UUID_PATTERN.test(alunoId)) {
+      throw new BadRequestError("O ID do aluno e invalido.");
+    }
+
+    const aluno: AlunoParaReenvioAtivacao | null =
+      await this.coordenadorRepository.buscarUsuarioPorAlunoId(alunoId);
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+    if (aluno.status !== "pendente_ativacao") {
+      throw new BadRequestError("A conta do aluno nao esta pendente de ativacao.");
+    }
+    if (!aluno.origem) {
+      throw new BadRequestError(
+        "Nao foi possivel identificar o convite de ativacao do aluno.",
+      );
+    }
+
+    await this.coordenadorRepository.invalidarAtivacoesPendentes(
+      aluno.usuarioId,
+    );
+    const token = await this.activationUseCase.criar(
+      aluno.usuarioId,
+      aluno.origem,
+      aluno.camposPendentes,
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        aluno.email,
+        "Novo link de ativacao - ADM Para Todos",
+        `<p>Ola, ${aluno.nome}!</p>
+         <p>Foi solicitado um novo link para ativar sua conta.</p>
+         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch {
+      await this.coordenadorRepository.invalidarAtivacoesPendentes(
+        aluno.usuarioId,
+      );
+      throw new BadRequestError(
+        "Nao foi possivel enviar o e-mail de ativacao. Tente novamente em instantes.",
+      );
+    }
+  }
+
   async vincularAlunoTurma(
     turmaId: string,
     alunoId: string,
@@ -291,6 +354,40 @@ export class CoordenadorUseCase {
         "Matricula nao encontrada para a turma informada.",
       );
     }
+  }
+
+  async atualizarStatusMatricula(
+    id: string,
+    status: string,
+  ): Promise<MatriculaStatusAtualizado> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+    if (!isStatusMatriculaEditavel(status)) {
+      throw new BadRequestError(
+        "Status invalido. Use: em_andamento, aprovado ou reprovado_falta.",
+      );
+    }
+
+    const matricula =
+      await this.coordenadorRepository.buscarMatriculaPorId(id);
+    if (!matricula) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+    if (matricula.status === "cancelado") {
+      throw new BadRequestError(
+        "Nao e possivel alterar o status de uma matricula cancelada.",
+      );
+    }
+
+    const input: AtualizarStatusMatriculaInput = { status };
+    const atualizada =
+      await this.coordenadorRepository.atualizarStatusMatricula(id, input);
+    if (!atualizada) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+
+    return atualizada;
   }
 
   async convidarInstrutor(

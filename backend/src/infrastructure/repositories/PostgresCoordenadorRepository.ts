@@ -2,7 +2,9 @@ import { Pool } from "pg";
 import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
+  AlunoParaReenvioAtivacao,
   AtualizarAlunoCoordenadorInput,
+  AtualizarStatusMatriculaInput,
   AulaResumo,
   ConvidarAlunoInput,
   ConvidarInstrutorInput,
@@ -16,6 +18,7 @@ import {
   InstrutorListagem,
   MatriculaCriada,
   MatriculaEncontrada,
+  MatriculaStatusAtualizado,
   TurmaDetalhe,
   TurmaListagem,
   TurmaParaMatricula,
@@ -312,6 +315,54 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return await this.buscarAlunoDetalhe(id);
   }
 
+  async buscarUsuarioPorAlunoId(
+    alunoId: string,
+  ): Promise<AlunoParaReenvioAtivacao | null> {
+    const resultado = await this.db.query(
+      `SELECT
+         u.id AS usuario_id,
+         u.nome,
+         u.email,
+         u.status,
+         ativacao.origem,
+         ativacao.campos_pendentes
+       FROM alunos a
+       JOIN usuarios u ON u.id = a.usuario_id
+       LEFT JOIN LATERAL (
+         SELECT origem, campos_pendentes
+         FROM ativacoes_conta
+         WHERE usuario_id = u.id AND tipo = 'ativacao'
+         ORDER BY criado_em DESC
+         LIMIT 1
+       ) ativacao ON TRUE
+       WHERE a.id = $1`,
+      [alunoId],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          usuarioId: linha.usuario_id,
+          nome: linha.nome,
+          email: linha.email,
+          status: linha.status,
+          origem: linha.origem ?? null,
+          camposPendentes: linha.campos_pendentes ?? [],
+        }
+      : null;
+  }
+
+  async invalidarAtivacoesPendentes(usuarioId: string): Promise<void> {
+    await this.db.query(
+      `UPDATE ativacoes_conta
+       SET usado_em = now()
+       WHERE usuario_id = $1
+         AND tipo = 'ativacao'
+         AND usado_em IS NULL`,
+      [usuarioId],
+    );
+  }
+
   async buscarTurmaPorId(id: string): Promise<TurmaParaMatricula | null> {
     const resultado = await this.db.query(
       `SELECT id, treinamento_id, status, capacidade
@@ -481,6 +532,47 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       [matriculaId, turmaId],
     );
     return (resultado.rowCount ?? 0) > 0;
+  }
+
+  async buscarMatriculaPorId(
+    id: string,
+  ): Promise<{ id: string; status: string } | null> {
+    const resultado = await this.db.query(
+      "SELECT id, status FROM matriculas WHERE id = $1",
+      [id],
+    );
+    const linha = resultado.rows[0];
+    return linha ? { id: linha.id, status: linha.status } : null;
+  }
+
+  async atualizarStatusMatricula(
+    id: string,
+    input: AtualizarStatusMatriculaInput,
+  ): Promise<MatriculaStatusAtualizado | null> {
+    const resultado = await this.db.query(
+      `UPDATE matriculas
+       SET
+         status = $1::varchar,
+         data_conclusao = CASE
+           WHEN $1::varchar IN ('aprovado', 'reprovado_falta') THEN CURRENT_DATE
+           WHEN $1::varchar = 'em_andamento' THEN NULL
+         END
+       WHERE id = $2
+       RETURNING
+         id,
+         status,
+         to_char(data_conclusao, 'YYYY-MM-DD') AS data_conclusao`,
+      [input.status, id],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          id: linha.id,
+          status: linha.status,
+          dataConclusao: linha.data_conclusao ?? null,
+        }
+      : null;
   }
 
   async buscarInstrutorAtivoPorNome(
