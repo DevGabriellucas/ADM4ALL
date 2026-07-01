@@ -10,7 +10,6 @@ import {
   coordinatorProcessesMock,
   coordinatorReportsMock,
   coordinatorSettingsMock,
-  coordinatorStudentsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
 import { ApiError, authenticatedRequest } from "@/services/apiClient";
@@ -28,12 +27,13 @@ import type {
   Lesson,
   ProcessRecord,
   Student,
+  UserStatus,
 } from "@/types/coordinator";
 
 // MOCK TEMPORARIO: as funcoes abaixo (frequencia, materiais, certificados,
 // processos, relatorios, usuarios, configuracoes) ainda nao tem backend e
-// continuam retornando mock. Dashboard, cursos, instrutores e turmas ja
-// consultam a API real.
+// continuam retornando mock. Dashboard, cursos, instrutores, alunos e turmas
+// ja consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -51,6 +51,19 @@ interface InstrutorApi {
   telefone: string | null;
   status: Instructor["status"];
   turmasVinculadas: number;
+  dataCriacao: string;
+}
+
+interface AlunoListagemApi {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  turma: string | null;
+  curso: string | null;
+  frequencia: number;
+  statusConta: UserStatus;
+  statusMatricula: string | null;
   dataCriacao: string;
 }
 
@@ -320,7 +333,37 @@ export const getClassStudentsAndLessons = async (
 };
 
 export const getStudents = async (): Promise<Student[]> => {
-  return coordinatorStudentsMock;
+  const alunos = await authenticatedRequest<AlunoListagemApi[]>(
+    "/coordenador/alunos",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os alunos.",
+    },
+  );
+
+  return alunos.map((aluno) => {
+    if (
+      aluno.statusMatricula !== null &&
+      !isMatriculaStatus(aluno.statusMatricula)
+    ) {
+      throw new Error(
+        `Status de matrícula inválido recebido para ${aluno.nome}.`,
+      );
+    }
+
+    return {
+      id: aluno.id,
+      nome: aluno.nome,
+      email: aluno.email,
+      telefone: aluno.telefone ?? undefined,
+      turma: aluno.turma ?? "Não vinculada",
+      curso: aluno.curso ?? "Não informado",
+      frequencia: aluno.frequencia,
+      statusConta: aluno.statusConta,
+      statusMatricula: aluno.statusMatricula,
+      dataCriacao: aluno.dataCriacao,
+    };
+  });
 };
 
 export const getClassMaterials = async (

@@ -109,26 +109,38 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <button
                         type="button"
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Visualizar
                       </button>
                       <button
                         type="button"
-                        className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Editar
                       </button>
                       <button
                         type="button"
-                        className="font-semibold text-violet-700 text-xs transition-colors hover:text-violet-900"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Vincular à turma
                       </button>
                       {student.statusConta === "pendente_ativacao" && (
                         <button
                           type="button"
-                          className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Reenviar ativação
                         </button>
@@ -136,7 +148,10 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                       {student.statusConta === "ativo" && (
                         <button
                           type="button"
-                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Desativar
                         </button>
