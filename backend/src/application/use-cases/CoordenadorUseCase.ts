@@ -12,6 +12,7 @@ import {
   CursoResumo,
   DashboardResumo,
   InstrutorListagem,
+  MatriculaCriada,
   TurmaDetalhe,
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
@@ -79,6 +80,8 @@ const STATUS_CONTA_VALIDOS = [
   "bloqueado",
   "pendente_ativacao",
 ] as const;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class CoordenadorUseCase {
   constructor(
@@ -195,6 +198,99 @@ export class CoordenadorUseCase {
     }
 
     return aluno;
+  }
+
+  async vincularAlunoTurma(
+    turmaId: string,
+    alunoId: string,
+  ): Promise<MatriculaCriada> {
+    if (!UUID_PATTERN.test(turmaId)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+    if (!UUID_PATTERN.test(alunoId)) {
+      throw new BadRequestError("O ID do aluno e invalido.");
+    }
+
+    const turma = await this.coordenadorRepository.buscarTurmaPorId(turmaId);
+    if (!turma) {
+      throw new BadRequestError("Turma nao encontrada.");
+    }
+    if (turma.status === "concluida" || turma.status === "cancelada") {
+      throw new BadRequestError(
+        "Nao e possivel matricular alunos em uma turma concluida ou cancelada.",
+      );
+    }
+
+    const alunoExiste =
+      await this.coordenadorRepository.verificarAlunoExiste(alunoId);
+    if (!alunoExiste) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    const matriculaNaTurma =
+      await this.coordenadorRepository.buscarMatriculaAlunoTurma(
+        alunoId,
+        turmaId,
+      );
+    if (matriculaNaTurma && matriculaNaTurma.status !== "cancelado") {
+      throw new BadRequestError("O aluno ja possui matricula nesta turma.");
+    }
+
+    const matriculaAtiva =
+      await this.coordenadorRepository.buscarMatriculaAtivaNoTreinamento(
+        alunoId,
+        turma.treinamentoId,
+      );
+    if (matriculaAtiva && matriculaAtiva.id !== matriculaNaTurma?.id) {
+      throw new BadRequestError(
+        "O aluno ja possui matricula ativa neste curso.",
+      );
+    }
+
+    const matriculasAtivas =
+      await this.coordenadorRepository.contarMatriculasAtivas(turmaId);
+    if (
+      turma.capacidade !== null &&
+      matriculasAtivas >= turma.capacidade
+    ) {
+      throw new BadRequestError("A turma atingiu sua capacidade maxima.");
+    }
+
+    try {
+      return await this.coordenadorRepository.vincularAluno({
+        alunoId,
+        turmaId,
+        treinamentoId: turma.treinamentoId,
+      });
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel vincular o aluno a turma.",
+      );
+    }
+  }
+
+  async cancelarMatricula(
+    turmaId: string,
+    matriculaId: string,
+  ): Promise<void> {
+    if (!UUID_PATTERN.test(turmaId)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+    if (!UUID_PATTERN.test(matriculaId)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+
+    const removida = await this.coordenadorRepository.removerMatricula(
+      turmaId,
+      matriculaId,
+    );
+    if (!removida) {
+      throw new BadRequestError(
+        "Matricula nao encontrada para a turma informada.",
+      );
+    }
   }
 
   async convidarInstrutor(

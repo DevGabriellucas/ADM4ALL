@@ -620,6 +620,36 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.post(
+      "/turmas/:turmaId/matriculas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params as { turmaId: string };
+        const { alunoId } = req.body ?? {};
+        const matricula = await this.coordenadorUseCase.vincularAlunoTurma(
+          turmaId,
+          alunoId,
+        );
+        res.status(201).json(matricula);
+      }),
+    );
+
+    this.app.delete(
+      "/turmas/:turmaId/matriculas/:matriculaId",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, matriculaId } = req.params as {
+          turmaId: string;
+          matriculaId: string;
+        };
+        await this.coordenadorUseCase.cancelarMatricula(
+          turmaId,
+          matriculaId,
+        );
+        res.json({ mensagem: "Matricula cancelada com sucesso." });
+      }),
+    );
+
     this.app.delete(
       "/turmas/:turmaId/materiais/:materialId",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),

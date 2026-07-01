@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { cancelarMatriculaAction } from "@/app/coordenador/actions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { StudentEditForm } from "@/components/coordenador/StudentEditForm";
+import { StudentEnrollForm } from "@/components/coordenador/StudentEnrollForm";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { StudentDetail, UserStatus } from "@/types/coordinator";
 
@@ -37,8 +40,45 @@ const formatDate = (date: string | null) => {
 export const StudentDetailContent = ({
   student,
 }: StudentDetailContentProps) => {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<
+    string | null
+  >(null);
+  const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(
+    null,
+  );
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const accountStatus = accountStatusInfo[student.statusConta];
+
+  const handleCancelEnrollment = async (
+    classId: string,
+    enrollmentId: string,
+  ) => {
+    if (!window.confirm("Deseja realmente cancelar esta matrícula?")) {
+      return;
+    }
+
+    setCancelingEnrollmentId(enrollmentId);
+    setEnrollmentMessage(null);
+    setEnrollmentError(null);
+
+    const result = await cancelarMatriculaAction(
+      student.id,
+      classId,
+      enrollmentId,
+    );
+    setCancelingEnrollmentId(null);
+
+    if (!result.sucesso) {
+      setEnrollmentError(result.mensagem);
+      return;
+    }
+
+    setEnrollmentMessage(result.mensagem);
+    router.refresh();
+  };
 
   return (
     <>
@@ -64,14 +104,30 @@ export const StudentDetailContent = ({
             <p className="mt-2 text-slate-600 text-sm">{student.email}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsEditing((current) => !current)}
-            aria-expanded={isEditing}
-            className="h-11 rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68]"
-          >
-            {isEditing ? "Fechar edição" : "Editar dados"}
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                setIsEnrolling(false);
+                setIsEditing((current) => !current);
+              }}
+              aria-expanded={isEditing}
+              className="h-11 rounded-lg border border-brand-dark px-5 font-semibold text-brand-dark text-sm transition-colors hover:bg-slate-50"
+            >
+              {isEditing ? "Fechar edição" : "Editar dados"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditing(false);
+                setIsEnrolling((current) => !current);
+              }}
+              aria-expanded={isEnrolling}
+              className="h-11 rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68]"
+            >
+              {isEnrolling ? "Fechar vínculo" : "Vincular à turma"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -79,6 +135,13 @@ export const StudentDetailContent = ({
         <StudentEditForm
           student={student}
           onCancel={() => setIsEditing(false)}
+        />
+      )}
+
+      {isEnrolling && (
+        <StudentEnrollForm
+          studentId={student.id}
+          onCancel={() => setIsEnrolling(false)}
         />
       )}
 
@@ -147,6 +210,24 @@ export const StudentDetailContent = ({
           Matrículas
         </h2>
 
+        {enrollmentMessage && (
+          <output
+            aria-live="polite"
+            className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
+          >
+            {enrollmentMessage}
+          </output>
+        )}
+
+        {enrollmentError && (
+          <output
+            aria-live="polite"
+            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+          >
+            {enrollmentError}
+          </output>
+        )}
+
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-3xl border-separate border-spacing-0 text-left text-sm">
             <thead>
@@ -166,11 +247,15 @@ export const StudentDetailContent = ({
                 <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                   Status
                 </th>
+                <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody>
               {student.matriculas.map((enrollment) => {
                 const status = getMatriculaStatusInfo(enrollment.status);
+                const classId = enrollment.turmaId;
 
                 return (
                   <tr key={enrollment.id}>
@@ -192,6 +277,26 @@ export const StudentDetailContent = ({
                         tone={status.tone}
                       />
                     </td>
+                    <td className="border-slate-100 border-b px-3 py-3">
+                      {enrollment.status !== "cancelado" && classId ? (
+                        <button
+                          type="button"
+                          disabled={cancelingEnrollmentId === enrollment.id}
+                          onClick={() =>
+                            handleCancelEnrollment(classId, enrollment.id)
+                          }
+                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cancelingEnrollmentId === enrollment.id
+                            ? "Cancelando..."
+                            : "Cancelar matrícula"}
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-xs">
+                          Indisponível
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -199,7 +304,7 @@ export const StudentDetailContent = ({
               {student.matriculas.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-8 text-center text-slate-500"
                   >
                     Nenhuma matrícula encontrada.

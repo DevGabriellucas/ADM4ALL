@@ -108,6 +108,22 @@ export interface StudentEnrollment {
   dataMatricula: string;
 }
 
+export interface StudentEnrollmentCreated {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  treinamentoId: string;
+  status: MatriculaStatus;
+  dataMatricula: string;
+}
+
+export interface EnrollmentClassOption {
+  id: string;
+  nome: string;
+  curso: string;
+  status: ClassStatus;
+}
+
 export interface StudentDetail {
   id: string;
   usuarioId: string;

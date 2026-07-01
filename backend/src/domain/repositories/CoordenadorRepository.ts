@@ -89,6 +89,34 @@ export interface AtualizarAlunoCoordenadorInput {
   statusConta: AlunoDetalheCoordenador["statusConta"];
 }
 
+export interface VincularAlunoInput {
+  alunoId: string;
+  turmaId: string;
+  treinamentoId: string;
+}
+
+export interface MatriculaCriada {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  treinamentoId: string;
+  status: "em_andamento" | "aprovado" | "reprovado_falta" | "cancelado";
+  dataMatricula: string;
+}
+
+export interface TurmaParaMatricula {
+  id: string;
+  treinamentoId: string;
+  status: string;
+  capacidade: number | null;
+}
+
+export interface MatriculaEncontrada {
+  id: string;
+  turmaId: string | null;
+  status: string;
+}
+
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
@@ -179,6 +207,19 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarAlunoCoordenadorInput,
   ): Promise<AlunoDetalheCoordenador | null>;
+  buscarTurmaPorId(id: string): Promise<TurmaParaMatricula | null>;
+  verificarAlunoExiste(alunoId: string): Promise<boolean>;
+  contarMatriculasAtivas(turmaId: string): Promise<number>;
+  buscarMatriculaAlunoTurma(
+    alunoId: string,
+    turmaId: string,
+  ): Promise<MatriculaEncontrada | null>;
+  buscarMatriculaAtivaNoTreinamento(
+    alunoId: string,
+    treinamentoId: string,
+  ): Promise<MatriculaEncontrada | null>;
+  vincularAluno(input: VincularAlunoInput): Promise<MatriculaCriada>;
+  removerMatricula(turmaId: string, matriculaId: string): Promise<boolean>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;

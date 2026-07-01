@@ -23,11 +23,13 @@ import type {
   CoordinatorReportData,
   CoordinatorSettings,
   Course,
+  EnrollmentClassOption,
   Instructor,
   Lesson,
   ProcessRecord,
   Student,
   StudentDetail,
+  StudentEnrollmentCreated,
   UserStatus,
 } from "@/types/coordinator";
 
@@ -415,6 +417,46 @@ export const updateStudent = async (
       method: "PATCH",
       body: JSON.stringify(input),
       fallbackError: "Falha ao atualizar os dados do aluno.",
+    },
+  );
+};
+
+export const getEnrollmentClassOptions = async (): Promise<
+  EnrollmentClassOption[]
+> => {
+  const classes = await getClasses();
+  return classes
+    .filter(
+      (classGroup) =>
+        classGroup.status === "planejada" ||
+        classGroup.status === "em_andamento",
+    )
+    .map(({ id, nome, curso, status }) => ({ id, nome, curso, status }));
+};
+
+export const enrollStudentInClass = async (
+  turmaId: string,
+  alunoId: string,
+): Promise<StudentEnrollmentCreated> => {
+  return await authenticatedRequest<StudentEnrollmentCreated>(
+    `/turmas/${turmaId}/matriculas`,
+    {
+      method: "POST",
+      body: JSON.stringify({ alunoId }),
+      fallbackError: "Falha ao vincular o aluno à turma.",
+    },
+  );
+};
+
+export const cancelStudentEnrollment = async (
+  turmaId: string,
+  matriculaId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/turmas/${turmaId}/matriculas/${matriculaId}`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao cancelar a matrícula.",
     },
   );
 };

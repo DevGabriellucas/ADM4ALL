@@ -14,8 +14,12 @@ import {
   DashboardResumo,
   IdentificadorPorNome,
   InstrutorListagem,
+  MatriculaCriada,
+  MatriculaEncontrada,
   TurmaDetalhe,
   TurmaListagem,
+  TurmaParaMatricula,
+  VincularAlunoInput,
 } from "../../domain/repositories/CoordenadorRepository";
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
@@ -306,6 +310,177 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
 
     return await this.buscarAlunoDetalhe(id);
+  }
+
+  async buscarTurmaPorId(id: string): Promise<TurmaParaMatricula | null> {
+    const resultado = await this.db.query(
+      `SELECT id, treinamento_id, status, capacidade
+       FROM turmas
+       WHERE id = $1`,
+      [id],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          id: linha.id,
+          treinamentoId: linha.treinamento_id,
+          status: linha.status,
+          capacidade:
+            linha.capacidade === null ? null : Number(linha.capacidade),
+        }
+      : null;
+  }
+
+  async verificarAlunoExiste(alunoId: string): Promise<boolean> {
+    const resultado = await this.db.query(
+      "SELECT 1 FROM alunos WHERE id = $1",
+      [alunoId],
+    );
+    return (resultado.rowCount ?? 0) > 0;
+  }
+
+  async contarMatriculasAtivas(turmaId: string): Promise<number> {
+    const resultado = await this.db.query(
+      `SELECT COUNT(*) AS total
+       FROM matriculas
+       WHERE turma_id = $1 AND status = 'em_andamento'`,
+      [turmaId],
+    );
+    return Number(resultado.rows[0]?.total ?? 0);
+  }
+
+  async buscarMatriculaAlunoTurma(
+    alunoId: string,
+    turmaId: string,
+  ): Promise<MatriculaEncontrada | null> {
+    const resultado = await this.db.query(
+      `SELECT id, turma_id, status
+       FROM matriculas
+       WHERE aluno_id = $1 AND turma_id = $2
+       LIMIT 1`,
+      [alunoId, turmaId],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? { id: linha.id, turmaId: linha.turma_id, status: linha.status }
+      : null;
+  }
+
+  async buscarMatriculaAtivaNoTreinamento(
+    alunoId: string,
+    treinamentoId: string,
+  ): Promise<MatriculaEncontrada | null> {
+    const resultado = await this.db.query(
+      `SELECT id, turma_id, status
+       FROM matriculas
+       WHERE aluno_id = $1
+         AND treinamento_id = $2
+         AND status = 'em_andamento'
+       LIMIT 1`,
+      [alunoId, treinamentoId],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? { id: linha.id, turmaId: linha.turma_id, status: linha.status }
+      : null;
+  }
+
+  async vincularAluno(input: VincularAlunoInput): Promise<MatriculaCriada> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+      const existente = await cliente.query(
+        `SELECT id, status
+         FROM matriculas
+         WHERE aluno_id = $1 AND turma_id = $2
+         FOR UPDATE`,
+        [input.alunoId, input.turmaId],
+      );
+
+      let resultado;
+      if (existente.rows[0]) {
+        if (existente.rows[0].status !== "cancelado") {
+          throw new Error("O aluno ja possui matricula nesta turma.");
+        }
+
+        resultado = await cliente.query(
+          `UPDATE matriculas
+           SET
+             status = 'em_andamento',
+             progresso = 0,
+             data_matricula = CURRENT_DATE,
+             data_conclusao = NULL
+           WHERE id = $1
+           RETURNING
+             id,
+             aluno_id,
+             turma_id,
+             treinamento_id,
+             status,
+             to_char(data_matricula, 'YYYY-MM-DD') AS data_matricula`,
+          [existente.rows[0].id],
+        );
+      } else {
+        resultado = await cliente.query(
+          `INSERT INTO matriculas (
+             aluno_id,
+             turma_id,
+             treinamento_id,
+             status,
+             progresso,
+             data_matricula
+           )
+           VALUES ($1, $2, $3, 'em_andamento', 0, CURRENT_DATE)
+           RETURNING
+             id,
+             aluno_id,
+             turma_id,
+             treinamento_id,
+             status,
+             to_char(data_matricula, 'YYYY-MM-DD') AS data_matricula`,
+          [input.alunoId, input.turmaId, input.treinamentoId],
+        );
+      }
+
+      await cliente.query("COMMIT");
+      const linha = resultado.rows[0];
+      return {
+        id: linha.id,
+        alunoId: linha.aluno_id,
+        turmaId: linha.turma_id,
+        treinamentoId: linha.treinamento_id,
+        status: linha.status,
+        dataMatricula: linha.data_matricula,
+      };
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error(
+          "O aluno ja possui matricula nesta turma ou neste curso.",
+        );
+      }
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
+  async removerMatricula(
+    turmaId: string,
+    matriculaId: string,
+  ): Promise<boolean> {
+    const resultado = await this.db.query(
+      `UPDATE matriculas
+       SET status = 'cancelado'
+       WHERE id = $1 AND turma_id = $2
+       RETURNING id`,
+      [matriculaId, turmaId],
+    );
+    return (resultado.rowCount ?? 0) > 0;
   }
 
   async buscarInstrutorAtivoPorNome(
