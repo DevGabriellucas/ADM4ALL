@@ -474,6 +474,26 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/frequencias",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const getQueryValue = (value: unknown) =>
+          typeof value === "string" ? value : undefined;
+        const curso = getQueryValue(req.query.curso);
+        const turma = getQueryValue(req.query.turma);
+        const aluno = getQueryValue(req.query.aluno);
+        const periodo = getQueryValue(req.query.periodo);
+        const frequencias = await this.coordenadorUseCase.listarFrequencias({
+          ...(curso ? { curso } : {}),
+          ...(turma ? { turma } : {}),
+          ...(aluno ? { aluno } : {}),
+          ...(periodo ? { periodo } : {}),
+        });
+        res.json(frequencias);
+      }),
+    );
+
+    this.app.get(
       "/cursos",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {

@@ -14,6 +14,8 @@ import {
   CriarTurmaInput,
   CursoResumo,
   DashboardResumo,
+  FiltrosFrequenciaCoordenador,
+  FrequenciaCoordenador,
   IdentificadorPorNome,
   InstrutorListagem,
   MatriculaCriada,
@@ -573,6 +575,81 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           dataConclusao: linha.data_conclusao ?? null,
         }
       : null;
+  }
+
+  async listarFrequencias(
+    filtros: FiltrosFrequenciaCoordenador,
+  ): Promise<FrequenciaCoordenador[]> {
+    const resultado = await this.db.query(
+      `
+      WITH resumo AS (
+        SELECT
+          u.nome AS aluno,
+          t.nome AS turma,
+          m.status AS status_matricula,
+          COUNT(f.id) FILTER (WHERE f.presente) AS presencas,
+          COUNT(f.id) FILTER (WHERE NOT f.presente) AS faltas,
+          COALESCE(
+            ROUND(
+              100.0 * COUNT(f.id) FILTER (WHERE f.presente)
+              / NULLIF(COUNT(f.id), 0)
+            ),
+            0
+          ) AS frequencia
+        FROM matriculas m
+        JOIN alunos a ON a.id = m.aluno_id
+        JOIN usuarios u ON u.id = a.usuario_id
+        JOIN treinamentos tr ON tr.id = m.treinamento_id
+        JOIN turmas t ON t.id = m.turma_id
+        LEFT JOIN frequencias f ON f.matricula_id = m.id
+        WHERE m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+          AND ($1::text IS NULL OR tr.nome = $1)
+          AND ($2::text IS NULL OR t.nome = $2)
+          AND ($3::text IS NULL OR u.nome = $3)
+          AND (
+            $4::text IS NULL
+            OR (
+              EXTRACT(YEAR FROM t.data_inicio)::text
+              || '.'
+              || CASE
+                WHEN EXTRACT(MONTH FROM t.data_inicio) <= 6 THEN '1'
+                ELSE '2'
+              END
+            ) = $4
+          )
+        GROUP BY m.id, u.nome, t.nome, m.status
+      )
+      SELECT
+        aluno,
+        turma,
+        presencas,
+        faltas,
+        frequencia,
+        CASE
+          WHEN status_matricula = 'reprovado_falta' THEN 'reprovado_falta'
+          WHEN frequencia >= 80 THEN 'regular'
+          WHEN frequencia >= 75 THEN 'atencao'
+          ELSE 'risco'
+        END AS situacao
+      FROM resumo
+      ORDER BY aluno ASC, turma ASC
+      `,
+      [
+        filtros.curso ?? null,
+        filtros.turma ?? null,
+        filtros.aluno ?? null,
+        filtros.periodo ?? null,
+      ],
+    );
+
+    return resultado.rows.map((linha) => ({
+      aluno: linha.aluno,
+      turma: linha.turma,
+      presencas: Number(linha.presencas),
+      faltas: Number(linha.faltas),
+      frequencia: Number(linha.frequencia),
+      situacao: linha.situacao,
+    }));
   }
 
   async buscarInstrutorAtivoPorNome(

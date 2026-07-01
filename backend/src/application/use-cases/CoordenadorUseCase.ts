@@ -13,6 +13,8 @@ import {
   CoordenadorRepository,
   CursoResumo,
   DashboardResumo,
+  FiltrosFrequenciaCoordenador,
+  FrequenciaCoordenador,
   InstrutorListagem,
   MatriculaCriada,
   MatriculaStatusAtualizado,
@@ -68,6 +70,13 @@ export interface AtualizarAlunoEntrada {
   email: string;
   telefone?: string | null;
   statusConta: AlunoDetalheCoordenador["statusConta"];
+}
+
+export interface FiltrosFrequenciaEntrada {
+  curso?: string;
+  turma?: string;
+  aluno?: string;
+  periodo?: string;
 }
 
 const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "encerrado"];
@@ -388,6 +397,24 @@ export class CoordenadorUseCase {
     }
 
     return atualizada;
+  }
+
+  async listarFrequencias(
+    input: FiltrosFrequenciaEntrada = {},
+  ): Promise<FrequenciaCoordenador[]> {
+    if (input.periodo && !/^\d{4}\.[12]$/.test(input.periodo)) {
+      throw new BadRequestError(
+        "Periodo invalido. Use o formato YYYY.S, por exemplo: 2026.1.",
+      );
+    }
+
+    const filtros: FiltrosFrequenciaCoordenador = {};
+    if (input.curso?.trim()) filtros.curso = input.curso.trim();
+    if (input.turma?.trim()) filtros.turma = input.turma.trim();
+    if (input.aluno?.trim()) filtros.aluno = input.aluno.trim();
+    if (input.periodo) filtros.periodo = input.periodo;
+
+    return await this.coordenadorRepository.listarFrequencias(filtros);
   }
 
   async convidarInstrutor(

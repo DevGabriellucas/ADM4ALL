@@ -149,6 +149,22 @@ export interface MatriculaStatusAtualizado {
   dataConclusao: string | null;
 }
 
+export interface FiltrosFrequenciaCoordenador {
+  curso?: string;
+  turma?: string;
+  aluno?: string;
+  periodo?: string;
+}
+
+export interface FrequenciaCoordenador {
+  aluno: string;
+  turma: string;
+  presencas: number;
+  faltas: number;
+  frequencia: number;
+  situacao: "regular" | "atencao" | "risco" | "reprovado_falta";
+}
+
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
@@ -263,6 +279,9 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarStatusMatriculaInput,
   ): Promise<MatriculaStatusAtualizado | null>;
+  listarFrequencias(
+    filtros: FiltrosFrequenciaCoordenador,
+  ): Promise<FrequenciaCoordenador[]>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
