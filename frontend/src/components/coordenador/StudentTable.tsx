@@ -2,14 +2,26 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { reenviarAtivacaoAction } from "@/app/coordenador/actions";
+import {
+  atualizarStatusContaAction,
+  reenviarAtivacaoAction,
+} from "@/app/coordenador/actions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
+import { StatusChangeConfirmModal } from "@/components/coordenador/StatusChangeConfirmModal";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
-import type { Student } from "@/types/coordinator";
+import type { Student, UserStatus } from "@/types/coordinator";
 
 interface StudentTableProps {
   students: Student[];
+}
+
+interface StatusChangeRequest {
+  studentId: string;
+  targetStatus: UserStatus;
+  title: string;
+  description: string;
+  confirmLabel: string;
 }
 
 const getStudentStatusInfo = (student: Student) => {
@@ -43,6 +55,12 @@ export const StudentTable = ({ students }: StudentTableProps) => {
     null,
   );
   const [activationError, setActivationError] = useState<string | null>(null);
+  const [statusChange, setStatusChange] = useState<StatusChangeRequest | null>(
+    null,
+  );
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const handleResendActivation = async () => {
     if (!studentPendingResend) {
@@ -64,6 +82,30 @@ export const StudentTable = ({ students }: StudentTableProps) => {
     }
 
     setActivationMessage(result.mensagem);
+  };
+
+  const handleStatusChange = async () => {
+    if (!statusChange) {
+      return;
+    }
+
+    setIsChangingStatus(true);
+    setStatusMessage(null);
+    setStatusError(null);
+
+    const result = await atualizarStatusContaAction(
+      statusChange.studentId,
+      statusChange.targetStatus,
+    );
+    setIsChangingStatus(false);
+    setStatusChange(null);
+
+    if (!result.sucesso) {
+      setStatusError(result.mensagem);
+      return;
+    }
+
+    setStatusMessage(result.mensagem);
   };
 
   return (
@@ -98,6 +140,24 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
         >
           {activationError}
+        </output>
+      )}
+
+      {statusMessage && (
+        <output
+          aria-live="polite"
+          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
+        >
+          {statusMessage}
+        </output>
+      )}
+
+      {statusError && (
+        <output
+          aria-live="polite"
+          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {statusError}
         </output>
       )}
 
@@ -201,14 +261,93 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                         </button>
                       )}
                       {student.statusConta === "ativo" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStatusChange({
+                                studentId: student.id,
+                                targetStatus: "inativo",
+                                title: "Desativar aluno?",
+                                description:
+                                  "Este aluno perderá o acesso ao sistema.",
+                                confirmLabel: "Desativar",
+                              })
+                            }
+                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          >
+                            Desativar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStatusChange({
+                                studentId: student.id,
+                                targetStatus: "bloqueado",
+                                title: "Bloquear aluno?",
+                                description:
+                                  "O acesso deste aluno será bloqueado.",
+                                confirmLabel: "Bloquear",
+                              })
+                            }
+                            className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                          >
+                            Bloquear
+                          </button>
+                        </>
+                      )}
+                      {student.statusConta === "inativo" && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStatusChange({
+                                studentId: student.id,
+                                targetStatus: "ativo",
+                                title: "Reativar aluno?",
+                                description:
+                                  "O acesso deste aluno será liberado novamente.",
+                                confirmLabel: "Reativar",
+                              })
+                            }
+                            className="font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900"
+                          >
+                            Reativar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStatusChange({
+                                studentId: student.id,
+                                targetStatus: "bloqueado",
+                                title: "Bloquear aluno?",
+                                description:
+                                  "O acesso deste aluno será bloqueado.",
+                                confirmLabel: "Bloquear",
+                              })
+                            }
+                            className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                          >
+                            Bloquear
+                          </button>
+                        </>
+                      )}
+                      {student.statusConta === "bloqueado" && (
                         <button
                           type="button"
-                          disabled
-                          aria-disabled="true"
-                          title="Funcionalidade ainda não disponível no MVP"
-                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                          onClick={() =>
+                            setStatusChange({
+                              studentId: student.id,
+                              targetStatus: "ativo",
+                              title: "Reativar aluno?",
+                              description:
+                                "O acesso deste aluno será liberado novamente.",
+                              confirmLabel: "Reativar",
+                            })
+                          }
+                          className="font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900"
                         >
-                          Desativar
+                          Reativar
                         </button>
                       )}
                     </div>
@@ -236,6 +375,17 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           isLoading={resendingStudentId === studentPendingResend}
           onCancel={() => setStudentPendingResend(null)}
           onConfirm={handleResendActivation}
+        />
+      )}
+
+      {statusChange && (
+        <StatusChangeConfirmModal
+          title={statusChange.title}
+          description={statusChange.description}
+          confirmLabel={statusChange.confirmLabel}
+          isLoading={isChangingStatus}
+          onCancel={() => setStatusChange(null)}
+          onConfirm={handleStatusChange}
         />
       )}
     </section>

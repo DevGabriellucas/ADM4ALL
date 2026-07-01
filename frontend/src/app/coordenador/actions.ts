@@ -145,6 +145,53 @@ export async function reenviarAtivacaoAction(
   }
 }
 
+const STATUS_CONTA_TRANSITIONS: Record<UserStatus, UserStatus[]> = {
+  ativo: ["inativo", "bloqueado"],
+  inativo: ["ativo", "bloqueado"],
+  bloqueado: ["ativo"],
+  pendente_ativacao: [],
+};
+
+export async function atualizarStatusContaAction(
+  alunoId: string,
+  statusConta: UserStatus,
+): Promise<ResultadoAction> {
+  try {
+    const aluno = await coordinatorService.getStudentById(alunoId);
+    if (!aluno) {
+      return { sucesso: false, mensagem: "Aluno não encontrado." };
+    }
+
+    if (!STATUS_CONTA_TRANSITIONS[aluno.statusConta].includes(statusConta)) {
+      return {
+        sucesso: false,
+        mensagem: "Esta alteração de status não é permitida.",
+      };
+    }
+
+    await coordinatorService.updateStudent(alunoId, {
+      nome: aluno.nome,
+      email: aluno.email,
+      telefone: aluno.telefone,
+      statusConta,
+    });
+    revalidatePath("/coordenador/alunos");
+    revalidatePath(`/coordenador/alunos/${alunoId}`);
+    return {
+      sucesso: true,
+      mensagem: "Status da conta atualizado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o status da conta.",
+    };
+  }
+}
+
 export async function listarTurmasParaMatriculaAction(): Promise<TurmasParaMatriculaResultado> {
   try {
     const turmas = await coordinatorService.getEnrollmentClassOptions();
