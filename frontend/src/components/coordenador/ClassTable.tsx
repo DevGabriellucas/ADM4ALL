@@ -6,20 +6,17 @@ interface ClassTableProps {
   classes: ClassGroup[];
 }
 
-const getClassStatusInfo = (status: ClassGroup["status"]) => {
-  if (status === "em_andamento") {
-    return { label: "Em andamento", tone: "green" as const };
+const classStatusInfo: Record<
+  ClassGroup["status"],
+  {
+    label: string;
+    tone: "green" | "amber" | "red" | "blue";
   }
-
-  if (status === "planejada") {
-    return { label: "Planejada", tone: "amber" as const };
-  }
-
-  if (status === "cancelada") {
-    return { label: "Cancelada", tone: "red" as const };
-  }
-
-  return { label: "Concluída", tone: "blue" as const };
+> = {
+  planejada: { label: "Planejada", tone: "amber" },
+  em_andamento: { label: "Em andamento", tone: "green" },
+  concluida: { label: "Concluída", tone: "blue" },
+  cancelada: { label: "Cancelada", tone: "red" },
 };
 
 const formatDate = (date: string) => {
@@ -79,7 +76,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
 
           <tbody>
             {classes.map((classGroup) => {
-              const status = getClassStatusInfo(classGroup.status);
+              const status = classStatusInfo[classGroup.status];
 
               return (
                 <tr key={classGroup.id}>
