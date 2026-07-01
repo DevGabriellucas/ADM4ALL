@@ -3,7 +3,6 @@
 // nunca por componentes "use client".
 import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
-  coordinatorAttendanceMock,
   coordinatorCertificatesMock,
   coordinatorClassMaterialsMock,
   coordinatorLessonsMock,
@@ -35,10 +34,10 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: as funcoes abaixo (frequencia, materiais, certificados,
-// processos, relatorios, usuarios, configuracoes) ainda nao tem backend e
-// continuam retornando mock. Dashboard, cursos, instrutores, alunos e turmas
-// ja consultam a API real.
+// MOCK TEMPORARIO: materiais, certificados, processos, relatorios, usuarios
+// e configuracoes ainda nao tem backend e continuam retornando mock.
+// Dashboard, cursos, instrutores, alunos, turmas e frequencia ja consultam
+// a API real.
 
 interface CursoApi {
   id: string;
@@ -496,7 +495,30 @@ export const getClassMaterials = async (
 };
 
 export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
-  return coordinatorAttendanceMock;
+  const attendance = await authenticatedRequest<
+    Array<Omit<AttendanceSummary, "situacao"> & { situacao: string }>
+  >("/coordenador/frequencias", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar a frequência dos alunos.",
+  });
+
+  return attendance.map((record) => {
+    const situacao =
+      record.situacao === "risco" ? "risco_reprovacao" : record.situacao;
+
+    if (
+      situacao !== "regular" &&
+      situacao !== "atencao" &&
+      situacao !== "risco_reprovacao" &&
+      situacao !== "reprovado_falta"
+    ) {
+      throw new Error(
+        `Situação de frequência inválida recebida para ${record.aluno}.`,
+      );
+    }
+
+    return { ...record, situacao };
+  });
 };
 
 export const getLessons = async (): Promise<Lesson[]> => {

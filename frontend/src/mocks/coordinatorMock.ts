@@ -1,6 +1,5 @@
 import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type {
-  AttendanceSummary,
   BaseUser,
   CertificateRecord,
   ClassGroup,
@@ -289,57 +288,6 @@ export const coordinatorClassMaterialsMock: ClassMaterial[] = [
     tipo: "Apresentação",
     data: "2026-06-12",
     tamanho: "5,1 MB",
-  },
-];
-
-export const coordinatorAttendanceMock: AttendanceSummary[] = [
-  {
-    aluno: "Ana Clara Silva",
-    turma: "ADM-2026-01",
-    presencas: 11,
-    faltas: 1,
-    frequencia: 92,
-    situacao: "regular",
-  },
-  {
-    aluno: "Douglas Silva",
-    turma: "ADM-2026-01",
-    presencas: 7,
-    faltas: 2,
-    frequencia: 78,
-    situacao: "atencao",
-  },
-  {
-    aluno: "Felipe Ribeiro",
-    turma: "ADM-2026-01",
-    presencas: 8,
-    faltas: 4,
-    frequencia: 70,
-    situacao: MATRICULA_STATUS.REPROVADO_FALTA,
-  },
-  {
-    aluno: "Priscila Cahino",
-    turma: "ATD-2026-01",
-    presencas: 12,
-    faltas: 0,
-    frequencia: 96,
-    situacao: "regular",
-  },
-  {
-    aluno: "Lucas Azevedo",
-    turma: "ATD-2026-01",
-    presencas: 8,
-    faltas: 3,
-    frequencia: 72,
-    situacao: "risco_reprovacao",
-  },
-  {
-    aluno: "Carla Menezes",
-    turma: "ATD-2026-01",
-    presencas: 11,
-    faltas: 2,
-    frequencia: 85,
-    situacao: "regular",
   },
 ];
 
