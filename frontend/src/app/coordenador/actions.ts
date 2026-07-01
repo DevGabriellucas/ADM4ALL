@@ -5,6 +5,7 @@ import * as coordinatorService from "@/services/coordinatorService";
 import type {
   ClassGroup,
   Course,
+  EditableEnrollmentStatus,
   EnrollmentClassOption,
   UserStatus,
 } from "@/types/coordinator";
@@ -122,6 +123,28 @@ export async function atualizarAlunoAction(
   }
 }
 
+export async function reenviarAtivacaoAction(
+  alunoId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.resendActivation(alunoId);
+    revalidatePath("/coordenador/alunos");
+    revalidatePath(`/coordenador/alunos/${alunoId}`);
+    return {
+      sucesso: true,
+      mensagem: "Link de ativação reenviado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao reenviar o link de ativação.",
+    };
+  }
+}
+
 export async function listarTurmasParaMatriculaAction(): Promise<TurmasParaMatriculaResultado> {
   try {
     const turmas = await coordinatorService.getEnrollmentClassOptions();
@@ -185,6 +208,30 @@ export async function cancelarMatriculaAction(
         error instanceof Error
           ? error.message
           : "Falha ao cancelar a matrícula.",
+    };
+  }
+}
+
+export async function atualizarStatusMatriculaAction(
+  alunoId: string,
+  matriculaId: string,
+  status: EditableEnrollmentStatus,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateMatriculaStatus(matriculaId, status);
+    revalidatePath("/coordenador/alunos");
+    revalidatePath(`/coordenador/alunos/${alunoId}`);
+    return {
+      sucesso: true,
+      mensagem: "Status da matrícula atualizado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o status da matrícula.",
     };
   }
 }

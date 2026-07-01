@@ -117,6 +117,14 @@ export interface StudentEnrollmentCreated {
   dataMatricula: string;
 }
 
+export type EditableEnrollmentStatus = Exclude<MatriculaStatus, "cancelado">;
+
+export interface StudentEnrollmentStatusUpdated {
+  id: string;
+  status: MatriculaStatus;
+  dataConclusao: string | null;
+}
+
 export interface EnrollmentClassOption {
   id: string;
   nome: string;

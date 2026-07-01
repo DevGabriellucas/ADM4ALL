@@ -23,6 +23,7 @@ import type {
   CoordinatorReportData,
   CoordinatorSettings,
   Course,
+  EditableEnrollmentStatus,
   EnrollmentClassOption,
   Instructor,
   Lesson,
@@ -30,6 +31,7 @@ import type {
   Student,
   StudentDetail,
   StudentEnrollmentCreated,
+  StudentEnrollmentStatusUpdated,
   UserStatus,
 } from "@/types/coordinator";
 
@@ -421,6 +423,16 @@ export const updateStudent = async (
   );
 };
 
+export const resendActivation = async (studentId: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/alunos/${studentId}/reenviar-ativacao`,
+    {
+      method: "POST",
+      fallbackError: "Falha ao reenviar o link de ativação.",
+    },
+  );
+};
+
 export const getEnrollmentClassOptions = async (): Promise<
   EnrollmentClassOption[]
 > => {
@@ -457,6 +469,20 @@ export const cancelStudentEnrollment = async (
     {
       method: "DELETE",
       fallbackError: "Falha ao cancelar a matrícula.",
+    },
+  );
+};
+
+export const updateMatriculaStatus = async (
+  matriculaId: string,
+  status: EditableEnrollmentStatus,
+): Promise<StudentEnrollmentStatusUpdated> => {
+  return await authenticatedRequest<StudentEnrollmentStatusUpdated>(
+    `/coordenador/matriculas/${matriculaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+      fallbackError: "Falha ao atualizar o status da matrícula.",
     },
   );
 };

@@ -1,5 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { reenviarAtivacaoAction } from "@/app/coordenador/actions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student } from "@/types/coordinator";
 
@@ -28,6 +33,39 @@ const getStudentStatusInfo = (student: Student) => {
 };
 
 export const StudentTable = ({ students }: StudentTableProps) => {
+  const [resendingStudentId, setResendingStudentId] = useState<string | null>(
+    null,
+  );
+  const [studentPendingResend, setStudentPendingResend] = useState<
+    string | null
+  >(null);
+  const [activationMessage, setActivationMessage] = useState<string | null>(
+    null,
+  );
+  const [activationError, setActivationError] = useState<string | null>(null);
+
+  const handleResendActivation = async () => {
+    if (!studentPendingResend) {
+      return;
+    }
+
+    const studentId = studentPendingResend;
+    setResendingStudentId(studentId);
+    setActivationMessage(null);
+    setActivationError(null);
+
+    const result = await reenviarAtivacaoAction(studentId);
+    setResendingStudentId(null);
+    setStudentPendingResend(null);
+
+    if (!result.sucesso) {
+      setActivationError(result.mensagem);
+      return;
+    }
+
+    setActivationMessage(result.mensagem);
+  };
+
   return (
     <section
       aria-labelledby="students-table-heading"
@@ -44,6 +82,24 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           Consulte vínculos, frequência e situação de acesso.
         </p>
       </div>
+
+      {activationMessage && (
+        <output
+          aria-live="polite"
+          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
+        >
+          {activationMessage}
+        </output>
+      )}
+
+      {activationError && (
+        <output
+          aria-live="polite"
+          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {activationError}
+        </output>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-4xl border-separate border-spacing-0 border-slate-200 text-left text-sm">
@@ -135,12 +191,13 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                       {student.statusConta === "pendente_ativacao" && (
                         <button
                           type="button"
-                          disabled
-                          aria-disabled="true"
-                          title="Funcionalidade ainda não disponível no MVP"
-                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                          disabled={resendingStudentId === student.id}
+                          onClick={() => setStudentPendingResend(student.id)}
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:text-slate-400"
                         >
-                          Reenviar ativação
+                          {resendingStudentId === student.id
+                            ? "Reenviando..."
+                            : "Reenviar ativação"}
                         </button>
                       )}
                       {student.statusConta === "ativo" && (
@@ -173,6 +230,14 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           </tbody>
         </table>
       </div>
+
+      {studentPendingResend && (
+        <ResendActivationConfirmModal
+          isLoading={resendingStudentId === studentPendingResend}
+          onCancel={() => setStudentPendingResend(null)}
+          onConfirm={handleResendActivation}
+        />
+      )}
     </section>
   );
 };

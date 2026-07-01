@@ -3,12 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cancelarMatriculaAction } from "@/app/coordenador/actions";
+import {
+  atualizarStatusMatriculaAction,
+  cancelarMatriculaAction,
+  reenviarAtivacaoAction,
+} from "@/app/coordenador/actions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StudentEditForm } from "@/components/coordenador/StudentEditForm";
 import { StudentEnrollForm } from "@/components/coordenador/StudentEnrollForm";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
-import type { StudentDetail, UserStatus } from "@/types/coordinator";
+import type {
+  EditableEnrollmentStatus,
+  StudentDetail,
+  UserStatus,
+} from "@/types/coordinator";
 
 interface StudentDetailContentProps {
   student: StudentDetail;
@@ -46,11 +55,38 @@ export const StudentDetailContent = ({
   const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<
     string | null
   >(null);
+  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    Record<string, EditableEnrollmentStatus>
+  >({});
   const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(
     null,
   );
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
+  const [isResendingActivation, setIsResendingActivation] = useState(false);
+  const [isResendModalOpen, setIsResendModalOpen] = useState(false);
+  const [activationMessage, setActivationMessage] = useState<string | null>(
+    null,
+  );
+  const [activationError, setActivationError] = useState<string | null>(null);
   const accountStatus = accountStatusInfo[student.statusConta];
+
+  const handleResendActivation = async () => {
+    setIsResendingActivation(true);
+    setActivationMessage(null);
+    setActivationError(null);
+
+    const result = await reenviarAtivacaoAction(student.id);
+    setIsResendingActivation(false);
+    setIsResendModalOpen(false);
+
+    if (!result.sucesso) {
+      setActivationError(result.mensagem);
+      return;
+    }
+
+    setActivationMessage(result.mensagem);
+  };
 
   const handleCancelEnrollment = async (
     classId: string,
@@ -70,6 +106,31 @@ export const StudentDetailContent = ({
       enrollmentId,
     );
     setCancelingEnrollmentId(null);
+
+    if (!result.sucesso) {
+      setEnrollmentError(result.mensagem);
+      return;
+    }
+
+    setEnrollmentMessage(result.mensagem);
+    router.refresh();
+  };
+
+  const handleUpdateEnrollmentStatus = async (
+    enrollmentId: string,
+    currentStatus: EditableEnrollmentStatus,
+  ) => {
+    const status = selectedStatuses[enrollmentId] ?? currentStatus;
+    setSavingStatusId(enrollmentId);
+    setEnrollmentMessage(null);
+    setEnrollmentError(null);
+
+    const result = await atualizarStatusMatriculaAction(
+      student.id,
+      enrollmentId,
+      status,
+    );
+    setSavingStatusId(null);
 
     if (!result.sucesso) {
       setEnrollmentError(result.mensagem);
@@ -130,6 +191,55 @@ export const StudentDetailContent = ({
           </div>
         </div>
       </header>
+
+      {student.statusConta === "pendente_ativacao" && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-amber-950 text-sm">
+                Aluno com ativação pendente
+              </h2>
+              <p className="mt-1 text-amber-800 text-xs">
+                Envie um novo link caso o convite anterior tenha expirado.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isResendingActivation}
+              onClick={() => setIsResendModalOpen(true)}
+              className="h-10 rounded-lg bg-amber-700 px-4 font-semibold text-sm text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isResendingActivation ? "Reenviando..." : "Reenviar ativação"}
+            </button>
+          </div>
+
+          {activationMessage && (
+            <output
+              aria-live="polite"
+              className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
+            >
+              {activationMessage}
+            </output>
+          )}
+
+          {activationError && (
+            <output
+              aria-live="polite"
+              className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+            >
+              {activationError}
+            </output>
+          )}
+        </section>
+      )}
+
+      {isResendModalOpen && (
+        <ResendActivationConfirmModal
+          isLoading={isResendingActivation}
+          onCancel={() => setIsResendModalOpen(false)}
+          onConfirm={handleResendActivation}
+        />
+      )}
 
       {isEditing && (
         <StudentEditForm
@@ -248,6 +358,9 @@ export const StudentDetailContent = ({
                   Status
                 </th>
                 <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                  Alterar status
+                </th>
+                <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                   Ações
                 </th>
               </tr>
@@ -256,6 +369,11 @@ export const StudentDetailContent = ({
               {student.matriculas.map((enrollment) => {
                 const status = getMatriculaStatusInfo(enrollment.status);
                 const classId = enrollment.turmaId;
+                const editableStatus =
+                  enrollment.status === "cancelado" ? null : enrollment.status;
+                const selectedStatus = editableStatus
+                  ? (selectedStatuses[enrollment.id] ?? editableStatus)
+                  : null;
 
                 return (
                   <tr key={enrollment.id}>
@@ -276,6 +394,53 @@ export const StudentDetailContent = ({
                         label={status.label}
                         tone={status.tone}
                       />
+                    </td>
+                    <td className="border-slate-100 border-b px-3 py-3">
+                      {editableStatus && selectedStatus ? (
+                        <div className="flex min-w-max items-center gap-2">
+                          <select
+                            value={selectedStatus}
+                            disabled={savingStatusId === enrollment.id}
+                            onChange={(event) =>
+                              setSelectedStatuses((current) => ({
+                                ...current,
+                                [enrollment.id]: event.target
+                                  .value as EditableEnrollmentStatus,
+                              }))
+                            }
+                            aria-label={`Status da matrícula de ${student.nome}`}
+                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-slate-900 text-xs outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:bg-slate-100"
+                          >
+                            <option value="em_andamento">Em andamento</option>
+                            <option value="aprovado">Aprovado</option>
+                            <option value="reprovado_falta">
+                              Reprovado por falta
+                            </option>
+                          </select>
+                          <button
+                            type="button"
+                            disabled={
+                              savingStatusId === enrollment.id ||
+                              selectedStatus === enrollment.status
+                            }
+                            onClick={() =>
+                              handleUpdateEnrollmentStatus(
+                                enrollment.id,
+                                editableStatus,
+                              )
+                            }
+                            className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:text-slate-400"
+                          >
+                            {savingStatusId === enrollment.id
+                              ? "Salvando..."
+                              : "Salvar"}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-xs">
+                          Indisponível
+                        </span>
+                      )}
                     </td>
                     <td className="border-slate-100 border-b px-3 py-3">
                       {enrollment.status !== "cancelado" && classId ? (
@@ -304,7 +469,7 @@ export const StudentDetailContent = ({
               {student.matriculas.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-3 py-8 text-center text-slate-500"
                   >
                     Nenhuma matrícula encontrada.
