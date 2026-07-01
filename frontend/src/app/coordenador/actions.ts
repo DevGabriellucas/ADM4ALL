@@ -57,6 +57,34 @@ export async function convidarInstrutorAction(input: {
   }
 }
 
+export async function convidarAlunoAction(input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  dataNascimento: string;
+  curso: string;
+  turma: string;
+}): Promise<ResultadoAction> {
+  try {
+    const convite = await coordinatorService.inviteStudent(input);
+    revalidatePath("/coordenador/alunos");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Convite de ativacao enviado para ${convite.nome}.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao enviar o convite de ativacao.",
+    };
+  }
+}
+
 export async function criarTurmaAction(input: {
   curso: string;
   nome: string;

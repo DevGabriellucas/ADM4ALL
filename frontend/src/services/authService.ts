@@ -1,3 +1,9 @@
+import type {
+  ActivateAccountPayload,
+  ActivateAccountResponse,
+  ActivationTokenResponse,
+} from "@/types/auth";
+
 interface LoginPayload {
   identifier: string;
   password: string;
@@ -35,7 +41,8 @@ export interface ResetPasswordResponse {
 }
 
 interface ApiErrorResponse {
-  erro: string;
+  erro?: string;
+  mensagem?: string;
 }
 
 const getApiUrl = () => {
@@ -46,6 +53,54 @@ const getApiUrl = () => {
   }
 
   return apiUrl;
+};
+
+const readApiError = async (response: Response, fallback: string) => {
+  try {
+    const error = (await response.json()) as ApiErrorResponse;
+    return error.erro ?? error.mensagem ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+export const validateActivationToken = async (
+  token: string,
+): Promise<ActivationTokenResponse> => {
+  const response = await fetch(
+    `${getApiUrl()}/auth/ativacoes/${encodeURIComponent(token)}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Não foi possível validar o link."),
+    );
+  }
+
+  return (await response.json()) as ActivationTokenResponse;
+};
+
+export const activateAccount = async (
+  token: string,
+  payload: ActivateAccountPayload,
+): Promise<ActivateAccountResponse> => {
+  const response = await fetch(
+    `${getApiUrl()}/auth/ativacoes/${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Não foi possível ativar a conta."),
+    );
+  }
+
+  return (await response.json()) as ActivateAccountResponse;
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {

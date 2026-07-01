@@ -179,6 +179,25 @@ export const inviteInstructor = async (input: {
   );
 };
 
+export const inviteStudent = async (input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  dataNascimento: string;
+  curso: string;
+  turma: string;
+}): Promise<{ id: string; nome: string }> => {
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/alunos/convites",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de ativacao.",
+    },
+  );
+};
+
 export const getClasses = async (): Promise<ClassGroup[]> => {
   const turmas = await authenticatedRequest<TurmaApi[]>("/turmas", {
     cache: "no-store",
