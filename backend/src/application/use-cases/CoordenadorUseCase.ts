@@ -4,6 +4,7 @@ import {
   CampoPendenteAtivacao,
 } from "../../domain/repositories/ActivationRepository";
 import {
+  AlunoListagemCoordenador,
   ConviteCriado,
   CoordenadorRepository,
   CursoResumo,
@@ -113,6 +114,10 @@ export class CoordenadorUseCase {
 
   async listarInstrutores(): Promise<InstrutorListagem[]> {
     return await this.coordenadorRepository.listarInstrutores();
+  }
+
+  async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
+    return await this.coordenadorRepository.listarAlunos();
   }
 
   async convidarInstrutor(

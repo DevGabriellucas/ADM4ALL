@@ -39,6 +39,24 @@ export interface InstrutorListagem {
   dataCriacao: string;
 }
 
+export interface AlunoListagemCoordenador {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  turma: string | null;
+  curso: string | null;
+  frequencia: number;
+  statusConta: "ativo" | "inativo" | "bloqueado" | "pendente_ativacao";
+  statusMatricula:
+    | "em_andamento"
+    | "aprovado"
+    | "reprovado_falta"
+    | "cancelado"
+    | null;
+  dataCriacao: string;
+}
+
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
@@ -123,6 +141,7 @@ export interface CoordenadorRepository {
   criarCurso(input: CriarCursoInput): Promise<CursoResumo>;
 
   listarInstrutores(): Promise<InstrutorListagem[]>;
+  listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;

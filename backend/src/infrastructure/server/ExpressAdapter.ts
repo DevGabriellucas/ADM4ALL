@@ -545,6 +545,15 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/alunos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const alunos = await this.coordenadorUseCase.listarAlunos();
+        res.json(alunos);
+      }),
+    );
+
+    this.app.get(
       "/turmas",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {

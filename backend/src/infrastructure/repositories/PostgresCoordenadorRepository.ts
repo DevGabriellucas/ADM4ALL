@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import {
+  AlunoListagemCoordenador,
   AulaResumo,
   ConvidarAlunoInput,
   ConvidarInstrutorInput,
@@ -116,6 +117,64 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       telefone: linha.telefone ?? null,
       status: linha.status,
       turmasVinculadas: Number(linha.turmas_vinculadas),
+      dataCriacao: linha.data_criacao,
+    }));
+  }
+
+  async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
+    const query = `
+      SELECT
+        a.id,
+        u.nome,
+        u.email,
+        a.telefone,
+        matricula.turma,
+        matricula.curso,
+        COALESCE(frequencia.percentual, 0) AS frequencia,
+        u.status AS status_conta,
+        matricula.status AS status_matricula,
+        to_char(a.data_cadastro, 'YYYY-MM-DD') AS data_criacao
+      FROM alunos a
+      JOIN usuarios u ON u.id = a.usuario_id
+      LEFT JOIN LATERAL (
+        SELECT
+          m.id,
+          m.status,
+          t.nome AS turma,
+          tr.nome AS curso
+        FROM matriculas m
+        JOIN treinamentos tr ON tr.id = m.treinamento_id
+        LEFT JOIN turmas t ON t.id = m.turma_id
+        WHERE m.aluno_id = a.id
+        ORDER BY
+          CASE WHEN m.status = 'em_andamento' THEN 0 ELSE 1 END,
+          m.data_matricula DESC,
+          m.id DESC
+        LIMIT 1
+      ) matricula ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(
+            ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)),
+            0
+          ) AS percentual
+        FROM frequencias f
+        WHERE f.matricula_id = matricula.id
+      ) frequencia ON TRUE
+      ORDER BY u.nome ASC
+    `;
+    const resultado = await this.db.query(query);
+
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      nome: linha.nome,
+      email: linha.email,
+      telefone: linha.telefone ?? null,
+      turma: linha.turma ?? null,
+      curso: linha.curso ?? null,
+      frequencia: Number(linha.frequencia),
+      statusConta: linha.status_conta,
+      statusMatricula: linha.status_matricula ?? null,
       dataCriacao: linha.data_criacao,
     }));
   }
