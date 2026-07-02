@@ -50,28 +50,6 @@ export class AlunoUseCase {
     private emailService: EmailService,
   ) {}
 
-  async login(identificador: string, senhaBruta: string): Promise<Aluno> {
-    let idLimpo = identificador.trim().toLowerCase();
-
-    if (!idLimpo.includes("@")) {
-      idLimpo = idLimpo.replace(/\D/g, "");
-    }
-
-    const aluno = await this.alunoRepository.buscarPorEmailOuCpf(idLimpo);
-
-    if (!aluno) {
-      throw new UnauthorizedError("Credenciais invalidas.");
-    }
-
-    const senhaCorreta = await bcrypt.compare(senhaBruta, aluno.senha);
-
-    if (!senhaCorreta) {
-      throw new UnauthorizedError("Credenciais invalidas.");
-    }
-
-    return aluno;
-  }
-
   async cadastrar(dados: CadastrarAlunoInput): Promise<Aluno> {
     const cpfVo = new Cpf(dados.cpf);
     const telefoneVo = new Telefone(dados.telefone);
