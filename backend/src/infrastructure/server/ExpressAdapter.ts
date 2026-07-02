@@ -13,6 +13,7 @@ import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
+import { gerarCertificadoPdf } from "../pdf/CertificatePdfService";
 
 type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
 
@@ -490,6 +491,93 @@ export class ExpressAdapter {
           ...(periodo ? { periodo } : {}),
         });
         res.json(frequencias);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const certificados =
+          await this.coordenadorUseCase.listarCertificados();
+        res.json(certificados);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados/:tipo/:referenciaId",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, referenciaId } = req.params as {
+          tipo: string;
+          referenciaId: string;
+        };
+        const certificado = await this.coordenadorUseCase.buscarCertificado(
+          tipo,
+          referenciaId,
+        );
+        res.json(certificado);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados/:tipo/:referenciaId/pdf",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, referenciaId } = req.params as {
+          tipo: string;
+          referenciaId: string;
+        };
+        const disposition =
+          (req.query.disposition as string | undefined) === "inline"
+            ? "inline"
+            : "attachment";
+
+        const certificado = await this.coordenadorUseCase.buscarCertificado(
+          tipo,
+          referenciaId,
+        );
+        const pdf = await gerarCertificadoPdf(certificado);
+        const codigoSeguro = (certificado.codigo ?? "certificado").replace(
+          /[^a-zA-Z0-9_-]/g,
+          "-",
+        );
+
+        const fileName = `certificado-${tipo}-${codigoSeguro}.pdf`;
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          disposition === "inline"
+            ? "inline"
+            : `attachment; filename="${fileName}"`,
+        );
+        res.status(200).send(pdf);
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/certificados/alunos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { matriculaId } = req.body ?? {};
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        const certificado =
+          await this.coordenadorUseCase.emitirCertificadoAluno(
+            matriculaId,
+            usuario.sub,
+          );
+        res.status(201).json(certificado);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/certificados/:tipo/:id/cancelar",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, id } = req.params as { tipo: string; id: string };
+        await this.coordenadorUseCase.cancelarCertificado(tipo, id);
+        res.json({ mensagem: "Certificado cancelado com sucesso." });
       }),
     );
 

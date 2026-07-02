@@ -18,5 +18,5 @@ export const getCertificateStatus = (
     return "cancelado";
   }
 
-  return certificate.frequencia < 80 ? "nao_elegivel" : "elegivel";
+  return certificate.elegivel ? "elegivel" : "nao_elegivel";
 };

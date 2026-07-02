@@ -198,13 +198,51 @@ export interface AttendanceSummary {
 }
 
 export interface CertificateRecord {
+  referenciaId: string;
+  certificadoId: string | null;
+  tipo: "aluno";
+  nome: string;
   aluno: string;
   curso: string;
-  turma: string;
+  turma: string | null;
   frequencia: number;
+  elegivel: boolean;
+  motivoInelegibilidade: string | null;
   status: CertificateStatus | null;
   certificado: string | null;
+  dataEmissao: string | null;
+  dataInicio: string | null;
+  dataFim: string | null;
+  cargaHoraria: number | null;
 }
+
+interface CertificateDetailBase {
+  certificadoId: string | null;
+  referenciaId: string;
+  status: CertificateStatus | null;
+  dataEmissao: string | null;
+  cidade: string;
+  codigo: string | null;
+}
+
+export interface StudentCertificateDetail extends CertificateDetailBase {
+  tipo: "aluno";
+  nomeAluno: string;
+  cpfAluno: string;
+  nomeCurso: string;
+  cargaHoraria: number;
+  dataInicio: string;
+  dataFim: string;
+  nomeCoordenadora: string;
+  nomeProjeto: string;
+  textoDescritivo: string;
+  statusMatricula: MatriculaStatus;
+  statusTurma: ClassStatus;
+  statusUsuario: UserStatus;
+  faltas: number;
+}
+
+export type CertificateDetail = StudentCertificateDetail;
 
 export interface ProcessRecord {
   id: string;

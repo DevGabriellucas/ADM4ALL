@@ -6,6 +6,8 @@ import {
   AtualizarAlunoCoordenadorInput,
   AtualizarStatusMatriculaInput,
   AulaResumo,
+  CertificadoAlunoDetalhe,
+  CertificadoListagemCoordenador,
   ConvidarAlunoInput,
   ConvidarInstrutorInput,
   ConviteCriado,
@@ -14,6 +16,7 @@ import {
   CriarTurmaInput,
   CursoResumo,
   DashboardResumo,
+  EmitirCertificadoAlunoInput,
   FiltrosFrequenciaCoordenador,
   FrequenciaCoordenador,
   IdentificadorPorNome,
@@ -39,7 +42,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         (SELECT COUNT(*) FROM turmas) AS total_turmas,
         (SELECT COUNT(*) FROM alunos) AS total_alunos,
         (SELECT COUNT(*) FROM instrutores WHERE ativo) AS total_instrutores,
-        (SELECT COUNT(*) FROM certificados WHERE status = 'pendente') AS certificados_pendentes,
+        (SELECT COUNT(*) FROM certificados WHERE status = 'pendente')
+          AS certificados_pendentes,
         (SELECT COUNT(*) FROM usuarios WHERE status = 'pendente_ativacao') AS usuarios_pendentes,
         (
           SELECT COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0)
@@ -650,6 +654,195 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       frequencia: Number(linha.frequencia),
       situacao: linha.situacao,
     }));
+  }
+
+  async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+    const resultado = await this.db.query(`
+      SELECT
+        m.id AS referencia_id,
+        c.id AS certificado_id,
+        'aluno'::text AS tipo,
+        u.nome,
+        tr.nome AS curso,
+        tu.nome AS turma,
+        COALESCE(
+          ROUND(
+            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
+            / NULLIF(COUNT(f.id), 0)
+          ),
+          0
+        ) AS frequencia,
+        (
+          m.status = 'aprovado'
+          AND tu.status = 'concluida'
+          AND u.status = 'ativo'
+          AND COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
+          AND (c.status IS NULL OR c.status NOT IN ('pendente', 'emitido'))
+        ) AS elegivel,
+        CASE
+          WHEN m.status <> 'aprovado' THEN 'Matrícula ainda não aprovada.'
+          WHEN tu.status <> 'concluida' THEN 'Turma ainda não concluída.'
+          WHEN u.status <> 'ativo' THEN 'Conta do aluno não está ativa.'
+          WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
+            THEN 'Aluno possui 3 ou mais faltas.'
+          WHEN c.status IN ('pendente', 'emitido')
+            THEN 'A matrícula já possui certificado pendente ou emitido.'
+          ELSE NULL
+        END AS motivo_inelegibilidade,
+        c.status,
+        c.codigo,
+        to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
+        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        to_char(
+          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_fim,
+        tr.carga_horaria
+      FROM matriculas m
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      JOIN turmas tu ON tu.id = m.turma_id
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      LEFT JOIN certificados c ON c.matricula_id = m.id
+      WHERE m.status <> 'cancelado'
+      GROUP BY
+        m.id,
+        c.id,
+        u.nome,
+        tr.nome,
+        tu.nome,
+        tu.data_inicio,
+        tu.data_fim,
+        tr.carga_horaria,
+        tu.status,
+        u.status
+      ORDER BY u.nome ASC
+    `);
+
+    return resultado.rows.map((linha) => ({
+      referenciaId: linha.referencia_id,
+      certificadoId: linha.certificado_id ?? null,
+      tipo: "aluno",
+      nome: linha.nome,
+      curso: linha.curso,
+      turma: linha.turma ?? null,
+      frequencia: Number(linha.frequencia),
+      elegivel: linha.elegivel,
+      motivoInelegibilidade: linha.motivo_inelegibilidade ?? null,
+      status: linha.status ?? null,
+      codigo: linha.codigo ?? null,
+      dataEmissao: linha.data_emissao ?? null,
+      dataInicio: linha.data_inicio ?? null,
+      dataFim: linha.data_fim ?? null,
+      cargaHoraria:
+        linha.carga_horaria === null ? null : Number(linha.carga_horaria),
+    }));
+  }
+
+  async buscarCertificadoAluno(
+    matriculaId: string,
+  ): Promise<CertificadoAlunoDetalhe | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        m.id AS referencia_id,
+        c.id AS certificado_id,
+        c.status,
+        u.nome AS nome_aluno,
+        u.cpf AS cpf_aluno,
+        tr.nome AS nome_curso,
+        tr.carga_horaria,
+        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        to_char(
+          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_fim,
+        to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
+        COALESCE(emissor.nome, 'Coordenação do Projeto') AS nome_coordenadora,
+        c.codigo,
+        m.status AS status_matricula,
+        tu.status AS status_turma,
+        u.status AS status_usuario,
+        (
+          SELECT COUNT(*)
+          FROM frequencias f
+          WHERE f.matricula_id = m.id AND NOT f.presente
+        ) AS faltas
+      FROM matriculas m
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      JOIN turmas tu ON tu.id = m.turma_id
+      LEFT JOIN certificados c ON c.matricula_id = m.id
+      LEFT JOIN usuarios emissor ON emissor.id = c.emitido_por_id
+      WHERE m.id = $1
+      LIMIT 1
+      `,
+      [matriculaId],
+    );
+    const linha = resultado.rows[0];
+    if (!linha) return null;
+
+    return {
+      tipo: "aluno",
+      certificadoId: linha.certificado_id ?? null,
+      referenciaId: linha.referencia_id,
+      status: linha.status ?? null,
+      nomeAluno: linha.nome_aluno,
+      cpfAluno: linha.cpf_aluno,
+      nomeCurso: linha.nome_curso,
+      cargaHoraria: Number(linha.carga_horaria),
+      dataInicio: linha.data_inicio,
+      dataFim: linha.data_fim,
+      dataEmissao: linha.data_emissao ?? null,
+      cidade: "João Pessoa - PB",
+      nomeCoordenadora: linha.nome_coordenadora,
+      nomeProjeto: "Projeto de Extensão Administração para Todos",
+      textoDescritivo:
+        "concluiu o curso de extensão, desenvolvendo conhecimentos e habilidades para atuação em rotinas administrativas e no ambiente profissional.",
+      codigo: linha.codigo ?? null,
+      statusMatricula: linha.status_matricula,
+      statusTurma: linha.status_turma,
+      statusUsuario: linha.status_usuario,
+      faltas: Number(linha.faltas),
+    };
+  }
+
+  async emitirCertificadoAluno(
+    input: EmitirCertificadoAlunoInput,
+  ): Promise<CertificadoAlunoDetalhe | null> {
+    try {
+      await this.db.query(
+        `INSERT INTO certificados
+          (matricula_id, codigo, status, data_emissao, emitido_por_id, observacao)
+         VALUES ($1, $2, 'emitido', CURRENT_DATE, $3, $4)`,
+        [
+          input.matriculaId,
+          input.codigo,
+          input.emitidoPorId,
+          "Certificado emitido pelo painel do coordenador.",
+        ],
+      );
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Esta matrícula já possui um certificado.");
+      }
+      throw error;
+    }
+
+    return await this.buscarCertificadoAluno(input.matriculaId);
+  }
+
+  async cancelarCertificado(certificadoId: string): Promise<boolean> {
+    const resultado = await this.db.query(
+      `UPDATE certificados
+       SET status = 'cancelado'
+       WHERE id = $1 AND status <> 'cancelado'
+       RETURNING id`,
+      [certificadoId],
+    );
+    return (resultado.rowCount ?? 0) > 0;
   }
 
   async buscarInstrutorAtivoPorNome(

@@ -9,6 +9,12 @@ interface ApiErrorBody {
   mensagem?: string;
 }
 
+export interface AuthenticatedFileResponse {
+  base64: string;
+  contentType: string;
+  fileName: string;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -99,4 +105,36 @@ export const authenticatedRequest = async <T>(
   }
 
   return (await response.text()) as T;
+};
+
+export const authenticatedFileRequest = async (
+  path: string,
+  fallbackError = "Nao foi possivel baixar o arquivo.",
+): Promise<AuthenticatedFileResponse> => {
+  const session = await getServerSession();
+  if (!session) {
+    throw new ApiError("Sessao nao encontrada.", 401);
+  }
+
+  const response = await fetch(`${getApiUrl()}${path}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${session.token}` },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      await readErrorMessage(response, fallbackError),
+      response.status,
+    );
+  }
+
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const fileNameMatch = disposition.match(/filename="([^"]+)"/i);
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  return {
+    base64: buffer.toString("base64"),
+    contentType: response.headers.get("content-type") ?? "application/pdf",
+    fileName: fileNameMatch?.[1] ?? "certificado.pdf",
+  };
 };

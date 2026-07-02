@@ -9,6 +9,8 @@ import {
   AlunoParaReenvioAtivacao,
   AtualizarStatusMatriculaInput,
   AtualizarAlunoCoordenadorInput,
+  CertificadoDetalhe,
+  CertificadoListagemCoordenador,
   ConviteCriado,
   CoordenadorRepository,
   CursoResumo,
@@ -19,6 +21,7 @@ import {
   MatriculaCriada,
   MatriculaStatusAtualizado,
   StatusMatriculaEditavel,
+  TipoCertificado,
   TurmaDetalhe,
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
@@ -105,6 +108,14 @@ const isStatusMatriculaEditavel = (
   status: string,
 ): status is StatusMatriculaEditavel =>
   STATUS_MATRICULA_EDITAVEIS.includes(status as StatusMatriculaEditavel);
+
+const isTipoCertificado = (tipo: string): tipo is TipoCertificado =>
+  tipo === "aluno";
+
+const gerarCodigoCertificado = () =>
+  `CERT-ALU-${new Date().getFullYear()}-${randomBytes(4)
+    .toString("hex")
+    .toUpperCase()}`;
 
 export class CoordenadorUseCase {
   constructor(
@@ -415,6 +426,123 @@ export class CoordenadorUseCase {
     if (input.periodo) filtros.periodo = input.periodo;
 
     return await this.coordenadorRepository.listarFrequencias(filtros);
+  }
+
+  async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+    return await this.coordenadorRepository.listarCertificados();
+  }
+
+  async buscarCertificado(
+    tipo: string,
+    referenciaId: string,
+  ): Promise<CertificadoDetalhe> {
+    if (!isTipoCertificado(tipo)) {
+      throw new BadRequestError(
+        "Tipo de certificado invalido. Use: aluno.",
+      );
+    }
+    if (!UUID_PATTERN.test(referenciaId)) {
+      throw new BadRequestError("O ID de referencia e invalido.");
+    }
+
+    const certificado =
+      await this.coordenadorRepository.buscarCertificadoAluno(referenciaId);
+    if (!certificado) {
+      throw new BadRequestError("Certificado ou vinculo nao encontrado.");
+    }
+    if (
+      certificado.status !== "emitido" ||
+      !certificado.certificadoId ||
+      !certificado.codigo ||
+      !certificado.dataEmissao
+    ) {
+      throw new BadRequestError("O certificado ainda nao foi emitido.");
+    }
+
+    return certificado;
+  }
+
+  async emitirCertificadoAluno(
+    matriculaId: string,
+    emitidoPorId: string,
+  ): Promise<CertificadoDetalhe> {
+    if (!UUID_PATTERN.test(matriculaId)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+    if (!UUID_PATTERN.test(emitidoPorId)) {
+      throw new BadRequestError("O usuario emissor e invalido.");
+    }
+
+    const candidato =
+      await this.coordenadorRepository.buscarCertificadoAluno(matriculaId);
+    if (!candidato) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+    if (candidato.certificadoId) {
+      throw new BadRequestError("Esta matricula ja possui um certificado.");
+    }
+    if (candidato.statusMatricula !== "aprovado") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido para uma matricula aprovada.",
+      );
+    }
+    if (candidato.statusTurma !== "concluida") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido apos a conclusao da turma.",
+      );
+    }
+    if (candidato.statusUsuario !== "ativo") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido para um aluno ativo.",
+      );
+    }
+    if (candidato.faltas >= 3) {
+      throw new BadRequestError(
+        "O certificado exige menos de 3 faltas.",
+      );
+    }
+
+    try {
+      const certificado =
+        await this.coordenadorRepository.emitirCertificadoAluno({
+          matriculaId,
+          emitidoPorId,
+          codigo: gerarCodigoCertificado(),
+        });
+      if (!certificado) {
+        throw new BadRequestError("Matricula nao encontrada.");
+      }
+      return certificado;
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel emitir o certificado do aluno.",
+      );
+    }
+  }
+
+  async cancelarCertificado(
+    tipo: string,
+    certificadoId: string,
+  ): Promise<void> {
+    if (!isTipoCertificado(tipo)) {
+      throw new BadRequestError(
+        "Tipo de certificado invalido. Use: aluno.",
+      );
+    }
+    if (!UUID_PATTERN.test(certificadoId)) {
+      throw new BadRequestError("O ID do certificado e invalido.");
+    }
+
+    const cancelado =
+      await this.coordenadorRepository.cancelarCertificado(certificadoId);
+    if (!cancelado) {
+      throw new BadRequestError(
+        "Certificado nao encontrado ou ja cancelado.",
+      );
+    }
   }
 
   async convidarInstrutor(

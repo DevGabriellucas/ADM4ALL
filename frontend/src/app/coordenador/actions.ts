@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import * as coordinatorService from "@/services/coordinatorService";
 import type {
+  CertificateDetail,
   ClassGroup,
   Course,
   EditableEnrollmentStatus,
@@ -17,6 +18,18 @@ interface ResultadoAction {
 
 interface TurmasParaMatriculaResultado extends ResultadoAction {
   turmas: EnrollmentClassOption[];
+}
+
+interface ResultadoCertificadoAction extends ResultadoAction {
+  certificado: CertificateDetail | null;
+}
+
+interface ResultadoDownloadCertificadoAction extends ResultadoAction {
+  arquivo: {
+    base64: string;
+    contentType: string;
+    fileName: string;
+  } | null;
 }
 
 export async function criarCursoAction(input: {
@@ -279,6 +292,99 @@ export async function atualizarStatusMatriculaAction(
         error instanceof Error
           ? error.message
           : "Falha ao atualizar o status da matrícula.",
+    };
+  }
+}
+
+export async function baixarCertificadoPdfAction(
+  referenciaId: string,
+): Promise<ResultadoDownloadCertificadoAction> {
+  try {
+    const arquivo =
+      await coordinatorService.downloadCertificatePdf(referenciaId);
+    return {
+      sucesso: true,
+      mensagem: "PDF preparado para download.",
+      arquivo,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao baixar o PDF do certificado.",
+      arquivo: null,
+    };
+  }
+}
+
+export async function visualizarCertificadoPdfAction(
+  referenciaId: string,
+): Promise<ResultadoDownloadCertificadoAction> {
+  try {
+    const arquivo =
+      await coordinatorService.getCertificatePdfPreview(referenciaId);
+    return {
+      sucesso: true,
+      mensagem: "",
+      arquivo,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao carregar o PDF do certificado.",
+      arquivo: null,
+    };
+  }
+}
+
+export async function emitirCertificadoAlunoAction(
+  matriculaId: string,
+): Promise<ResultadoCertificadoAction> {
+  try {
+    const certificado =
+      await coordinatorService.issueStudentCertificate(matriculaId);
+    revalidatePath("/coordenador/certificados");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Certificado do aluno emitido com sucesso.",
+      certificado,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao emitir o certificado do aluno.",
+      certificado: null,
+    };
+  }
+}
+
+export async function cancelarCertificadoAction(
+  certificadoId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.cancelCertificate(certificadoId);
+    revalidatePath("/coordenador/certificados");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Certificado cancelado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao cancelar o certificado.",
     };
   }
 }

@@ -3,7 +3,6 @@
 // nunca por componentes "use client".
 import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
-  coordinatorCertificatesMock,
   coordinatorClassMaterialsMock,
   coordinatorLessonsMock,
   coordinatorProcessesMock,
@@ -11,10 +10,16 @@ import {
   coordinatorSettingsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
-import { ApiError, authenticatedRequest } from "@/services/apiClient";
+import {
+  ApiError,
+  type AuthenticatedFileResponse,
+  authenticatedFileRequest,
+  authenticatedRequest,
+} from "@/services/apiClient";
 import type {
   AttendanceSummary,
   BaseUser,
+  CertificateDetail,
   CertificateRecord,
   ClassGroup,
   ClassMaterial,
@@ -34,10 +39,9 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: materiais, certificados, processos, relatorios, usuarios
-// e configuracoes ainda nao tem backend e continuam retornando mock.
-// Dashboard, cursos, instrutores, alunos, turmas e frequencia ja consultam
-// a API real.
+// MOCK TEMPORARIO: materiais, processos, relatorios, usuarios e configuracoes
+// ainda nao tem backend e continuam retornando mock. Dashboard, cursos,
+// instrutores, alunos, turmas, frequencia e certificados consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -81,6 +85,24 @@ interface TurmaApi {
   dataTermino: string | null;
   status: string;
   frequenciaMedia: number;
+}
+
+interface CertificadoApi {
+  referenciaId: string;
+  certificadoId: string | null;
+  tipo: "aluno";
+  nome: string;
+  curso: string;
+  turma: string | null;
+  frequencia: number;
+  elegivel: boolean;
+  motivoInelegibilidade: string | null;
+  status: CertificateRecord["status"];
+  codigo: string | null;
+  dataEmissao: string | null;
+  dataInicio: string | null;
+  dataFim: string | null;
+  cargaHoraria: number | null;
 }
 
 interface TurmaDetalheApi {
@@ -526,7 +548,62 @@ export const getLessons = async (): Promise<Lesson[]> => {
 };
 
 export const getCertificates = async (): Promise<CertificateRecord[]> => {
-  return coordinatorCertificatesMock;
+  const certificados = await authenticatedRequest<CertificadoApi[]>(
+    "/coordenador/certificados",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os certificados.",
+    },
+  );
+
+  return certificados.map((certificado) => ({
+    ...certificado,
+    aluno: certificado.nome,
+    certificado: certificado.codigo,
+  }));
+};
+
+export const downloadCertificatePdf = async (
+  referenciaId: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/certificados/aluno/${referenciaId}/pdf`,
+    "Falha ao baixar o PDF do certificado.",
+  );
+};
+
+export const getCertificatePdfPreview = async (
+  referenciaId: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/certificados/aluno/${referenciaId}/pdf?disposition=inline`,
+    "Falha ao carregar o PDF do certificado.",
+  );
+};
+
+export const issueStudentCertificate = async (
+  matriculaId: string,
+): Promise<CertificateDetail> => {
+  return await authenticatedRequest<CertificateDetail>(
+    "/coordenador/certificados/alunos",
+    {
+      method: "POST",
+      body: JSON.stringify({ matriculaId }),
+      fallbackError: "Falha ao emitir o certificado do aluno.",
+    },
+  );
+};
+
+export const cancelCertificate = async (
+  certificadoId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/certificados/aluno/${certificadoId}/cancelar`,
+    {
+      method: "PATCH",
+      fallbackError: "Falha ao cancelar o certificado.",
+    },
+  );
 };
 
 export const getProcesses = async (): Promise<ProcessRecord[]> => {

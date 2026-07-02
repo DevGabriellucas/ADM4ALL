@@ -165,6 +165,58 @@ export interface FrequenciaCoordenador {
   situacao: "regular" | "atencao" | "risco" | "reprovado_falta";
 }
 
+export type TipoCertificado = "aluno";
+export type StatusCertificado = "pendente" | "emitido" | "cancelado";
+
+export interface CertificadoListagemCoordenador {
+  referenciaId: string;
+  certificadoId: string | null;
+  tipo: "aluno";
+  nome: string;
+  curso: string;
+  turma: string | null;
+  frequencia: number;
+  elegivel: boolean;
+  motivoInelegibilidade: string | null;
+  status: StatusCertificado | null;
+  codigo: string | null;
+  dataEmissao: string | null;
+  dataInicio: string | null;
+  dataFim: string | null;
+  cargaHoraria: number | null;
+}
+
+export interface CertificadoAlunoDetalhe {
+  tipo: "aluno";
+  certificadoId: string | null;
+  referenciaId: string;
+  status: StatusCertificado | null;
+  nomeAluno: string;
+  cpfAluno: string;
+  nomeCurso: string;
+  cargaHoraria: number;
+  dataInicio: string;
+  dataFim: string;
+  dataEmissao: string | null;
+  cidade: string;
+  nomeCoordenadora: string;
+  nomeProjeto: string;
+  textoDescritivo: string;
+  codigo: string | null;
+  statusMatricula: string;
+  statusTurma: string;
+  statusUsuario: string;
+  faltas: number;
+}
+
+export type CertificadoDetalhe = CertificadoAlunoDetalhe;
+
+export interface EmitirCertificadoAlunoInput {
+  matriculaId: string;
+  codigo: string;
+  emitidoPorId: string;
+}
+
 export interface ConvidarInstrutorInput {
   nome: string;
   email: string;
@@ -282,6 +334,14 @@ export interface CoordenadorRepository {
   listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
   ): Promise<FrequenciaCoordenador[]>;
+  listarCertificados(): Promise<CertificadoListagemCoordenador[]>;
+  buscarCertificadoAluno(
+    matriculaId: string,
+  ): Promise<CertificadoAlunoDetalhe | null>;
+  emitirCertificadoAluno(
+    input: EmitirCertificadoAlunoInput,
+  ): Promise<CertificadoAlunoDetalhe | null>;
+  cancelarCertificado(certificadoId: string): Promise<boolean>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;

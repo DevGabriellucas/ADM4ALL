@@ -1,7 +1,6 @@
 import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type {
   BaseUser,
-  CertificateRecord,
   ClassGroup,
   ClassMaterial,
   CoordinatorDashboardSummary,
@@ -291,49 +290,6 @@ export const coordinatorClassMaterialsMock: ClassMaterial[] = [
   },
 ];
 
-export const coordinatorCertificatesMock: CertificateRecord[] = [
-  {
-    aluno: "Ana Clara Silva",
-    curso: "Assistente Administrativo",
-    turma: "ADM-2026-01",
-    frequencia: 92,
-    status: null,
-    certificado: null,
-  },
-  {
-    aluno: "Douglas Silva",
-    curso: "Assistente Administrativo",
-    turma: "ADM-2026-01",
-    frequencia: 78,
-    status: null,
-    certificado: null,
-  },
-  {
-    aluno: "Felipe Ribeiro",
-    curso: "Assistente Administrativo",
-    turma: "ADM-2026-01",
-    frequencia: 70,
-    status: "cancelado",
-    certificado: null,
-  },
-  {
-    aluno: "Priscila Cahino",
-    curso: "Atendimento ao Cliente",
-    turma: "ATD-2026-01",
-    frequencia: 96,
-    status: "emitido",
-    certificado: "CERT-ATD-2026-0001",
-  },
-  {
-    aluno: "Carla Menezes",
-    curso: "Atendimento ao Cliente",
-    turma: "ATD-2026-01",
-    frequencia: 85,
-    status: "pendente",
-    certificado: null,
-  },
-];
-
 export const coordinatorProcessesMock: ProcessRecord[] = [
   {
     id: "process-001",
@@ -507,24 +463,22 @@ export const coordinatorReportsMock: CoordinatorReportData[] = [
       { key: "frequencia", label: "Frequência" },
       { key: "status", label: "Status" },
     ],
-    rows: coordinatorCertificatesMock
-      .filter((certificate) => certificate.frequencia >= 80)
-      .map((certificate, index) => ({
-        id: `report-eligible-${index}`,
-        data:
-          coordinatorClassesMock.find(
-            (classGroup) => classGroup.nome === certificate.turma,
-          )?.dataTermino ?? "2026-06-26",
-        curso: certificate.curso,
-        turma: certificate.turma,
-        chartLabel: certificate.aluno,
+    rows: coordinatorStudentsMock
+      .filter(
+        (student) => student.statusMatricula === MATRICULA_STATUS.APROVADO,
+      )
+      .map((student) => ({
+        id: `report-eligible-${student.id}`,
+        data: student.dataCriacao,
+        curso: student.curso,
+        turma: student.turma,
+        chartLabel: student.nome,
         chartValue: 1,
         values: {
-          aluno: certificate.aluno,
-          curso: certificate.curso,
-          frequencia: `${certificate.frequencia}%`,
-          status:
-            certificate.status === "emitido" ? "Emitido" : "Apto à emissão",
+          aluno: student.nome,
+          curso: student.curso,
+          frequencia: `${student.frequencia}%`,
+          status: "Apto à emissão",
         },
       })),
   },
@@ -540,25 +494,7 @@ export const coordinatorReportsMock: CoordinatorReportData[] = [
       { key: "turma", label: "Turma" },
       { key: "certificado", label: "Certificado" },
     ],
-    rows: coordinatorCertificatesMock
-      .filter((certificate) => certificate.status === "emitido")
-      .map((certificate, index) => ({
-        id: `report-issued-${index}`,
-        data:
-          coordinatorClassesMock.find(
-            (classGroup) => classGroup.nome === certificate.turma,
-          )?.dataTermino ?? "2026-06-26",
-        curso: certificate.curso,
-        turma: certificate.turma,
-        chartLabel: certificate.aluno,
-        chartValue: 1,
-        values: {
-          aluno: certificate.aluno,
-          curso: certificate.curso,
-          turma: certificate.turma,
-          certificado: certificate.certificado ?? "-",
-        },
-      })),
+    rows: [],
   },
   {
     type: "matriculas_curso",
@@ -676,9 +612,7 @@ export const coordinatorDashboardSummaryMock: CoordinatorDashboardSummary = {
   totalAlunos: coordinatorStudentsMock.length,
   totalInstrutores: coordinatorInstructorsMock.length,
   frequenciaMedia: 87,
-  certificadosPendentes: coordinatorCertificatesMock.filter(
-    (certificate) => certificate.status === "pendente",
-  ).length,
+  certificadosPendentes: 0,
   processosAbertos: coordinatorProcessesMock.filter(
     (process) => process.status === "aberto",
   ).length,
