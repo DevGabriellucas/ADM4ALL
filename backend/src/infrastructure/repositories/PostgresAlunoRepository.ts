@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { Aluno } from "../../domain/entities/Aluno";
 import {
+  AlunoDashboard,
   AlunoRepository,
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
@@ -12,6 +13,24 @@ import { Telefone } from "../../domain/value-objects/Telefone";
 
 export class PostgresAlunoRepository implements AlunoRepository {
   constructor(private db: Pool) {}
+
+  private readonly selecionarAluno = `
+    SELECT
+      a.id,
+      a.telefone,
+      a.data_nascimento,
+      a.data_cadastro,
+      a.treinamento,
+      a.is_aluno_unipe,
+      a.rgm,
+      a.curso_unipe,
+      u.nome,
+      u.cpf,
+      u.email,
+      u.senha
+    FROM alunos a
+    JOIN usuarios u ON u.id = a.usuario_id
+  `;
 
   private mapearLinhaParaAluno(linha: any): Aluno {
     return new Aluno({
@@ -31,7 +50,11 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async buscarPorEmailOuCpf(identificador: string): Promise<Aluno | null> {
-    const query = `SELECT * FROM alunos WHERE email = $1 OR cpf = $1`;
+    const query = `
+      ${this.selecionarAluno}
+      WHERE lower(u.email) = lower($1) OR u.cpf = $1
+      LIMIT 1
+    `;
     const resultado = await this.db.query(query, [identificador]);
 
     if (resultado.rows.length === 0) return null;
@@ -39,7 +62,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async buscarPorCpf(cpf: string): Promise<Aluno | null> {
-    const query = `SELECT * FROM alunos WHERE cpf = $1`;
+    const query = `${this.selecionarAluno} WHERE u.cpf = $1 LIMIT 1`;
     const resultado = await this.db.query(query, [cpf]);
 
     if (resultado.rows.length === 0) return null;
@@ -47,11 +70,100 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async buscarPorEmail(email: string): Promise<Aluno | null> {
-    const query = `SELECT * FROM alunos WHERE email = $1`;
+    const query = `
+      ${this.selecionarAluno}
+      WHERE lower(u.email) = lower($1)
+      LIMIT 1
+    `;
     const resultado = await this.db.query(query, [email]);
 
     if (resultado.rows.length === 0) return null;
     return this.mapearLinhaParaAluno(resultado.rows[0]);
+  }
+
+  async buscarUsuarioIdPorAlunoId(alunoId: string): Promise<string | null> {
+    const resultado = await this.db.query(
+      "SELECT usuario_id FROM alunos WHERE id = $1 LIMIT 1",
+      [alunoId],
+    );
+    return resultado.rows[0]?.usuario_id ?? null;
+  }
+
+  async buscarDashboardPorAlunoId(
+    alunoId: string,
+  ): Promise<AlunoDashboard | null> {
+    const query = `
+      WITH matricula_selecionada AS (
+        SELECT m.*
+        FROM matriculas m
+        WHERE m.aluno_id = $1
+        ORDER BY
+          CASE m.status
+            WHEN 'em_andamento' THEN 0
+            WHEN 'aprovado' THEN 1
+            WHEN 'reprovado_falta' THEN 2
+            ELSE 3
+          END,
+          m.data_matricula DESC
+        LIMIT 1
+      )
+      SELECT
+        u.nome,
+        a.rgm AS matricula,
+        tr.nome AS nome_curso,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM frequencias f
+          WHERE f.matricula_id = m.id
+            AND f.presente = FALSE
+        ) AS qtd_faltas,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM aulas au
+          WHERE au.turma_id = m.turma_id
+            AND au.status <> 'cancelada'
+        ) AS qtd_total_aulas,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM aulas au
+          WHERE au.turma_id = m.turma_id
+            AND au.status = 'realizada'
+        ) AS qtd_aulas_concluidas,
+        m.progresso,
+        m.status,
+        COALESCE(c.status = 'emitido', FALSE) AS certificado_disponivel,
+        CASE WHEN c.status = 'emitido' THEN c.url_arquivo ELSE NULL END
+          AS certificado_url
+      FROM alunos a
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN matricula_selecionada m ON m.aluno_id = a.id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      LEFT JOIN certificados c ON c.matricula_id = m.id
+      WHERE a.id = $1
+      LIMIT 1
+    `;
+
+    const resultado = await this.db.query(query, [alunoId]);
+    const linha = resultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    return {
+      nome: linha.nome,
+      matricula: linha.matricula ?? null,
+      cursoDeExtensao: {
+        nomeCurso: linha.nome_curso,
+        qtdFaltas: Number(linha.qtd_faltas),
+        qtdTotalAulas: Number(linha.qtd_total_aulas),
+        qtdAulasConcluidas: Number(linha.qtd_aulas_concluidas),
+        progresso: Number(linha.progresso),
+        status: linha.status,
+      },
+      certificadoDisponivel: linha.certificado_disponivel,
+      certificadoUrl: linha.certificado_url ?? null,
+    };
   }
 
   async buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null> {
@@ -138,21 +250,12 @@ export class PostgresAlunoRepository implements AlunoRepository {
       await client.query("BEGIN");
 
       const resultadoUsuario = await client.query(
-        `UPDATE usuarios SET senha = $2 WHERE id = $1 RETURNING aluno_id`,
+        `UPDATE usuarios SET senha = $2 WHERE id = $1`,
         [usuarioId, novaSenhaHash],
       );
 
       if (resultadoUsuario.rowCount !== 1) {
         throw new Error("Usuario nao encontrado.");
-      }
-
-      const alunoId = resultadoUsuario.rows[0].aluno_id;
-
-      if (alunoId) {
-        await client.query(`UPDATE alunos SET senha = $2 WHERE id = $1`, [
-          alunoId,
-          novaSenhaHash,
-        ]);
       }
 
       const resultadoRecuperacao = await client.query(
@@ -182,48 +285,49 @@ export class PostgresAlunoRepository implements AlunoRepository {
     try {
       await client.query("BEGIN");
 
-      const inserirAluno = `
-        INSERT INTO alunos (
-          id, nome, cpf, telefone, email, data_nascimento,
-          senha, treinamento, is_aluno_unipe, rgm, curso_unipe
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING *
-      `;
-
-      const valoresAluno = [
-        aluno.id,
-        aluno.nome,
-        aluno.cpf,
-        aluno.telefone,
-        aluno.email,
-        aluno.dataNascimento,
-        aluno.senha,
-        aluno.treinamento,
-        aluno.isAlunoUnipe,
-        aluno.rgm ?? null,
-        aluno.cursoUnipe ?? null,
-      ];
-
-      const resultado = await client.query(inserirAluno, valoresAluno);
-
       const inserirUsuario = `
-        INSERT INTO usuarios (perfil_id, aluno_id, nome, email, senha, status)
-        SELECT id, $1, $2, $3, $4, 'ativo'
+        INSERT INTO usuarios (perfil_id, nome, email, cpf, senha, status)
+        SELECT id, $1, $2, $3, $4, 'pendente_ativacao'
         FROM perfis
         WHERE nome = 'aluno'
+        RETURNING id
       `;
 
       const resultadoUsuario = await client.query(inserirUsuario, [
-        aluno.id,
         aluno.nome,
         aluno.email,
+        aluno.cpf,
         aluno.senha,
       ]);
 
       if (resultadoUsuario.rowCount !== 1) {
         throw new Error("Perfil aluno nao cadastrado.");
       }
+
+      const usuarioId = resultadoUsuario.rows[0].id;
+      const inserirAluno = `
+        INSERT INTO alunos (
+          id, usuario_id, telefone, data_nascimento, treinamento,
+          is_aluno_unipe, rgm, curso_unipe
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `;
+
+      await client.query(inserirAluno, [
+        aluno.id,
+        usuarioId,
+        aluno.telefone,
+        aluno.dataNascimento,
+        aluno.treinamento,
+        aluno.isAlunoUnipe,
+        aluno.rgm ?? null,
+        aluno.cursoUnipe ?? null,
+      ]);
+
+      const resultado = await client.query(
+        `${this.selecionarAluno} WHERE a.id = $1`,
+        [aluno.id],
+      );
 
       await client.query("COMMIT");
       return this.mapearLinhaParaAluno(resultado.rows[0]);
@@ -236,7 +340,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async buscarPorId(id: string): Promise<Aluno | null> {
-    const query = `SELECT * FROM alunos WHERE id = $1`;
+    const query = `${this.selecionarAluno} WHERE a.id = $1`;
     const resultado = await this.db.query(query, [id]);
 
     if (resultado.rows.length === 0) return null;
@@ -244,7 +348,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async listarTodos(): Promise<Aluno[]> {
-    const query = `SELECT * FROM alunos`;
+    const query = `${this.selecionarAluno} ORDER BY u.nome`;
     const resultado = await this.db.query(query);
 
     return resultado.rows.map((linha) => this.mapearLinhaParaAluno(linha));
@@ -258,19 +362,15 @@ export class PostgresAlunoRepository implements AlunoRepository {
 
       const query = `
         UPDATE alunos
-        SET nome = $2, cpf = $3, telefone = $4, email = $5, data_nascimento = $6,
-            senha = $7, treinamento = $8, is_aluno_unipe = $9, rgm = $10, curso_unipe = $11
+        SET telefone = $2, data_nascimento = $3, treinamento = $4,
+            is_aluno_unipe = $5, rgm = $6, curso_unipe = $7
         WHERE id = $1
-        RETURNING *
+        RETURNING id
       `;
       const valores = [
         aluno.id,
-        aluno.nome,
-        aluno.cpf,
         aluno.telefone,
-        aluno.email,
         aluno.dataNascimento,
-        aluno.senha,
         aluno.treinamento,
         aluno.isAlunoUnipe,
         aluno.rgm ?? null,
@@ -283,18 +383,22 @@ export class PostgresAlunoRepository implements AlunoRepository {
         `
           UPDATE usuarios
           SET nome = $2, email = $3, senha = $4
-          WHERE aluno_id = $1
+          WHERE id = (SELECT usuario_id FROM alunos WHERE id = $1)
         `,
         [aluno.id, aluno.nome, aluno.email, aluno.senha],
       );
-
-      await client.query("COMMIT");
 
       if (resultado.rows.length === 0) {
         throw new Error("Aluno nao encontrado.");
       }
 
-      return this.mapearLinhaParaAluno(resultado.rows[0]);
+      const alunoAtualizado = await client.query(
+        `${this.selecionarAluno} WHERE a.id = $1`,
+        [aluno.id],
+      );
+
+      await client.query("COMMIT");
+      return this.mapearLinhaParaAluno(alunoAtualizado.rows[0]);
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -304,7 +408,10 @@ export class PostgresAlunoRepository implements AlunoRepository {
   }
 
   async deletar(id: string): Promise<void> {
-    const query = `DELETE FROM alunos WHERE id = $1`;
+    const query = `
+      DELETE FROM usuarios
+      WHERE id = (SELECT usuario_id FROM alunos WHERE id = $1)
+    `;
     await this.db.query(query, [id]);
   }
 }

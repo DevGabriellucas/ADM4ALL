@@ -253,7 +253,7 @@ export const NewClassForm = ({
             >
               <option value="planejada">Planejada</option>
               <option value="em_andamento">Em andamento</option>
-              <option value="encerrada">Concluída</option>
+              <option value="concluida">Concluída</option>
               <option value="cancelada">Cancelada</option>
             </select>
           </label>

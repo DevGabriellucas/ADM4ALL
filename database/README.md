@@ -94,9 +94,9 @@ Tabelas criadas:
 | Tabela | Finalidade |
 |---|---|
 | `perfis` | Perfis de acesso: aluno, instrutor, coordenador e admin |
-| `usuarios` | Usuarios que podem autenticar no sistema |
+| `usuarios` | Identidade central de autenticacao por e-mail ou CPF |
 | `recuperacoes_senha` | Tokens de recuperacao de senha com validade de 15 minutos |
-| `alunos` | Cadastro base do aluno, mantido compativel com o backend atual |
+| `alunos` | Dados academicos do aluno vinculado a um usuario |
 | `instrutores` | Dados dos instrutores vinculados a usuarios |
 | `coordenadores` | Dados de coordenacao vinculados a usuarios |
 | `treinamentos` | Cursos/treinamentos oferecidos |
@@ -113,9 +113,9 @@ Tabelas criadas:
 
 O schema reforca regras importantes:
 
-- CPF com 11 digitos e nao repetido, como `11111111111`.
+- CPF de usuario com 11 digitos e nao repetido, como `11111111111`.
 - Telefone com 10 ou 11 digitos.
-- Email em minusculo, sem espacos e unico ignorando maiusculas/minusculas.
+- Email de usuario em minusculo, sem espacos e unico ignorando maiusculas/minusculas.
 - Nome, treinamento e tipos de documento nao podem ser texto vazio.
 - Aluno Unipe precisa ter `curso_unipe` e `rgm`; aluno externo nao deve ter esses campos.
 - Usuario precisa ter perfil valido e status padronizado.

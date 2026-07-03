@@ -5,6 +5,7 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewStudentForm } from "@/components/coordenador/NewStudentForm";
 import { StudentTable } from "@/components/coordenador/StudentTable";
+import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type { ClassGroup, Course, Student } from "@/types/coordinator";
 
 interface StudentsPageContentProps {
@@ -21,15 +22,16 @@ export const StudentsPageContent = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const activeStudents = students.filter(
-    (student) => student.status === "ativo",
+    (student) => student.statusConta === "ativo",
   ).length;
   const pendingStudents = students.filter(
-    (student) => student.status === "pendente_ativacao",
+    (student) => student.statusConta === "pendente_ativacao",
   ).length;
   const studentsAtRisk = students.filter(
     (student) =>
-      student.status === "reprovado_por_falta" ||
-      (student.status === "ativo" && student.frequencia < 75),
+      student.statusMatricula === MATRICULA_STATUS.REPROVADO_FALTA ||
+      (student.statusMatricula === MATRICULA_STATUS.EM_ANDAMENTO &&
+        student.frequencia < 75),
   ).length;
 
   return (

@@ -5,8 +5,8 @@ import { CertificateTable } from "@/components/coordenador/CertificateTable";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import type {
+  CertificateDisplayStatus,
   CertificateRecord,
-  CertificateStatus,
   ClassGroup,
   Course,
 } from "@/types/coordinator";
@@ -25,7 +25,9 @@ export const CertificatesPageContent = ({
 }: CertificatesPageContentProps) => {
   const [courseFilter, setCourseFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CertificateStatus | "">("");
+  const [statusFilter, setStatusFilter] = useState<
+    CertificateDisplayStatus | ""
+  >("");
 
   const availableClasses = classes.filter(
     (classGroup) => !courseFilter || classGroup.curso === courseFilter,
@@ -71,7 +73,7 @@ export const CertificatesPageContent = ({
         <CoordinatorStatCard
           title="Elegíveis"
           value={eligibleCertificates}
-          subtitle="Frequência mínima atendida"
+          subtitle="Aptos para emissão"
           variant="blue"
         />
         <CoordinatorStatCard
@@ -89,7 +91,7 @@ export const CertificatesPageContent = ({
         <CoordinatorStatCard
           title="Não elegíveis"
           value={ineligibleCertificates}
-          subtitle="Frequência abaixo de 80%"
+          subtitle="Vínculo ainda não apto"
           variant="neutral"
         />
       </section>
@@ -98,7 +100,7 @@ export const CertificatesPageContent = ({
         aria-label="Filtros de certificados"
         className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm"
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-xs">
             Curso
             <select
@@ -139,7 +141,9 @@ export const CertificatesPageContent = ({
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value as CertificateStatus | "")
+                setStatusFilter(
+                  event.target.value as CertificateDisplayStatus | "",
+                )
               }
               className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
@@ -147,6 +151,7 @@ export const CertificatesPageContent = ({
               <option value="elegivel">Elegível</option>
               <option value="pendente">Pendente</option>
               <option value="emitido">Emitido</option>
+              <option value="cancelado">Cancelado</option>
               <option value="nao_elegivel">Não elegível</option>
             </select>
           </label>

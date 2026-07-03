@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { AlunoUseCase } from "./AlunoUseCase";
+import { ActivationUseCase } from "./ActivationUseCase";
 import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { Aluno } from "../../domain/entities/Aluno";
@@ -14,6 +15,7 @@ describe("AlunoUseCase", () => {
   let alunoUseCase: AlunoUseCase;
   let mockAlunoRepository: jest.Mocked<AlunoRepository>;
   let mockEmailService: jest.Mocked<EmailService>;
+  let mockActivationUseCase: jest.Mocked<ActivationUseCase>;
 
   beforeEach(() => {
     mockAlunoRepository = {
@@ -30,12 +32,21 @@ describe("AlunoUseCase", () => {
       registrarRecuperacaoSenha: jest.fn(),
       buscarRecuperacaoValidaPorTokenHash: jest.fn(),
       redefinirSenhaUsuario: jest.fn(),
+      buscarUsuarioIdPorAlunoId: jest.fn(),
+      buscarDashboardPorAlunoId: jest.fn(),
     };
     mockEmailService = {
       enviar: jest.fn(),
     } as unknown as jest.Mocked<EmailService>;
+    mockActivationUseCase = {
+      criar: jest.fn(),
+    } as unknown as jest.Mocked<ActivationUseCase>;
 
-    alunoUseCase = new AlunoUseCase(mockAlunoRepository, mockEmailService);
+    alunoUseCase = new AlunoUseCase(
+      mockAlunoRepository,
+      mockEmailService,
+      mockActivationUseCase,
+    );
   });
 
   afterEach(() => {
@@ -59,6 +70,10 @@ describe("AlunoUseCase", () => {
       mockAlunoRepository.buscarPorEmail.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
       mockAlunoRepository.cadastrar.mockImplementation(async (aluno) => aluno);
+      mockAlunoRepository.buscarUsuarioIdPorAlunoId.mockResolvedValue(
+        "usuario-id",
+      );
+      mockActivationUseCase.criar.mockResolvedValue("token-ativacao");
 
       const result = await alunoUseCase.cadastrar(dados);
       expect(result).toBeDefined();

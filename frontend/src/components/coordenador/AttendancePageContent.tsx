@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AttendanceTable } from "@/components/coordenador/AttendanceTable";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
+import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type {
   AttendanceSituation,
   AttendanceSummary,
@@ -205,7 +206,9 @@ export const AttendancePageContent = ({
               <option value="regular">Regular</option>
               <option value="atencao">Atenção</option>
               <option value="risco_reprovacao">Risco de reprovação</option>
-              <option value="reprovado_por_falta">Reprovado por falta</option>
+              <option value={MATRICULA_STATUS.REPROVADO_FALTA}>
+                Reprovado por falta
+              </option>
             </select>
           </label>
         </div>

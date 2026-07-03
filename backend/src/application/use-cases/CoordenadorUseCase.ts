@@ -1,16 +1,39 @@
 import bcrypt from "bcrypt";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import {
+  CampoPendenteAtivacao,
+} from "../../domain/repositories/ActivationRepository";
+import {
+  AlunoDetalheCoordenador,
+  AlunoListagemCoordenador,
+  AlunoParaReenvioAtivacao,
+  AtualizarStatusMatriculaInput,
+  AtualizarAlunoCoordenadorInput,
+  CertificadoDetalhe,
+  CertificadoListagemCoordenador,
+  CoordinatorReportType,
   ConviteCriado,
   CoordenadorRepository,
   CursoResumo,
   DashboardResumo,
+  FiltrosFrequenciaCoordenador,
+  FiltrosRelatorioCoordenador,
+  FrequenciaCoordenador,
   InstrutorListagem,
+  MatriculaCriada,
+  MatriculaStatusAtualizado,
+  RelatorioCoordenador,
+  StatusMatriculaEditavel,
+  TipoCertificado,
   TurmaDetalhe,
   TurmaListagem,
 } from "../../domain/repositories/CoordenadorRepository";
+import { Cpf } from "../../domain/value-objects/Cpf";
+import { Email } from "../../domain/value-objects/Email";
+import { Telefone } from "../../domain/value-objects/Telefone";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CriarCursoEntrada {
   nome: string;
@@ -22,7 +45,18 @@ export interface CriarCursoEntrada {
 export interface ConvidarInstrutorEntrada {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string | null;
+}
+
+export interface ConvidarAlunoEntrada {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  dataNascimento: string;
+  curso: string;
+  turma: string;
 }
 
 export interface CriarTurmaEntrada {
@@ -37,6 +71,20 @@ export interface CriarTurmaEntrada {
   coordenadorId?: string | null;
 }
 
+export interface AtualizarAlunoEntrada {
+  nome: string;
+  email: string;
+  telefone?: string | null;
+  statusConta: AlunoDetalheCoordenador["statusConta"];
+}
+
+export interface FiltrosFrequenciaEntrada {
+  curso?: string;
+  turma?: string;
+  aluno?: string;
+  periodo?: string;
+}
+
 const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "encerrado"];
 const TURMA_STATUS_VALIDOS = [
   "planejada",
@@ -44,13 +92,79 @@ const TURMA_STATUS_VALIDOS = [
   "encerrada",
   "cancelada",
 ];
-const ATIVACAO_TOKEN_MINUTOS = 60 * 24 * 3; // 3 dias para aceitar o convite
 const SALT_ROUNDS = 10;
+const STATUS_CONTA_VALIDOS = [
+  "ativo",
+  "inativo",
+  "bloqueado",
+  "pendente_ativacao",
+] as const;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const STATUS_MATRICULA_EDITAVEIS: readonly StatusMatriculaEditavel[] = [
+  "em_andamento",
+  "aprovado",
+  "reprovado_falta",
+];
+const TIPOS_RELATORIO: readonly CoordinatorReportType[] = [
+  "frequencia_turma",
+  "reprovados_falta",
+  "elegiveis_certificado",
+  "certificados_emitidos",
+  "matriculas_curso",
+  "turmas_andamento",
+];
+const DATA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const isStatusMatriculaEditavel = (
+  status: string,
+): status is StatusMatriculaEditavel =>
+  STATUS_MATRICULA_EDITAVEIS.includes(status as StatusMatriculaEditavel);
+
+const isTipoCertificado = (tipo: string): tipo is TipoCertificado =>
+  tipo === "aluno";
+
+const isTipoRelatorio = (tipo: string): tipo is CoordinatorReportType =>
+  TIPOS_RELATORIO.includes(tipo as CoordinatorReportType);
+
+const calcularMetricaRelatorio = (
+  relatorio: RelatorioCoordenador,
+): number => {
+  if (relatorio.type === "frequencia_turma") {
+    const numerador = relatorio.rows.reduce(
+      (total, row) => total + (row.metricNumerator ?? 0),
+      0,
+    );
+    const denominador = relatorio.rows.reduce(
+      (total, row) => total + (row.metricDenominator ?? 0),
+      0,
+    );
+    return denominador > 0
+      ? Math.round((numerador / denominador) * 100)
+      : 0;
+  }
+
+  if (relatorio.aggregation === "count") return relatorio.rows.length;
+
+  const total = relatorio.rows.reduce(
+    (sum, row) => sum + row.chartValue,
+    0,
+  );
+  return relatorio.aggregation === "average" && relatorio.rows.length > 0
+    ? Math.round(total / relatorio.rows.length)
+    : total;
+};
+
+const gerarCodigoCertificado = () =>
+  `CERT-ALU-${new Date().getFullYear()}-${randomBytes(4)
+    .toString("hex")
+    .toUpperCase()}`;
 
 export class CoordenadorUseCase {
   constructor(
     private coordenadorRepository: CoordenadorRepository,
     private emailService: EmailService,
+    private activationUseCase: ActivationUseCase,
   ) {}
 
   async obterDashboard(): Promise<DashboardResumo> {
@@ -97,6 +211,439 @@ export class CoordenadorUseCase {
     return await this.coordenadorRepository.listarInstrutores();
   }
 
+  async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
+    return await this.coordenadorRepository.listarAlunos();
+  }
+
+  async buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador> {
+    if (!id) {
+      throw new BadRequestError("O ID do aluno e obrigatorio.");
+    }
+
+    const aluno = await this.coordenadorRepository.buscarAlunoDetalhe(id);
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    return aluno;
+  }
+
+  async atualizarAluno(
+    id: string,
+    input: AtualizarAlunoEntrada,
+  ): Promise<AlunoDetalheCoordenador> {
+    const alunoAtual = await this.buscarAlunoDetalhe(id);
+
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do aluno e obrigatorio.");
+    }
+
+    let email: string;
+    let telefone: string | null;
+    try {
+      email = new Email(input.email).value;
+      telefone = input.telefone ? new Telefone(input.telefone).value : null;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados pessoais invalidos.",
+      );
+    }
+
+    if (!STATUS_CONTA_VALIDOS.includes(input.statusConta)) {
+      throw new BadRequestError("Status da conta invalido.");
+    }
+
+    const usuarioComEmail =
+      await this.coordenadorRepository.buscarUsuarioPorEmail(email);
+    if (usuarioComEmail && usuarioComEmail.id !== alunoAtual.usuarioId) {
+      throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const dadosAtualizados: AtualizarAlunoCoordenadorInput = {
+      nome: input.nome.trim(),
+      email,
+      telefone,
+      statusConta: input.statusConta,
+    };
+    const aluno = await this.coordenadorRepository.atualizarAluno(
+      id,
+      dadosAtualizados,
+    );
+
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    return aluno;
+  }
+
+  async reenviarAtivacao(alunoId: string): Promise<void> {
+    if (!UUID_PATTERN.test(alunoId)) {
+      throw new BadRequestError("O ID do aluno e invalido.");
+    }
+
+    const aluno: AlunoParaReenvioAtivacao | null =
+      await this.coordenadorRepository.buscarUsuarioPorAlunoId(alunoId);
+    if (!aluno) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+    if (aluno.status !== "pendente_ativacao") {
+      throw new BadRequestError("A conta do aluno nao esta pendente de ativacao.");
+    }
+    if (!aluno.origem) {
+      throw new BadRequestError(
+        "Nao foi possivel identificar o convite de ativacao do aluno.",
+      );
+    }
+
+    await this.coordenadorRepository.invalidarAtivacoesPendentes(
+      aluno.usuarioId,
+    );
+    const token = await this.activationUseCase.criar(
+      aluno.usuarioId,
+      aluno.origem,
+      aluno.camposPendentes,
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        aluno.email,
+        "Novo link de ativacao - ADM Para Todos",
+        `<p>Ola, ${aluno.nome}!</p>
+         <p>Foi solicitado um novo link para ativar sua conta.</p>
+         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch {
+      await this.coordenadorRepository.invalidarAtivacoesPendentes(
+        aluno.usuarioId,
+      );
+      throw new BadRequestError(
+        "Nao foi possivel enviar o e-mail de ativacao. Tente novamente em instantes.",
+      );
+    }
+  }
+
+  async vincularAlunoTurma(
+    turmaId: string,
+    alunoId: string,
+  ): Promise<MatriculaCriada> {
+    if (!UUID_PATTERN.test(turmaId)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+    if (!UUID_PATTERN.test(alunoId)) {
+      throw new BadRequestError("O ID do aluno e invalido.");
+    }
+
+    const turma = await this.coordenadorRepository.buscarTurmaPorId(turmaId);
+    if (!turma) {
+      throw new BadRequestError("Turma nao encontrada.");
+    }
+    if (turma.status === "concluida" || turma.status === "cancelada") {
+      throw new BadRequestError(
+        "Nao e possivel matricular alunos em uma turma concluida ou cancelada.",
+      );
+    }
+
+    const alunoExiste =
+      await this.coordenadorRepository.verificarAlunoExiste(alunoId);
+    if (!alunoExiste) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    const matriculaNaTurma =
+      await this.coordenadorRepository.buscarMatriculaAlunoTurma(
+        alunoId,
+        turmaId,
+      );
+    if (matriculaNaTurma && matriculaNaTurma.status !== "cancelado") {
+      throw new BadRequestError("O aluno ja possui matricula nesta turma.");
+    }
+
+    const matriculaAtiva =
+      await this.coordenadorRepository.buscarMatriculaAtivaNoTreinamento(
+        alunoId,
+        turma.treinamentoId,
+      );
+    if (matriculaAtiva && matriculaAtiva.id !== matriculaNaTurma?.id) {
+      throw new BadRequestError(
+        "O aluno ja possui matricula ativa neste curso.",
+      );
+    }
+
+    const matriculasAtivas =
+      await this.coordenadorRepository.contarMatriculasAtivas(turmaId);
+    if (
+      turma.capacidade !== null &&
+      matriculasAtivas >= turma.capacidade
+    ) {
+      throw new BadRequestError("A turma atingiu sua capacidade maxima.");
+    }
+
+    try {
+      return await this.coordenadorRepository.vincularAluno({
+        alunoId,
+        turmaId,
+        treinamentoId: turma.treinamentoId,
+      });
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel vincular o aluno a turma.",
+      );
+    }
+  }
+
+  async cancelarMatricula(
+    turmaId: string,
+    matriculaId: string,
+  ): Promise<void> {
+    if (!UUID_PATTERN.test(turmaId)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+    if (!UUID_PATTERN.test(matriculaId)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+
+    const removida = await this.coordenadorRepository.removerMatricula(
+      turmaId,
+      matriculaId,
+    );
+    if (!removida) {
+      throw new BadRequestError(
+        "Matricula nao encontrada para a turma informada.",
+      );
+    }
+  }
+
+  async atualizarStatusMatricula(
+    id: string,
+    status: string,
+  ): Promise<MatriculaStatusAtualizado> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+    if (!isStatusMatriculaEditavel(status)) {
+      throw new BadRequestError(
+        "Status invalido. Use: em_andamento, aprovado ou reprovado_falta.",
+      );
+    }
+
+    const matricula =
+      await this.coordenadorRepository.buscarMatriculaPorId(id);
+    if (!matricula) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+    if (matricula.status === "cancelado") {
+      throw new BadRequestError(
+        "Nao e possivel alterar o status de uma matricula cancelada.",
+      );
+    }
+
+    const input: AtualizarStatusMatriculaInput = { status };
+    const atualizada =
+      await this.coordenadorRepository.atualizarStatusMatricula(id, input);
+    if (!atualizada) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+
+    return atualizada;
+  }
+
+  async listarFrequencias(
+    input: FiltrosFrequenciaEntrada = {},
+  ): Promise<FrequenciaCoordenador[]> {
+    if (input.periodo && !/^\d{4}\.[12]$/.test(input.periodo)) {
+      throw new BadRequestError(
+        "Periodo invalido. Use o formato YYYY.S, por exemplo: 2026.1.",
+      );
+    }
+
+    const filtros: FiltrosFrequenciaCoordenador = {};
+    if (input.curso?.trim()) filtros.curso = input.curso.trim();
+    if (input.turma?.trim()) filtros.turma = input.turma.trim();
+    if (input.aluno?.trim()) filtros.aluno = input.aluno.trim();
+    if (input.periodo) filtros.periodo = input.periodo;
+
+    return await this.coordenadorRepository.listarFrequencias(filtros);
+  }
+
+  async listarRelatorios(): Promise<RelatorioCoordenador[]> {
+    return await this.coordenadorRepository.listarRelatorios();
+  }
+
+  async obterRelatorioFiltrado(
+    tipo: string,
+    filtros: FiltrosRelatorioCoordenador = {},
+  ): Promise<RelatorioCoordenador> {
+    if (!isTipoRelatorio(tipo)) {
+      throw new BadRequestError(
+        `Tipo de relatorio invalido. Use: ${TIPOS_RELATORIO.join(", ")}.`,
+      );
+    }
+    if (filtros.dataInicio && !DATA_PATTERN.test(filtros.dataInicio)) {
+      throw new BadRequestError("Data inicial invalida. Use YYYY-MM-DD.");
+    }
+    if (filtros.dataFim && !DATA_PATTERN.test(filtros.dataFim)) {
+      throw new BadRequestError("Data final invalida. Use YYYY-MM-DD.");
+    }
+    if (
+      filtros.dataInicio &&
+      filtros.dataFim &&
+      filtros.dataFim < filtros.dataInicio
+    ) {
+      throw new BadRequestError(
+        "A data final nao pode ser anterior a data inicial.",
+      );
+    }
+
+    const relatorios = await this.coordenadorRepository.listarRelatorios();
+    const relatorio = relatorios.find((item) => item.type === tipo);
+    if (!relatorio) {
+      throw new BadRequestError("Relatorio nao encontrado.");
+    }
+
+    const curso = filtros.curso?.trim();
+    const turma = filtros.turma?.trim();
+    const rows = relatorio.rows.filter((row) => {
+      if (
+        filtros.dataInicio &&
+        (!row.data || row.data < filtros.dataInicio)
+      ) {
+        return false;
+      }
+      if (filtros.dataFim && (!row.data || row.data > filtros.dataFim)) {
+        return false;
+      }
+      if (curso && row.curso !== curso) return false;
+      if (turma && row.turma !== turma) return false;
+      return true;
+    });
+
+    const filtrado: RelatorioCoordenador = { ...relatorio, rows };
+    return { ...filtrado, metricValue: calcularMetricaRelatorio(filtrado) };
+  }
+
+  async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+    return await this.coordenadorRepository.listarCertificados();
+  }
+
+  async buscarCertificado(
+    tipo: string,
+    referenciaId: string,
+  ): Promise<CertificadoDetalhe> {
+    if (!isTipoCertificado(tipo)) {
+      throw new BadRequestError(
+        "Tipo de certificado invalido. Use: aluno.",
+      );
+    }
+    if (!UUID_PATTERN.test(referenciaId)) {
+      throw new BadRequestError("O ID de referencia e invalido.");
+    }
+
+    const certificado =
+      await this.coordenadorRepository.buscarCertificadoAluno(referenciaId);
+    if (!certificado) {
+      throw new BadRequestError("Certificado ou vinculo nao encontrado.");
+    }
+    if (
+      certificado.status !== "emitido" ||
+      !certificado.certificadoId ||
+      !certificado.codigo ||
+      !certificado.dataEmissao
+    ) {
+      throw new BadRequestError("O certificado ainda nao foi emitido.");
+    }
+
+    return certificado;
+  }
+
+  async emitirCertificadoAluno(
+    matriculaId: string,
+    emitidoPorId: string,
+  ): Promise<CertificadoDetalhe> {
+    if (!UUID_PATTERN.test(matriculaId)) {
+      throw new BadRequestError("O ID da matricula e invalido.");
+    }
+    if (!UUID_PATTERN.test(emitidoPorId)) {
+      throw new BadRequestError("O usuario emissor e invalido.");
+    }
+
+    const candidato =
+      await this.coordenadorRepository.buscarCertificadoAluno(matriculaId);
+    if (!candidato) {
+      throw new BadRequestError("Matricula nao encontrada.");
+    }
+    if (candidato.certificadoId) {
+      throw new BadRequestError("Esta matricula ja possui um certificado.");
+    }
+    if (candidato.statusMatricula !== "aprovado") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido para uma matricula aprovada.",
+      );
+    }
+    if (candidato.statusTurma !== "concluida") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido apos a conclusao da turma.",
+      );
+    }
+    if (candidato.statusUsuario !== "ativo") {
+      throw new BadRequestError(
+        "O certificado so pode ser emitido para um aluno ativo.",
+      );
+    }
+    if (candidato.faltas >= 3) {
+      throw new BadRequestError(
+        "O certificado exige menos de 3 faltas.",
+      );
+    }
+
+    try {
+      const certificado =
+        await this.coordenadorRepository.emitirCertificadoAluno({
+          matriculaId,
+          emitidoPorId,
+          codigo: gerarCodigoCertificado(),
+        });
+      if (!certificado) {
+        throw new BadRequestError("Matricula nao encontrada.");
+      }
+      return certificado;
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel emitir o certificado do aluno.",
+      );
+    }
+  }
+
+  async cancelarCertificado(
+    tipo: string,
+    certificadoId: string,
+  ): Promise<void> {
+    if (!isTipoCertificado(tipo)) {
+      throw new BadRequestError(
+        "Tipo de certificado invalido. Use: aluno.",
+      );
+    }
+    if (!UUID_PATTERN.test(certificadoId)) {
+      throw new BadRequestError("O ID do certificado e invalido.");
+    }
+
+    const cancelado =
+      await this.coordenadorRepository.cancelarCertificado(certificadoId);
+    if (!cancelado) {
+      throw new BadRequestError(
+        "Certificado nao encontrado ou ja cancelado.",
+      );
+    }
+  }
+
   async convidarInstrutor(
     input: ConvidarInstrutorEntrada,
   ): Promise<ConviteCriado> {
@@ -109,11 +656,28 @@ export class CoordenadorUseCase {
     }
 
     const emailNormalizado = input.email.trim().toLowerCase();
+    let cpfNormalizado: string;
+
+    try {
+      cpfNormalizado = new Cpf(input.cpf).value;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Informe um CPF valido.",
+      );
+    }
+
     const usuarioExistente =
       await this.coordenadorRepository.buscarUsuarioPorEmail(emailNormalizado);
 
     if (usuarioExistente) {
       throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const usuarioComCpf =
+      await this.coordenadorRepository.buscarUsuarioPorCpf(cpfNormalizado);
+
+    if (usuarioComCpf) {
+      throw new BadRequestError("Ja existe um usuario com este CPF.");
     }
 
     const senhaTemporaria = randomBytes(32).toString("hex");
@@ -122,22 +686,23 @@ export class CoordenadorUseCase {
       SALT_ROUNDS,
     );
 
-    const tokenAtivacao = randomBytes(32).toString("hex");
-    const tokenAtivacaoHash = createHash("sha256")
-      .update(tokenAtivacao)
-      .digest("hex");
-    const tokenExpiraEm = new Date(
-      Date.now() + ATIVACAO_TOKEN_MINUTOS * 60 * 1000,
-    );
-
     const convite = await this.coordenadorRepository.convidarInstrutor({
       nome: input.nome.trim(),
       email: emailNormalizado,
+      cpf: cpfNormalizado,
       telefone: input.telefone ?? null,
       senhaTemporariaCriptografada,
-      tokenAtivacaoHash,
-      tokenExpiraEm,
     });
+    const camposPendentes: CampoPendenteAtivacao[] = ["senha"];
+    if (!input.telefone) {
+      camposPendentes.push("whatsapp");
+    }
+    camposPendentes.push("areaAtuacao", "formacao");
+    const tokenAtivacao = await this.activationUseCase.criar(
+      convite.usuarioId,
+      "criado_por_coordenador",
+      camposPendentes,
+    );
 
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${tokenAtivacao}`;
@@ -154,6 +719,76 @@ export class CoordenadorUseCase {
     } catch (error) {
       // A conta ja foi criada no banco; o e-mail e um efeito colateral best-effort.
       // Uma falha de envio nao deve desfazer o convite ja persistido.
+      console.error("Falha ao enviar e-mail de convite:", error);
+    }
+
+    return convite;
+  }
+
+  async convidarAluno(input: ConvidarAlunoEntrada): Promise<ConviteCriado> {
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do aluno e obrigatorio.");
+    }
+
+    let email: string;
+    let cpf: string;
+    let telefone: string | null;
+    try {
+      email = new Email(input.email).value;
+      cpf = new Cpf(input.cpf).value;
+      telefone = input.telefone ? new Telefone(input.telefone).value : null;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados pessoais invalidos.",
+      );
+    }
+
+    const dataNascimento = new Date(input.dataNascimento);
+    if (
+      Number.isNaN(dataNascimento.getTime()) ||
+      dataNascimento.toISOString().slice(0, 10) >=
+        new Date().toISOString().slice(0, 10)
+    ) {
+      throw new BadRequestError("Informe uma data de nascimento valida.");
+    }
+    if (!input.curso?.trim() || !input.turma?.trim()) {
+      throw new BadRequestError("Informe o curso e a turma.");
+    }
+
+    const convite = await this.coordenadorRepository.convidarAluno({
+      nome: input.nome.trim(),
+      email,
+      cpf,
+      telefone,
+      dataNascimento: input.dataNascimento,
+      treinamento: input.curso.trim(),
+      turma: input.turma.trim(),
+      senhaTemporariaCriptografada: await bcrypt.hash(
+        randomBytes(32).toString("hex"),
+        SALT_ROUNDS,
+      ),
+    });
+    const camposPendentes: CampoPendenteAtivacao[] = ["senha"];
+    if (!telefone) camposPendentes.push("whatsapp");
+    camposPendentes.push("rgm", "cursoUnipe");
+    const token = await this.activationUseCase.criar(
+      convite.usuarioId,
+      "criado_por_coordenador",
+      camposPendentes,
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        convite.email,
+        "Convite para acessar o ADM Para Todos",
+        `<p>Ola, ${convite.nome}!</p>
+         <p>Voce foi cadastrado como aluno no ADM Para Todos.</p>
+         <p><a href="${linkAtivacao}">Complete seu cadastro e ative sua conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch (error) {
       console.error("Falha ao enviar e-mail de convite:", error);
     }
 
@@ -248,27 +883,4 @@ export class CoordenadorUseCase {
     }
   }
 
-  async ativarConta(tokenBruto: string, novaSenha: string): Promise<void> {
-    if (!tokenBruto || tokenBruto.trim() === "") {
-      throw new BadRequestError("O token de ativacao e obrigatorio.");
-    }
-
-    if (!novaSenha || novaSenha.length < 8) {
-      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
-    }
-
-    const tokenHash = createHash("sha256")
-      .update(tokenBruto.trim())
-      .digest("hex");
-    const senhaCriptografada = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-
-    const sucesso = await this.coordenadorRepository.ativarConta(
-      tokenHash,
-      senhaCriptografada,
-    );
-
-    if (!sucesso) {
-      throw new BadRequestError("Link de ativacao invalido ou expirado.");
-    }
-  }
 }

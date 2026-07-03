@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type {
   AttendanceSummary,
+  CertificateDisplayStatus,
   CertificateRecord,
   ClassMaterial,
   Lesson,
@@ -40,22 +42,6 @@ const formatDate = (date: string) => {
   );
 };
 
-const getStudentStatus = (status: Student["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-  if (status === "pendente_ativacao") {
-    return { label: "Pendente de ativação", tone: "amber" as const };
-  }
-  if (status === "reprovado_por_falta") {
-    return { label: "Reprovado por falta", tone: "red" as const };
-  }
-  if (status === "concluido") {
-    return { label: "Concluído", tone: "blue" as const };
-  }
-  return { label: "Inativo", tone: "slate" as const };
-};
-
 const getLessonStatus = (status: Lesson["status"]) => {
   if (status === "realizada") {
     return { label: "Realizada", tone: "green" as const };
@@ -66,7 +52,7 @@ const getLessonStatus = (status: Lesson["status"]) => {
   return { label: "Planejada", tone: "amber" as const };
 };
 
-const getCertificateStatus = (status: CertificateRecord["status"]) => {
+const getCertificateStatus = (status: CertificateDisplayStatus) => {
   if (status === "emitido") {
     return { label: "Emitido", tone: "green" as const };
   }
@@ -75,6 +61,9 @@ const getCertificateStatus = (status: CertificateRecord["status"]) => {
   }
   if (status === "elegivel") {
     return { label: "Elegível", tone: "blue" as const };
+  }
+  if (status === "cancelado") {
+    return { label: "Cancelado", tone: "red" as const };
   }
   return { label: "Pendente", tone: "amber" as const };
 };
@@ -138,7 +127,9 @@ export const ClassDetailsTabs = ({
               </thead>
               <tbody>
                 {students.map((student) => {
-                  const status = getStudentStatus(student.status);
+                  const status = student.statusMatricula
+                    ? getMatriculaStatusInfo(student.statusMatricula)
+                    : { label: "Sem matrícula", tone: "slate" as const };
 
                   return (
                     <tr key={student.id}>
@@ -160,7 +151,10 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Visualizar
                         </button>
@@ -332,7 +326,10 @@ export const ClassDetailsTabs = ({
                     <td className="border-slate-100 border-b px-3 py-3">
                       <button
                         type="button"
-                        className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                        disabled
+                        aria-disabled="true"
+                        title="Funcionalidade ainda não disponível no MVP"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Visualizar
                       </button>
@@ -396,7 +393,10 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs hover:text-[#23275F]"
+                          disabled
+                          aria-disabled="true"
+                          title="Funcionalidade ainda não disponível no MVP"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           {certificateStatus === "emitido"
                             ? "Visualizar"

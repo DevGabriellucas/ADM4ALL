@@ -1,25 +1,27 @@
 import { AlunoInfoCard } from "@/components/aluno/AlunoInfoCard";
+import {
+  getMatriculaStatusInfo,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import type { AlunoDashboard } from "@/types/aluno";
-import type { AlunoStatus } from "@/utils/getAlunoStatus";
 
 interface AlunoStatusPanelProps {
   aluno: Pick<
     AlunoDashboard,
-    "aulasConcluidas" | "aulasPlanejadas" | "faltas" | "progresso"
+    "aulasConcluidas" | "aulasPlanejadas" | "faltas" | "progresso" | "status"
   >;
-  status: AlunoStatus;
 }
 
-const getFaltasHelperText = (status: AlunoStatus) => {
-  if (status !== "reprovadoPorFalta") {
+const getFaltasHelperText = (status: AlunoDashboard["status"]) => {
+  if (status !== MATRICULA_STATUS.REPROVADO_FALTA) {
     return undefined;
   }
 
   return "Limite máximo permitido: 2 faltas";
 };
 
-export const AlunoStatusPanel = ({ aluno, status }: AlunoStatusPanelProps) => {
-  const faltasEmAtencao = status === "reprovadoPorFalta";
+export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
+  const faltasEmAtencao = aluno.status === MATRICULA_STATUS.REPROVADO_FALTA;
 
   return (
     <div className="bg-[#F1F4FC] px-5 py-8 sm:px-10 lg:px-16">
@@ -28,17 +30,20 @@ export const AlunoStatusPanel = ({ aluno, status }: AlunoStatusPanelProps) => {
           title="Faltas"
           value={aluno.faltas}
           isWarning={faltasEmAtencao}
-          helperText={getFaltasHelperText(status)}
+          helperText={getFaltasHelperText(aluno.status)}
         />
 
         <AlunoInfoCard title="Progresso" value={`${aluno.progresso}%`} />
 
         <AlunoInfoCard
-          title="Aulas planejadas"
-          value={aluno.aulasPlanejadas}
+          title="Aulas"
+          value={`${aluno.aulasConcluidas} de ${aluno.aulasPlanejadas}`}
         />
 
-        <AlunoInfoCard title="Aulas concluidas" value={aluno.aulasConcluidas} />
+        <AlunoInfoCard
+          title="Status"
+          value={getMatriculaStatusInfo(aluno.status).label}
+        />
       </div>
     </div>
   );

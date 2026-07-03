@@ -1,74 +1,49 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
-import { cookies } from "next/headers";
+import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
-  coordinatorAttendanceMock,
-  coordinatorCertificatesMock,
   coordinatorClassMaterialsMock,
   coordinatorLessonsMock,
   coordinatorProcessesMock,
-  coordinatorReportsMock,
   coordinatorSettingsMock,
-  coordinatorStudentsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
+import {
+  ApiError,
+  type AuthenticatedFileResponse,
+  authenticatedFileRequest,
+  authenticatedRequest,
+} from "@/services/apiClient";
 import type {
   AttendanceSummary,
   BaseUser,
+  CertificateDetail,
   CertificateRecord,
   ClassGroup,
   ClassMaterial,
   CoordinatorDashboardSummary,
   CoordinatorReportData,
+  CoordinatorReportFilters,
+  CoordinatorReportType,
   CoordinatorSettings,
   Course,
+  EditableEnrollmentStatus,
+  EnrollmentClassOption,
   Instructor,
   Lesson,
   ProcessRecord,
   Student,
+  StudentDetail,
+  StudentEnrollmentCreated,
+  StudentEnrollmentStatusUpdated,
+  UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: as funcoes abaixo (frequencia, materiais, certificados,
-// processos, relatorios, usuarios, configuracoes) ainda nao tem backend e
-// continuam retornando mock. Dashboard, cursos, instrutores e turmas ja
+// MOCK TEMPORARIO: materiais, processos, usuarios e configuracoes
+// ainda nao tem backend e continuam retornando mock. Dashboard, cursos,
+// instrutores, alunos, turmas, frequencia, certificados e relatorios
 // consultam a API real.
-
-interface ApiConfig {
-  baseUrl: string;
-  token: string;
-}
-
-const getApiConfig = async (): Promise<ApiConfig | null> => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!baseUrl) {
-    return null;
-  }
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get("adm4all_token")?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  return { baseUrl, token };
-};
-
-const montarHeaders = (config: ApiConfig): HeadersInit => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${config.token}`,
-});
-
-const extrairErro = async (response: Response, fallback: string) => {
-  try {
-    const data = await response.json();
-    return data?.erro ?? data?.mensagem ?? fallback;
-  } catch {
-    return fallback;
-  }
-};
 
 interface CursoApi {
   id: string;
@@ -89,6 +64,19 @@ interface InstrutorApi {
   dataCriacao: string;
 }
 
+interface AlunoListagemApi {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  turma: string | null;
+  curso: string | null;
+  frequencia: number;
+  statusConta: UserStatus;
+  statusMatricula: string | null;
+  dataCriacao: string;
+}
+
 interface TurmaApi {
   id: string;
   nome: string;
@@ -97,8 +85,26 @@ interface TurmaApi {
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
-  status: ClassGroup["status"];
+  status: string;
   frequenciaMedia: number;
+}
+
+interface CertificadoApi {
+  referenciaId: string;
+  certificadoId: string | null;
+  tipo: "aluno";
+  nome: string;
+  curso: string;
+  turma: string | null;
+  frequencia: number;
+  elegivel: boolean;
+  motivoInelegibilidade: string | null;
+  status: CertificateRecord["status"];
+  codigo: string | null;
+  dataEmissao: string | null;
+  dataInicio: string | null;
+  dataFim: string | null;
+  cargaHoraria: number | null;
 }
 
 interface TurmaDetalheApi {
@@ -139,6 +145,24 @@ const mapearInstrutor = (instrutor: InstrutorApi): Instructor => ({
   dataCriacao: instrutor.dataCriacao,
 });
 
+const normalizeClassStatus = (status: string): ClassGroup["status"] => {
+  const normalizedStatus = status === "encerrada" ? "concluida" : status;
+
+  if (
+    normalizedStatus === "planejada" ||
+    normalizedStatus === "em_andamento" ||
+    normalizedStatus === "concluida" ||
+    normalizedStatus === "cancelada"
+  ) {
+    return normalizedStatus;
+  }
+
+  throw new Error(`Status de turma inválido recebido: ${status}.`);
+};
+
+const serializeClassStatus = (status: ClassGroup["status"]): string =>
+  status === "concluida" ? "encerrada" : status;
+
 const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
   nome: turma.nome,
@@ -147,62 +171,28 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   alunos: turma.alunos,
   dataInicio: turma.dataInicio,
   dataTermino: turma.dataTermino ?? "",
-  status: turma.status,
+  status: normalizeClassStatus(turma.status),
   frequenciaMedia: turma.frequenciaMedia,
 });
 
 export const getDashboardSummary =
   async (): Promise<CoordinatorDashboardSummary> => {
-    const config = await getApiConfig();
-
-    if (!config) {
-      return {
-        totalCursos: 0,
-        totalTurmas: 0,
-        totalAlunos: 0,
-        totalInstrutores: 0,
-        frequenciaMedia: 0,
-        certificadosPendentes: 0,
-        processosAbertos: 0,
-        usuariosPendentes: 0,
-        relatorios: [],
-      };
-    }
-
-    const response = await fetch(`${config.baseUrl}/coordenador/dashboard`, {
-      headers: montarHeaders(config),
+    const dados = await authenticatedRequest<
+      Omit<CoordinatorDashboardSummary, "relatorios">
+    >("/coordenador/dashboard", {
       cache: "no-store",
+      fallbackError: "Falha ao carregar o painel.",
     });
-
-    if (!response.ok) {
-      throw new Error(
-        await extrairErro(response, "Falha ao carregar o painel."),
-      );
-    }
-
-    const dados = await response.json();
 
     return { ...dados, relatorios: [] };
   };
 
 export const getCourses = async (): Promise<Course[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
-
-  const response = await fetch(`${config.baseUrl}/cursos`, {
-    headers: montarHeaders(config),
+  const cursos = await authenticatedRequest<CursoApi[]>("/cursos", {
     cache: "no-store",
+    fallbackError: "Falha ao carregar os cursos.",
   });
 
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar os cursos."),
-    );
-  }
-
-  const cursos: CursoApi[] = await response.json();
   return cursos.map(mapearCurso);
 };
 
@@ -212,88 +202,68 @@ export const createCourse = async (input: {
   cargaHoraria: number;
   status: Course["status"];
 }): Promise<Course> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para cadastrar um curso.");
-  }
-
-  const response = await fetch(`${config.baseUrl}/cursos`, {
+  const curso = await authenticatedRequest<CursoApi>("/cursos", {
     method: "POST",
-    headers: montarHeaders(config),
     body: JSON.stringify(input),
+    fallbackError: "Falha ao cadastrar o curso.",
   });
 
-  if (!response.ok) {
-    throw new Error(await extrairErro(response, "Falha ao cadastrar o curso."));
-  }
-
-  return mapearCurso(await response.json());
+  return mapearCurso(curso);
 };
 
 export const getInstructors = async (): Promise<Instructor[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
+  const instrutores = await authenticatedRequest<InstrutorApi[]>(
+    "/instrutores",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os instrutores.",
+    },
+  );
 
-  const response = await fetch(`${config.baseUrl}/instrutores`, {
-    headers: montarHeaders(config),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar os instrutores."),
-    );
-  }
-
-  const instrutores: InstrutorApi[] = await response.json();
   return instrutores.map(mapearInstrutor);
 };
 
 export const inviteInstructor = async (input: {
   nome: string;
   email: string;
+  cpf: string;
   telefone?: string;
 }): Promise<{ id: string; nome: string }> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para convidar um instrutor.");
-  }
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/instrutores",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de ativacao.",
+    },
+  );
+};
 
-  const response = await fetch(`${config.baseUrl}/instrutores`, {
-    method: "POST",
-    headers: montarHeaders(config),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao enviar o convite de ativacao."),
-    );
-  }
-
-  return await response.json();
+export const inviteStudent = async (input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  dataNascimento: string;
+  curso: string;
+  turma: string;
+}): Promise<{ id: string; nome: string }> => {
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/alunos/convites",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de ativacao.",
+    },
+  );
 };
 
 export const getClasses = async (): Promise<ClassGroup[]> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return [];
-  }
-
-  const response = await fetch(`${config.baseUrl}/turmas`, {
-    headers: montarHeaders(config),
+  const turmas = await authenticatedRequest<TurmaApi[]>("/turmas", {
     cache: "no-store",
+    fallbackError: "Falha ao carregar as turmas.",
   });
 
-  if (!response.ok) {
-    throw new Error(
-      await extrairErro(response, "Falha ao carregar as turmas."),
-    );
-  }
-
-  const turmas: TurmaApi[] = await response.json();
   return turmas.map(mapearTurma);
 };
 
@@ -307,42 +277,36 @@ export const createClass = async (input: {
   limiteAlunos: number;
   status: ClassGroup["status"];
 }): Promise<ClassGroup> => {
-  const config = await getApiConfig();
-  if (!config) {
-    throw new Error("Faca login como coordenador para cadastrar uma turma.");
-  }
-
-  const response = await fetch(`${config.baseUrl}/turmas`, {
+  const turma = await authenticatedRequest<TurmaApi>("/turmas", {
     method: "POST",
-    headers: montarHeaders(config),
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      status: serializeClassStatus(input.status),
+    }),
+    fallbackError: "Falha ao cadastrar a turma.",
   });
 
-  if (!response.ok) {
-    throw new Error(await extrairErro(response, "Falha ao cadastrar a turma."));
-  }
-
-  return mapearTurma(await response.json());
+  return mapearTurma(turma);
 };
 
 const buscarTurmaDetalheApi = async (
   id: string,
 ): Promise<TurmaDetalheApi | null> => {
-  const config = await getApiConfig();
-  if (!config) {
-    return null;
+  try {
+    return await authenticatedRequest<TurmaDetalheApi>(`/turmas/${id}`, {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os detalhes da turma.",
+    });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
   }
-
-  const response = await fetch(`${config.baseUrl}/turmas/${id}`, {
-    headers: montarHeaders(config),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return await response.json();
 };
 
 export const getClassById = async (
@@ -361,17 +325,26 @@ export const getClassStudentsAndLessons = async (
     return { students: [], lessons: [] };
   }
 
-  const students: Student[] = detalhe.alunos.map((aluno) => ({
-    id: aluno.id,
-    nome: aluno.nome,
-    email: aluno.email,
-    telefone: aluno.telefone ?? undefined,
-    turma: detalhe.turma.nome,
-    curso: detalhe.turma.curso,
-    frequencia: aluno.frequencia,
-    status: aluno.status as Student["status"],
-    dataCriacao: "",
-  }));
+  const students: Student[] = detalhe.alunos.map((aluno) => {
+    if (!isMatriculaStatus(aluno.status)) {
+      throw new Error(
+        `Status de matrícula inválido recebido para ${aluno.nome}.`,
+      );
+    }
+
+    return {
+      id: aluno.id,
+      nome: aluno.nome,
+      email: aluno.email,
+      telefone: aluno.telefone ?? undefined,
+      turma: detalhe.turma.nome,
+      curso: detalhe.turma.curso,
+      frequencia: aluno.frequencia,
+      statusConta: null,
+      statusMatricula: aluno.status,
+      dataCriacao: "",
+    };
+  });
 
   const lessons: Lesson[] = detalhe.cronograma.map((aula) => ({
     id: aula.id,
@@ -388,7 +361,153 @@ export const getClassStudentsAndLessons = async (
 };
 
 export const getStudents = async (): Promise<Student[]> => {
-  return coordinatorStudentsMock;
+  const alunos = await authenticatedRequest<AlunoListagemApi[]>(
+    "/coordenador/alunos",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os alunos.",
+    },
+  );
+
+  return alunos.map((aluno) => {
+    if (
+      aluno.statusMatricula !== null &&
+      !isMatriculaStatus(aluno.statusMatricula)
+    ) {
+      throw new Error(
+        `Status de matrícula inválido recebido para ${aluno.nome}.`,
+      );
+    }
+
+    return {
+      id: aluno.id,
+      nome: aluno.nome,
+      email: aluno.email,
+      telefone: aluno.telefone ?? undefined,
+      turma: aluno.turma ?? "Não vinculada",
+      curso: aluno.curso ?? "Não informado",
+      frequencia: aluno.frequencia,
+      statusConta: aluno.statusConta,
+      statusMatricula: aluno.statusMatricula,
+      dataCriacao: aluno.dataCriacao,
+    };
+  });
+};
+
+export const getStudentById = async (
+  id: string,
+): Promise<StudentDetail | null> => {
+  try {
+    const aluno = await authenticatedRequest<StudentDetail>(
+      `/coordenador/alunos/${id}`,
+      {
+        cache: "no-store",
+        fallbackError: "Falha ao carregar os dados do aluno.",
+      },
+    );
+
+    for (const matricula of aluno.matriculas) {
+      if (!isMatriculaStatus(matricula.status)) {
+        throw new Error(
+          `Status de matrícula inválido recebido para ${aluno.nome}.`,
+        );
+      }
+    }
+
+    return aluno;
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+export const updateStudent = async (
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    telefone: string | null;
+    statusConta: UserStatus;
+  },
+): Promise<StudentDetail> => {
+  return await authenticatedRequest<StudentDetail>(
+    `/coordenador/alunos/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao atualizar os dados do aluno.",
+    },
+  );
+};
+
+export const resendActivation = async (studentId: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/alunos/${studentId}/reenviar-ativacao`,
+    {
+      method: "POST",
+      fallbackError: "Falha ao reenviar o link de ativação.",
+    },
+  );
+};
+
+export const getEnrollmentClassOptions = async (): Promise<
+  EnrollmentClassOption[]
+> => {
+  const classes = await getClasses();
+  return classes
+    .filter(
+      (classGroup) =>
+        classGroup.status === "planejada" ||
+        classGroup.status === "em_andamento",
+    )
+    .map(({ id, nome, curso, status }) => ({ id, nome, curso, status }));
+};
+
+export const enrollStudentInClass = async (
+  turmaId: string,
+  alunoId: string,
+): Promise<StudentEnrollmentCreated> => {
+  return await authenticatedRequest<StudentEnrollmentCreated>(
+    `/turmas/${turmaId}/matriculas`,
+    {
+      method: "POST",
+      body: JSON.stringify({ alunoId }),
+      fallbackError: "Falha ao vincular o aluno à turma.",
+    },
+  );
+};
+
+export const cancelStudentEnrollment = async (
+  turmaId: string,
+  matriculaId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/turmas/${turmaId}/matriculas/${matriculaId}`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao cancelar a matrícula.",
+    },
+  );
+};
+
+export const updateMatriculaStatus = async (
+  matriculaId: string,
+  status: EditableEnrollmentStatus,
+): Promise<StudentEnrollmentStatusUpdated> => {
+  return await authenticatedRequest<StudentEnrollmentStatusUpdated>(
+    `/coordenador/matriculas/${matriculaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+      fallbackError: "Falha ao atualizar o status da matrícula.",
+    },
+  );
 };
 
 export const getClassMaterials = async (
@@ -400,7 +519,30 @@ export const getClassMaterials = async (
 };
 
 export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
-  return coordinatorAttendanceMock;
+  const attendance = await authenticatedRequest<
+    Array<Omit<AttendanceSummary, "situacao"> & { situacao: string }>
+  >("/coordenador/frequencias", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar a frequência dos alunos.",
+  });
+
+  return attendance.map((record) => {
+    const situacao =
+      record.situacao === "risco" ? "risco_reprovacao" : record.situacao;
+
+    if (
+      situacao !== "regular" &&
+      situacao !== "atencao" &&
+      situacao !== "risco_reprovacao" &&
+      situacao !== "reprovado_falta"
+    ) {
+      throw new Error(
+        `Situação de frequência inválida recebida para ${record.aluno}.`,
+      );
+    }
+
+    return { ...record, situacao };
+  });
 };
 
 export const getLessons = async (): Promise<Lesson[]> => {
@@ -408,7 +550,62 @@ export const getLessons = async (): Promise<Lesson[]> => {
 };
 
 export const getCertificates = async (): Promise<CertificateRecord[]> => {
-  return coordinatorCertificatesMock;
+  const certificados = await authenticatedRequest<CertificadoApi[]>(
+    "/coordenador/certificados",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os certificados.",
+    },
+  );
+
+  return certificados.map((certificado) => ({
+    ...certificado,
+    aluno: certificado.nome,
+    certificado: certificado.codigo,
+  }));
+};
+
+export const downloadCertificatePdf = async (
+  referenciaId: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/certificados/aluno/${referenciaId}/pdf`,
+    "Falha ao baixar o PDF do certificado.",
+  );
+};
+
+export const getCertificatePdfPreview = async (
+  referenciaId: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/certificados/aluno/${referenciaId}/pdf?disposition=inline`,
+    "Falha ao carregar o PDF do certificado.",
+  );
+};
+
+export const issueStudentCertificate = async (
+  matriculaId: string,
+): Promise<CertificateDetail> => {
+  return await authenticatedRequest<CertificateDetail>(
+    "/coordenador/certificados/alunos",
+    {
+      method: "POST",
+      body: JSON.stringify({ matriculaId }),
+      fallbackError: "Falha ao emitir o certificado do aluno.",
+    },
+  );
+};
+
+export const cancelCertificate = async (
+  certificadoId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/certificados/aluno/${certificadoId}/cancelar`,
+    {
+      method: "PATCH",
+      fallbackError: "Falha ao cancelar o certificado.",
+    },
+  );
 };
 
 export const getProcesses = async (): Promise<ProcessRecord[]> => {
@@ -416,7 +613,32 @@ export const getProcesses = async (): Promise<ProcessRecord[]> => {
 };
 
 export const getReports = async (): Promise<CoordinatorReportData[]> => {
-  return coordinatorReportsMock;
+  const resposta = await authenticatedRequest<{
+    relatorios: CoordinatorReportData[];
+  }>("/coordenador/relatorios", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os relatórios.",
+  });
+
+  return resposta.relatorios;
+};
+
+export const exportReport = async (
+  type: CoordinatorReportType,
+  format: "pdf" | "csv",
+  filters: CoordinatorReportFilters,
+): Promise<AuthenticatedFileResponse> => {
+  const params = new URLSearchParams();
+  if (filters.dataInicio) params.set("dataInicio", filters.dataInicio);
+  if (filters.dataFim) params.set("dataFim", filters.dataFim);
+  if (filters.curso) params.set("curso", filters.curso);
+  if (filters.turma) params.set("turma", filters.turma);
+  const query = params.toString();
+
+  return await authenticatedFileRequest(
+    `/coordenador/relatorios/${type}/${format}${query ? `?${query}` : ""}`,
+    `Falha ao gerar o relatório em ${format === "pdf" ? "PDF" : "CSV"}.`,
+  );
 };
 
 export const getCoordinatorSettings =

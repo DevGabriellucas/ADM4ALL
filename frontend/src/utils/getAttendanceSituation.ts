@@ -1,3 +1,4 @@
+import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
 import type {
   AttendanceSituation,
   AttendanceSummary,
@@ -9,8 +10,8 @@ export const getAttendanceSituation = ({
   frequencia,
   situacao,
 }: AttendanceRecord): AttendanceSituation => {
-  if (situacao === "reprovado_por_falta") {
-    return "reprovado_por_falta";
+  if (situacao === MATRICULA_STATUS.REPROVADO_FALTA) {
+    return MATRICULA_STATUS.REPROVADO_FALTA;
   }
 
   if (frequencia >= 80) {

@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { SubmitEvent } from "react";
 import { useState } from "react";
+import { convidarAlunoAction } from "@/app/coordenador/actions";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import type { ClassGroup, Course } from "@/types/coordinator";
@@ -16,7 +18,9 @@ interface NewStudentFormProps {
 interface StudentFormData {
   nome: string;
   email: string;
+  cpf: string;
   telefone: string;
+  dataNascimento: string;
   curso: string;
   turma: string;
 }
@@ -24,7 +28,9 @@ interface StudentFormData {
 const INITIAL_FORM_DATA: StudentFormData = {
   nome: "",
   email: "",
+  cpf: "",
   telefone: "",
+  dataNascimento: "",
   curso: "",
   turma: "",
 };
@@ -35,8 +41,11 @@ export const NewStudentForm = ({
   isOpen,
   onCancel,
 }: NewStudentFormProps) => {
+  const router = useRouter();
   const [formData, setFormData] = useState<StudentFormData>(INITIAL_FORM_DATA);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availableClasses = classes.filter(
     (classGroup) => classGroup.curso === formData.curso,
@@ -45,17 +54,28 @@ export const NewStudentForm = ({
   const handleCancel = () => {
     setFormData(INITIAL_FORM_DATA);
     setSuccessMessage(null);
+    setErrorMessage(null);
     onCancel();
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    const resultado = await convidarAlunoAction({
+      ...formData,
+      telefone: formData.telefone || undefined,
+    });
+    setIsSubmitting(false);
 
-    // MOCK TEMPORARIO: futuramente a API criara o aluno e enviara o e-mail.
-    setSuccessMessage(
-      `Convite de ativação preparado para ${formData.email}. Nenhum e-mail foi enviado nesta versão.`,
-    );
+    if (!resultado.sucesso) {
+      setErrorMessage(resultado.mensagem);
+      return;
+    }
+
+    setSuccessMessage(resultado.mensagem);
     setFormData(INITIAL_FORM_DATA);
+    router.refresh();
   };
 
   if (!isOpen) {
@@ -90,6 +110,15 @@ export const NewStudentForm = ({
         </output>
       )}
 
+      {errorMessage && (
+        <output
+          aria-live="polite"
+          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {errorMessage}
+        </output>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
@@ -121,6 +150,22 @@ export const NewStudentForm = ({
           </label>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+            CPF
+            <input
+              required
+              type="text"
+              inputMode="numeric"
+              maxLength={14}
+              value={formData.cpf}
+              onChange={(event) =>
+                setFormData({ ...formData, cpf: event.target.value })
+              }
+              placeholder="000.000.000-00"
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
             Telefone
             <span className="sr-only">Opcional</span>
             <input
@@ -131,6 +176,23 @@ export const NewStudentForm = ({
               }
               placeholder="(83) 99999-9999 (opcional)"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+            Data de nascimento
+            <input
+              required
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={formData.dataNascimento}
+              onChange={(event) =>
+                setFormData({
+                  ...formData,
+                  dataNascimento: event.target.value,
+                })
+              }
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
           </label>
 
@@ -188,8 +250,11 @@ export const NewStudentForm = ({
         </div>
 
         <CoordinatorFormActions
-          submitLabel="Enviar convite de ativação"
+          submitLabel={
+            isSubmitting ? "Enviando..." : "Enviar convite de ativação"
+          }
           onCancel={handleCancel}
+          disabled={isSubmitting}
         />
       </form>
     </section>

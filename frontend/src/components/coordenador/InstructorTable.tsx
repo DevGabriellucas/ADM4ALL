@@ -14,6 +14,10 @@ const getInstructorStatusInfo = (status: Instructor["status"]) => {
     return { label: "Pendente de ativação", tone: "amber" as const };
   }
 
+  if (status === "bloqueado") {
+    return { label: "Bloqueado", tone: "red" as const };
+  }
+
   return { label: "Inativo", tone: "slate" as const };
 };
 
@@ -88,20 +92,26 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <button
                         type="button"
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        disabled
+                        title="Funcionalidade ainda não disponível"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Visualizar
                       </button>
                       <button
                         type="button"
-                        className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                        disabled
+                        title="Funcionalidade ainda não disponível"
+                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                       >
                         Editar
                       </button>
                       {instructor.status === "pendente_ativacao" && (
                         <button
                           type="button"
-                          className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
+                          disabled
+                          title="Funcionalidade ainda não disponível"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Reenviar ativação
                         </button>
@@ -109,7 +119,9 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                       {instructor.status === "ativo" && (
                         <button
                           type="button"
-                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          disabled
+                          title="Funcionalidade ainda não disponível"
+                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           Desativar
                         </button>

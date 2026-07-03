@@ -1,8 +1,8 @@
-import {
-  alunoLoginResponseMock,
-  coordenadorLoginResponseMock,
-  instrutorLoginResponseMock,
-} from "@/mocks/authMock";
+import type {
+  ActivateAccountPayload,
+  ActivateAccountResponse,
+  ActivationTokenResponse,
+} from "@/types/auth";
 
 interface LoginPayload {
   identifier: string;
@@ -41,10 +41,9 @@ export interface ResetPasswordResponse {
 }
 
 interface ApiErrorResponse {
-  erro: string;
+  erro?: string;
+  mensagem?: string;
 }
-
-type AuthMockProfile = "aluno" | "instrutor" | "coordenador";
 
 const getApiUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -56,27 +55,55 @@ const getApiUrl = () => {
   return apiUrl;
 };
 
-const getMockLoginResponse = (): LoginResponse => {
-  const profile = process.env.NEXT_PUBLIC_AUTH_MOCK_PROFILE as
-    | AuthMockProfile
-    | undefined;
+const readApiError = async (response: Response, fallback: string) => {
+  try {
+    const error = (await response.json()) as ApiErrorResponse;
+    return error.erro ?? error.mensagem ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
 
-  if (profile === "instrutor") {
-    return instrutorLoginResponseMock;
+export const validateActivationToken = async (
+  token: string,
+): Promise<ActivationTokenResponse> => {
+  const response = await fetch(
+    `${getApiUrl()}/auth/ativacoes/${encodeURIComponent(token)}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Não foi possível validar o link."),
+    );
   }
 
-  if (profile === "coordenador") {
-    return coordenadorLoginResponseMock;
+  return (await response.json()) as ActivationTokenResponse;
+};
+
+export const activateAccount = async (
+  token: string,
+  payload: ActivateAccountPayload,
+): Promise<ActivateAccountResponse> => {
+  const response = await fetch(
+    `${getApiUrl()}/auth/ativacoes/${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Não foi possível ativar a conta."),
+    );
   }
 
-  return alunoLoginResponseMock;
+  return (await response.json()) as ActivateAccountResponse;
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  if (process.env.NEXT_PUBLIC_USE_AUTH_MOCK === "true") {
-    return getMockLoginResponse();
-  }
-
   try {
     const response = await fetch(`${getApiUrl()}/auth/login`, {
       method: "POST",

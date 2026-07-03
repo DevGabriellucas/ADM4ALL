@@ -18,18 +18,18 @@ export class PostgresAuthRepository implements AuthRepository {
         u.senha AS senha_hash,
         u.status,
         p.nome AS perfil,
-        u.aluno_id,
+        a.id AS aluno_id,
         i.id AS instrutor_id,
         c.id AS coordenador_id
       FROM usuarios u
       JOIN perfis p ON p.id = u.perfil_id
-      LEFT JOIN alunos a ON a.id = u.aluno_id
+      LEFT JOIN alunos a ON a.usuario_id = u.id
       LEFT JOIN instrutores i ON i.usuario_id = u.id
       LEFT JOIN coordenadores c ON c.usuario_id = u.id
       WHERE lower(u.email) = lower($1)
          OR (
            length(regexp_replace($1, '[^0-9]', '', 'g')) > 0
-           AND regexp_replace(a.cpf, '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')
+           AND u.cpf = regexp_replace($1, '[^0-9]', '', 'g')
          )
       LIMIT 1
     `;

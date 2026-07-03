@@ -27,17 +27,17 @@ const formatDate = (date: string) => {
   );
 };
 
-const getClassStatus = (status: ClassGroup["status"]) => {
-  if (status === "em_andamento") {
-    return { label: "Em andamento", tone: "green" as const };
+const classStatusInfo: Record<
+  ClassGroup["status"],
+  {
+    label: string;
+    tone: "green" | "amber" | "red" | "blue";
   }
-  if (status === "planejada") {
-    return { label: "Planejada", tone: "amber" as const };
-  }
-  if (status === "cancelada") {
-    return { label: "Cancelada", tone: "red" as const };
-  }
-  return { label: "Concluída", tone: "blue" as const };
+> = {
+  planejada: { label: "Planejada", tone: "amber" },
+  em_andamento: { label: "Em andamento", tone: "green" },
+  concluida: { label: "Concluída", tone: "blue" },
+  cancelada: { label: "Cancelada", tone: "red" },
 };
 
 export const ClassDetailsContent = ({
@@ -48,13 +48,14 @@ export const ClassDetailsContent = ({
   materials,
   certificates,
 }: ClassDetailsContentProps) => {
-  const status = getClassStatus(classGroup.status);
+  const status = classStatusInfo[classGroup.status];
   const completedLessons = lessons.filter(
     (lesson) => lesson.status === "realizada",
   ).length;
-  const eligibleCertificates = certificates.filter(
-    (certificate) => getCertificateStatus(certificate) !== "nao_elegivel",
-  ).length;
+  const eligibleCertificates = certificates.filter((certificate) => {
+    const status = getCertificateStatus(certificate);
+    return status !== "nao_elegivel" && status !== "cancelado";
+  }).length;
 
   return (
     <>

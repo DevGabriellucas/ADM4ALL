@@ -1,7 +1,10 @@
 import bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
 import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
-import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
+import {
+  AlunoDashboard,
+  AlunoRepository,
+} from "../../domain/repositories/AlunoRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
@@ -9,6 +12,7 @@ import { EmailService } from "../../infrastructure/email/EmailService";
 import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
+import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CadastrarAlunoInput {
   nome: string;
@@ -48,6 +52,7 @@ export class AlunoUseCase {
   constructor(
     private alunoRepository: AlunoRepository,
     private emailService: EmailService,
+    private activationUseCase: ActivationUseCase,
   ) {}
 
   async cadastrar(dados: CadastrarAlunoInput): Promise<Aluno> {
@@ -83,7 +88,37 @@ export class AlunoUseCase {
       cursoUnipe: dados.isAlunoUnipe ? dados.cursoUnipe : undefined,
     });
 
-    return await this.alunoRepository.cadastrar(novoAluno);
+    const aluno = await this.alunoRepository.cadastrar(novoAluno);
+    const usuarioId = await this.alunoRepository.buscarUsuarioIdPorAlunoId(
+      aluno.id,
+    );
+
+    if (!usuarioId) {
+      throw new Error("Usuario do aluno cadastrado nao encontrado.");
+    }
+
+    const token = await this.activationUseCase.criar(
+      usuarioId,
+      "cadastro_publico",
+      [],
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        aluno.email,
+        "Ative sua conta - ADM Para Todos",
+        `<p>Ola, ${aluno.nome}!</p>
+         <p>Confirme seu e-mail para ativar sua conta.</p>
+         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch (error) {
+      console.error("Falha ao enviar e-mail de ativacao:", error);
+    }
+
+    return aluno;
   }
 
   async listar(): Promise<Aluno[]> {
@@ -96,6 +131,19 @@ export class AlunoUseCase {
       throw new BadRequestError("Aluno nao encontrado.");
     }
     return aluno;
+  }
+
+  async obterDashboard(alunoId: string): Promise<AlunoDashboard> {
+    const dashboard =
+      await this.alunoRepository.buscarDashboardPorAlunoId(alunoId);
+
+    if (!dashboard) {
+      throw new BadRequestError(
+        "O aluno nao possui matricula disponivel para o dashboard.",
+      );
+    }
+
+    return dashboard;
   }
 
   async atualizar(

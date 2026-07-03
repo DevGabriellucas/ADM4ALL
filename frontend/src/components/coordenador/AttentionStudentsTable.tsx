@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import {
+  getMatriculaStatusInfo,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import type { AttendanceSummary } from "@/types/coordinator";
 
 interface AttentionStudentsTableProps {
@@ -7,8 +11,8 @@ interface AttentionStudentsTableProps {
 }
 
 const getSituationInfo = (situacao: AttendanceSummary["situacao"]) => {
-  if (situacao === "reprovado_por_falta") {
-    return { label: "Reprovado por falta", tone: "red" as const };
+  if (situacao === MATRICULA_STATUS.REPROVADO_FALTA) {
+    return getMatriculaStatusInfo(MATRICULA_STATUS.REPROVADO_FALTA);
   }
 
   if (situacao === "atencao") {

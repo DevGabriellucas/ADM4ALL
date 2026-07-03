@@ -36,6 +36,9 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
   const inactiveUsers = users.filter(
     (user) => user.status === "inativo",
   ).length;
+  const blockedUsers = users.filter(
+    (user) => user.status === "bloqueado",
+  ).length;
 
   return (
     <>
@@ -46,7 +49,7 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
 
       <section
         aria-label="Indicadores de usuários"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
       >
         <CoordinatorStatCard
           title="Total de usuários"
@@ -71,6 +74,12 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
           value={inactiveUsers}
           subtitle="Sem acesso ao sistema"
           variant="blue"
+        />
+        <CoordinatorStatCard
+          title="Usuários bloqueados"
+          value={blockedUsers}
+          subtitle="Com acesso bloqueado"
+          variant="neutral"
         />
       </section>
 
@@ -120,6 +129,7 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
               <option value="ativo">Ativo</option>
               <option value="pendente_ativacao">Pendente de ativação</option>
               <option value="inativo">Inativo</option>
+              <option value="bloqueado">Bloqueado</option>
             </select>
           </label>
         </div>

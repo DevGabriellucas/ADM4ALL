@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { atualizarAvatarAction } from "@/app/instrutor/actions";
+import { clearSession } from "@/services/sessionService";
 import type { InstrutorResumo } from "@/types/instrutor";
 
 interface InstrutorSidebarProps {
@@ -49,10 +50,8 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
   const [isPending, startTransition] = useTransition();
 
   const sair = () => {
-    document.cookie = "adm4all_token=; path=/; max-age=0; SameSite=Lax";
-    document.cookie = "adm4all_perfil=; path=/; max-age=0; SameSite=Lax";
-    document.cookie = "adm4all_instrutor_id=; path=/; max-age=0; SameSite=Lax";
-    router.push("/");
+    clearSession();
+    router.replace("/");
   };
 
   const selecionarFoto = (evento: React.ChangeEvent<HTMLInputElement>) => {

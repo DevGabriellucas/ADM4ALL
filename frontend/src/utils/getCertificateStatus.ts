@@ -1,12 +1,11 @@
-import type { CertificateRecord, CertificateStatus } from "@/types/coordinator";
+import type {
+  CertificateDisplayStatus,
+  CertificateRecord,
+} from "@/types/coordinator";
 
 export const getCertificateStatus = (
   certificate: CertificateRecord,
-): CertificateStatus => {
-  if (certificate.frequencia < 80) {
-    return "nao_elegivel";
-  }
-
+): CertificateDisplayStatus => {
   if (certificate.status === "emitido") {
     return "emitido";
   }
@@ -15,5 +14,9 @@ export const getCertificateStatus = (
     return "pendente";
   }
 
-  return "elegivel";
+  if (certificate.status === "cancelado") {
+    return "cancelado";
+  }
+
+  return certificate.elegivel ? "elegivel" : "nao_elegivel";
 };

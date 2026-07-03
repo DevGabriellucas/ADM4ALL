@@ -6,12 +6,19 @@ import path from "path";
 import { JwtService, TokenPayload } from "../../application/security/JwtService";
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
+import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
 import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
+import type { FiltrosRelatorioCoordenador } from "../../domain/repositories/CoordenadorRepository";
 import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
+import { gerarCertificadoPdf } from "../pdf/CertificatePdfService";
+import {
+  gerarRelatorioCsv,
+  gerarRelatorioPdf,
+} from "../reports/CoordinatorReportExportService";
 
 type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
 
@@ -21,12 +28,30 @@ interface ArquivoUploadJson {
   conteudoBase64: string;
 }
 
+const obterFiltrosRelatorio = (req: Request): FiltrosRelatorioCoordenador => {
+  const filtros: FiltrosRelatorioCoordenador = {};
+  if (typeof req.query.dataInicio === "string" && req.query.dataInicio) {
+    filtros.dataInicio = req.query.dataInicio;
+  }
+  if (typeof req.query.dataFim === "string" && req.query.dataFim) {
+    filtros.dataFim = req.query.dataFim;
+  }
+  if (typeof req.query.curso === "string" && req.query.curso) {
+    filtros.curso = req.query.curso;
+  }
+  if (typeof req.query.turma === "string" && req.query.turma) {
+    filtros.turma = req.query.turma;
+  }
+  return filtros;
+};
+
 export class ExpressAdapter {
   private app = express();
   private uploadsDir = path.resolve(process.cwd(), "uploads", "materiais");
 
   constructor(
     private authUseCase: AuthUseCase,
+    private activationUseCase: ActivationUseCase,
     private alunoUseCase: AlunoUseCase,
     private instrutorUseCase: InstrutorUseCase,
     private coordenadorUseCase: CoordenadorUseCase,
@@ -176,10 +201,32 @@ export class ExpressAdapter {
   }
 
   private configurarRotas() {
+    this.app.get(
+      "/auth/ativacoes/:token",
+      asyncHandler(async (req: Request, res: Response) => {
+        const token = Array.isArray(req.params.token)
+          ? req.params.token[0]
+          : req.params.token;
+        const ativacao = await this.activationUseCase.validar(token ?? "");
+        res.status(200).json(ativacao);
+      }),
+    );
+
+    this.app.post(
+      "/auth/ativacoes/:token",
+      asyncHandler(async (req: Request, res: Response) => {
+        const token = Array.isArray(req.params.token)
+          ? req.params.token[0]
+          : req.params.token;
+        await this.activationUseCase.confirmar(token ?? "", req.body ?? {});
+        res.status(200).json({ mensagem: "Conta ativada com sucesso." });
+      }),
+    );
+
     this.app.post(
       "/auth/login",
       asyncHandler(async (req: Request, res: Response) => {
-        const { identifier, password } = req.body;
+        const { identifier, password } = req.body ?? {};
 
         if (!identifier || !password) {
           throw new BadRequestError("Identificador e senha sao obrigatorios.");
@@ -222,7 +269,8 @@ export class ExpressAdapter {
         res.status(201).json({
           id: aluno.id,
           nome: aluno.nome,
-          mensagem: "Aluno cadastrado com sucesso!",
+          mensagem:
+            "Cadastro realizado. Verifique seu e-mail para ativar sua conta.",
         });
       }),
     );
@@ -259,6 +307,25 @@ export class ExpressAdapter {
         await this.alunoUseCase.redefinirSenha(token, novaSenha);
 
         res.status(200).json({ mensagem: "Senha redefinida com sucesso." });
+      }),
+    );
+
+    this.app.get(
+      "/alunos/me/dashboard",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const dashboard = await this.alunoUseCase.obterDashboard(
+          usuario.alunoId,
+        );
+        res.json(dashboard);
       }),
     );
 
@@ -406,13 +473,16 @@ export class ExpressAdapter {
     this.app.post(
       "/auth/ativar-conta",
       asyncHandler(async (req: Request, res: Response) => {
-        const { token, novaSenha } = req.body;
+        const { token, novaSenha } = req.body ?? {};
 
         if (!token) {
           throw new BadRequestError("O token de ativacao e obrigatorio.");
         }
 
-        await this.coordenadorUseCase.ativarConta(token, novaSenha);
+        await this.activationUseCase.confirmar(token, {
+          senha: novaSenha,
+          confirmarSenha: novaSenha,
+        });
         res.status(200).json({ mensagem: "Conta ativada com sucesso." });
       }),
     );
@@ -423,6 +493,122 @@ export class ExpressAdapter {
       asyncHandler(async (_req: Request, res: Response) => {
         const dashboard = await this.coordenadorUseCase.obterDashboard();
         res.json(dashboard);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/frequencias",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const getQueryValue = (value: unknown) =>
+          typeof value === "string" ? value : undefined;
+        const curso = getQueryValue(req.query.curso);
+        const turma = getQueryValue(req.query.turma);
+        const aluno = getQueryValue(req.query.aluno);
+        const periodo = getQueryValue(req.query.periodo);
+        const frequencias = await this.coordenadorUseCase.listarFrequencias({
+          ...(curso ? { curso } : {}),
+          ...(turma ? { turma } : {}),
+          ...(aluno ? { aluno } : {}),
+          ...(periodo ? { periodo } : {}),
+        });
+        res.json(frequencias);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const certificados =
+          await this.coordenadorUseCase.listarCertificados();
+        res.json(certificados);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados/:tipo/:referenciaId",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, referenciaId } = req.params as {
+          tipo: string;
+          referenciaId: string;
+        };
+        const certificado = await this.coordenadorUseCase.buscarCertificado(
+          tipo,
+          referenciaId,
+        );
+        res.json(certificado);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/certificados/:tipo/:referenciaId/pdf",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, referenciaId } = req.params as {
+          tipo: string;
+          referenciaId: string;
+        };
+        const disposition =
+          (req.query.disposition as string | undefined) === "inline"
+            ? "inline"
+            : "attachment";
+
+        const certificado = await this.coordenadorUseCase.buscarCertificado(
+          tipo,
+          referenciaId,
+        );
+        const pdf = await gerarCertificadoPdf(certificado);
+        const codigoSeguro = (certificado.codigo ?? "certificado").replace(
+          /[^a-zA-Z0-9_-]/g,
+          "-",
+        );
+
+        const fileName = `certificado-${tipo}-${codigoSeguro}.pdf`;
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          disposition === "inline"
+            ? "inline"
+            : `attachment; filename="${fileName}"`,
+        );
+        res.status(200).send(pdf);
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/certificados/alunos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { matriculaId } = req.body ?? {};
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        const certificado =
+          await this.coordenadorUseCase.emitirCertificadoAluno(
+            matriculaId,
+            usuario.sub,
+          );
+        res.status(201).json(certificado);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/certificados/:tipo/:id/cancelar",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo, id } = req.params as { tipo: string; id: string };
+        await this.coordenadorUseCase.cancelarCertificado(tipo, id);
+        res.json({ mensagem: "Certificado cancelado com sucesso." });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const relatorios = await this.coordenadorUseCase.listarRelatorios();
+        res.json({ relatorios });
       }),
     );
 
@@ -465,11 +651,12 @@ export class ExpressAdapter {
       "/instrutores",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
-        const { nome, email, telefone } = req.body;
+        const { nome, email, cpf, telefone } = req.body;
 
         const convite = await this.coordenadorUseCase.convidarInstrutor({
           nome,
           email,
+          cpf,
           telefone,
         });
 
@@ -478,6 +665,120 @@ export class ExpressAdapter {
           nome: convite.nome,
           mensagem: "Convite de ativacao enviado por e-mail.",
         });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/:tipo/pdf",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo } = req.params as { tipo: string };
+        const filtros = obterFiltrosRelatorio(req);
+        const relatorio = await this.coordenadorUseCase.obterRelatorioFiltrado(
+          tipo,
+          filtros,
+        );
+        const pdf = await gerarRelatorioPdf(relatorio, filtros);
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="relatorio-${tipo}.pdf"`,
+        );
+        res.status(200).send(pdf);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/:tipo/csv",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo } = req.params as { tipo: string };
+        const filtros = obterFiltrosRelatorio(req);
+        const relatorio = await this.coordenadorUseCase.obterRelatorioFiltrado(
+          tipo,
+          filtros,
+        );
+        const csv = gerarRelatorioCsv(relatorio, filtros);
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="relatorio-${tipo}.csv"`,
+        );
+        res.status(200).send(csv);
+      }),
+    );
+
+    this.app.post(
+      "/alunos/convites",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const convite = await this.coordenadorUseCase.convidarAluno(
+          req.body ?? {},
+        );
+        res.status(201).json({
+          id: convite.instrutorId,
+          nome: convite.nome,
+          mensagem: "Convite de ativacao enviado por e-mail.",
+        });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/alunos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const alunos = await this.coordenadorUseCase.listarAlunos();
+        res.json(alunos);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/alunos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const aluno = await this.coordenadorUseCase.buscarAlunoDetalhe(id);
+        res.json(aluno);
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/alunos/:id/reenviar-ativacao",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        await this.coordenadorUseCase.reenviarAtivacao(id);
+        res.json({ mensagem: "Link de ativacao reenviado com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/matriculas/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { status } = req.body ?? {};
+        const matricula =
+          await this.coordenadorUseCase.atualizarStatusMatricula(id, status);
+        res.json(matricula);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/alunos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, email, telefone, statusConta } = req.body ?? {};
+        const aluno = await this.coordenadorUseCase.atualizarAluno(id, {
+          nome,
+          email,
+          telefone,
+          statusConta,
+        });
+        res.json(aluno);
       }),
     );
 
@@ -519,6 +820,36 @@ export class ExpressAdapter {
         });
 
         res.status(201).json(turma);
+      }),
+    );
+
+    this.app.post(
+      "/turmas/:turmaId/matriculas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params as { turmaId: string };
+        const { alunoId } = req.body ?? {};
+        const matricula = await this.coordenadorUseCase.vincularAlunoTurma(
+          turmaId,
+          alunoId,
+        );
+        res.status(201).json(matricula);
+      }),
+    );
+
+    this.app.delete(
+      "/turmas/:turmaId/matriculas/:matriculaId",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, matriculaId } = req.params as {
+          turmaId: string;
+          matriculaId: string;
+        };
+        await this.coordenadorUseCase.cancelarMatricula(
+          turmaId,
+          matriculaId,
+        );
+        res.json({ mensagem: "Matricula cancelada com sucesso." });
       }),
     );
 

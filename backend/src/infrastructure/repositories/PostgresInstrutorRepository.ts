@@ -90,9 +90,10 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     instrutorId: string,
   ): Promise<InstrutorResumo | null> {
     const query = `
-      SELECT id, usuario_id, nome, area_atuacao, avatar_url
-      FROM instrutores
-      WHERE id = $1
+      SELECT i.id, i.usuario_id, u.nome, i.area_atuacao, i.avatar_url
+      FROM instrutores i
+      JOIN usuarios u ON u.id = i.usuario_id
+      WHERE i.id = $1
       LIMIT 1
     `;
     const resultado = await this.db.query(query, [instrutorId]);
@@ -206,16 +207,17 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       SELECT
         m.id AS matricula_id,
         a.id AS aluno_id,
-        a.nome,
+        u.nome,
         f.presente,
         f.observacao
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
       LEFT JOIN frequencias f
         ON f.matricula_id = m.id
        AND f.aula_id = $2
       WHERE m.turma_id = $1
-      ORDER BY a.nome ASC
+      ORDER BY u.nome ASC
     `;
     const resultado = await this.db.query(query, [turmaId, aulaReferenciaId]);
 

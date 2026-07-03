@@ -16,6 +16,7 @@ interface LoginFormProps extends ComponentProps<"form"> {}
 
 export const LoginForm = ({ className, ...props }: LoginFormProps) => {
   const router = useRouter();
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
@@ -51,7 +52,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
         admin: "/coordenador/dashboard",
       } as const;
 
-      router.push(destinoPorPerfil[result.usuario.perfil]);
+      router.replace(destinoPorPerfil[result.usuario.perfil]);
     } catch (error: unknown) {
       setMessage({
         type: "error",
@@ -75,15 +76,59 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
         error={errors.identifier?.message}
       />
 
-      <Input
-        id="password"
-        label="Senha"
-        className="mt-4 h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl"
-        placeholder="Senha"
-        type="password"
-        {...register("password")}
-        error={errors.password?.message}
-      />
+      <div className="relative">
+        <Input
+          id="password"
+          label="Senha"
+          className="mt-4 h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 pr-20 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl"
+          placeholder="Senha"
+          type={isPasswordVisible ? "text" : "password"}
+          {...register("password")}
+          error={errors.password?.message}
+        />
+        <button
+          type="button"
+          className="-translate-y-1/2 absolute top-[3.61rem] right-6 flex size-10 cursor-pointer items-center justify-center rounded text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium"
+          aria-controls="password"
+          aria-label={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+          aria-pressed={isPasswordVisible}
+          title={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+          onClick={() => setIsPasswordVisible((visible) => !visible)}
+        >
+          {isPasswordVisible ? (
+            <svg
+              aria-hidden="true"
+              className="size-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m3 3 18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.2A10.7 10.7 0 0 1 12 4c5.5 0 9 5 9 5a16.8 16.8 0 0 1-3.1 3.6M6.6 6.6A17.3 17.3 0 0 0 3 9s3.5 5 9 5c.8 0 1.6-.1 2.3-.3"
+              />
+            </svg>
+          ) : (
+            <svg
+              aria-hidden="true"
+              className="size-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 12s3.5-5 9-5 9 5 9 5-3.5 5-9 5-9-5-9-5Z"
+              />
+              <circle cx="12" cy="12" r="2.5" />
+            </svg>
+          )}
+        </button>
+      </div>
 
       <Link
         href="/recuperar-senha"

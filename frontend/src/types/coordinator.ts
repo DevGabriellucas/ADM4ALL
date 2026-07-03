@@ -1,15 +1,22 @@
+import type {
+  MATRICULA_STATUS,
+  MatriculaStatus,
+} from "@/constants/matriculaStatus";
+
 export type UserRole = "administrador" | "coordenador" | "instrutor" | "aluno";
 
-export type UserStatus = "ativo" | "pendente_ativacao" | "inativo";
-
-export type StudentStatus = UserStatus | "reprovado_por_falta" | "concluido";
+export type UserStatus =
+  | "ativo"
+  | "pendente_ativacao"
+  | "inativo"
+  | "bloqueado";
 
 export type CourseStatus = "ativo" | "em_planejamento" | "encerrado";
 
 export type ClassStatus =
   | "planejada"
   | "em_andamento"
-  | "encerrada"
+  | "concluida"
   | "cancelada";
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
@@ -26,13 +33,15 @@ export type AttendanceSituation =
   | "regular"
   | "atencao"
   | "risco_reprovacao"
-  | "reprovado_por_falta";
+  | typeof MATRICULA_STATUS.REPROVADO_FALTA;
 
-export type CertificateStatus =
-  | "elegivel"
-  | "pendente"
-  | "emitido"
-  | "nao_elegivel";
+export type CertificateStatus = "pendente" | "emitido" | "cancelado";
+
+export type CertificateEligibilityStatus = "elegivel" | "nao_elegivel";
+
+export type CertificateDisplayStatus =
+  | CertificateStatus
+  | CertificateEligibilityStatus;
 
 export type ProcessStatus = "aberto" | "em_analise" | "concluido" | "cancelado";
 
@@ -84,8 +93,58 @@ export interface Student {
   turma: string;
   curso: string;
   frequencia: number;
-  status: StudentStatus;
+  statusConta: UserStatus | null;
+  statusMatricula: MatriculaStatus | null;
   dataCriacao: string;
+}
+
+export interface StudentEnrollment {
+  id: string;
+  turmaId: string | null;
+  turma: string | null;
+  curso: string | null;
+  status: MatriculaStatus;
+  frequencia: number;
+  dataMatricula: string;
+}
+
+export interface StudentEnrollmentCreated {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  treinamentoId: string;
+  status: MatriculaStatus;
+  dataMatricula: string;
+}
+
+export type EditableEnrollmentStatus = Exclude<MatriculaStatus, "cancelado">;
+
+export interface StudentEnrollmentStatusUpdated {
+  id: string;
+  status: MatriculaStatus;
+  dataConclusao: string | null;
+}
+
+export interface EnrollmentClassOption {
+  id: string;
+  nome: string;
+  curso: string;
+  status: ClassStatus;
+}
+
+export interface StudentDetail {
+  id: string;
+  usuarioId: string;
+  nome: string;
+  email: string;
+  cpf: string | null;
+  telefone: string | null;
+  dataNascimento: string | null;
+  rgm: string | null;
+  cursoUnipe: string | null;
+  statusConta: UserStatus;
+  dataCriacao: string;
+  matriculas: StudentEnrollment[];
 }
 
 export interface Course {
@@ -139,13 +198,51 @@ export interface AttendanceSummary {
 }
 
 export interface CertificateRecord {
+  referenciaId: string;
+  certificadoId: string | null;
+  tipo: "aluno";
+  nome: string;
   aluno: string;
   curso: string;
-  turma: string;
+  turma: string | null;
   frequencia: number;
-  status: CertificateStatus;
+  elegivel: boolean;
+  motivoInelegibilidade: string | null;
+  status: CertificateStatus | null;
   certificado: string | null;
+  dataEmissao: string | null;
+  dataInicio: string | null;
+  dataFim: string | null;
+  cargaHoraria: number | null;
 }
+
+interface CertificateDetailBase {
+  certificadoId: string | null;
+  referenciaId: string;
+  status: CertificateStatus | null;
+  dataEmissao: string | null;
+  cidade: string;
+  codigo: string | null;
+}
+
+export interface StudentCertificateDetail extends CertificateDetailBase {
+  tipo: "aluno";
+  nomeAluno: string;
+  cpfAluno: string;
+  nomeCurso: string;
+  cargaHoraria: number;
+  dataInicio: string;
+  dataFim: string;
+  nomeCoordenadora: string;
+  nomeProjeto: string;
+  textoDescritivo: string;
+  statusMatricula: MatriculaStatus;
+  statusTurma: ClassStatus;
+  statusUsuario: UserStatus;
+  faltas: number;
+}
+
+export type CertificateDetail = StudentCertificateDetail;
 
 export interface ProcessRecord {
   id: string;
@@ -175,7 +272,16 @@ export interface ReportDataRow {
   turma: string;
   chartLabel: string;
   chartValue: number;
+  metricNumerator?: number;
+  metricDenominator?: number;
   values: Record<string, string | number>;
+}
+
+export interface CoordinatorReportFilters {
+  dataInicio?: string;
+  dataFim?: string;
+  curso?: string;
+  turma?: string;
 }
 
 export interface CoordinatorReportData {
@@ -184,6 +290,7 @@ export interface CoordinatorReportData {
   description: string;
   metricLabel: string;
   metricSuffix?: string;
+  metricValue?: number;
   aggregation: ReportAggregation;
   columns: ReportTableColumn[];
   rows: ReportDataRow[];
