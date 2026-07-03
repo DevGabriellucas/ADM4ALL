@@ -1,8 +1,17 @@
-import type { CoordinatorReportData, ReportDataRow } from "@/types/coordinator";
+"use client";
+
+import { useState } from "react";
+import { exportarRelatorioAction } from "@/app/coordenador/actions";
+import type {
+  CoordinatorReportData,
+  CoordinatorReportFilters,
+  ReportDataRow,
+} from "@/types/coordinator";
 
 interface ReportPreviewPanelProps {
   report: CoordinatorReportData;
   rows: ReportDataRow[];
+  filters: CoordinatorReportFilters;
 }
 
 const BAR_COLORS = [
@@ -15,7 +24,27 @@ const BAR_COLORS = [
 const getMetricValue = (
   report: CoordinatorReportData,
   rows: ReportDataRow[],
+  filters: CoordinatorReportFilters,
 ) => {
+  if (report.type === "frequencia_turma") {
+    const numerator = rows.reduce(
+      (total, row) => total + (row.metricNumerator ?? 0),
+      0,
+    );
+    const denominator = rows.reduce(
+      (total, row) => total + (row.metricDenominator ?? 0),
+      0,
+    );
+    if (denominator > 0) {
+      return Math.round((numerator / denominator) * 100);
+    }
+  }
+
+  const hasFilters = Object.values(filters).some(Boolean);
+  if (!hasFilters && report.metricValue !== undefined) {
+    return report.metricValue;
+  }
+
   if (report.aggregation === "count") {
     return rows.length;
   }
@@ -32,9 +61,39 @@ const getMetricValue = (
 export const ReportPreviewPanel = ({
   report,
   rows,
+  filters,
 }: ReportPreviewPanelProps) => {
-  const metricValue = getMetricValue(report, rows);
+  const [loadingFormat, setLoadingFormat] = useState<"pdf" | "csv" | null>(
+    null,
+  );
+  const [exportError, setExportError] = useState("");
+  const metricValue = getMetricValue(report, rows, filters);
   const maxChartValue = Math.max(...rows.map((row) => row.chartValue), 1);
+
+  const handleExport = async (format: "pdf" | "csv") => {
+    setLoadingFormat(format);
+    setExportError("");
+    const result = await exportarRelatorioAction(report.type, format, filters);
+    setLoadingFormat(null);
+
+    if (!result.sucesso || !result.arquivo) {
+      setExportError(result.mensagem);
+      return;
+    }
+
+    const binary = atob(result.arquivo.base64);
+    const bytes = Uint8Array.from(binary, (character) =>
+      character.charCodeAt(0),
+    );
+    const url = URL.createObjectURL(
+      new Blob([bytes], { type: result.arquivo.contentType }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.arquivo.fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <>
@@ -129,18 +188,28 @@ export const ReportPreviewPanel = ({
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              className="h-10 rounded-lg border border-brand-dark bg-white px-4 font-semibold text-brand-dark text-xs transition-colors hover:bg-[#E7ECF8]"
+              onClick={() => handleExport("pdf")}
+              disabled={loadingFormat !== null}
+              className="h-10 rounded-lg border border-brand-dark bg-white px-4 font-semibold text-brand-dark text-xs transition-colors hover:bg-[#E7ECF8] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Gerar PDF
+              {loadingFormat === "pdf" ? "Gerando PDF..." : "Gerar PDF"}
             </button>
             <button
               type="button"
-              className="h-10 rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68]"
+              onClick={() => handleExport("csv")}
+              disabled={loadingFormat !== null}
+              className="h-10 rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Gerar Excel
+              {loadingFormat === "csv" ? "Exportando..." : "Exportar"}
             </button>
           </div>
         </div>
+
+        {exportError && (
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+            {exportError}
+          </p>
+        )}
 
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-2xl border-separate border-spacing-0 text-left text-sm">

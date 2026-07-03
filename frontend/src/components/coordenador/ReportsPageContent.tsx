@@ -138,7 +138,16 @@ export const ReportsPageContent = ({
         </div>
       </section>
 
-      <ReportPreviewPanel report={selectedReport} rows={filteredRows} />
+      <ReportPreviewPanel
+        report={selectedReport}
+        rows={filteredRows}
+        filters={{
+          dataInicio: startDate,
+          dataFim: endDate,
+          curso: courseFilter,
+          turma: classFilter,
+        }}
+      />
     </>
   );
 };
