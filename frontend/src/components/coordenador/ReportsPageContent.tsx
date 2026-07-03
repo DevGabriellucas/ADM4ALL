@@ -88,10 +88,12 @@ export const ReportsPageContent = ({
             Tipo de relatório
             <select
               value={reportType}
-              onChange={(event) =>
-                setReportType(event.target.value as CoordinatorReportType)
-              }
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              onChange={(event) => {
+                setReportType(event.target.value as CoordinatorReportType);
+                setCourseFilter("");
+                setClassFilter("");
+              }}
+              className="h-10 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none transition-colors hover:border-brand-medium focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
               {reports.map((report) => (
                 <option key={report.type} value={report.type}>
@@ -109,7 +111,7 @@ export const ReportsPageContent = ({
                 setCourseFilter(event.target.value);
                 setClassFilter("");
               }}
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              className="h-10 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none transition-colors hover:border-brand-medium focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
               <option value="">Todos os cursos</option>
               {courses.map((course) => (
@@ -125,7 +127,7 @@ export const ReportsPageContent = ({
             <select
               value={classFilter}
               onChange={(event) => setClassFilter(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              className="h-10 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none transition-colors hover:border-brand-medium focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
               <option value="">Todas as turmas</option>
               {availableClasses.map((classGroup) => (

@@ -5,3 +5,8 @@ dist
 
 AGENTS.md
 .opencode
+
+# Tests — nao vao para producao
+src/**/*.spec.ts
+src/**/*.test.ts
+jest.config.*

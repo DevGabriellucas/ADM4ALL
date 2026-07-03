@@ -190,7 +190,7 @@ export const ReportPreviewPanel = ({
               type="button"
               onClick={() => handleExport("pdf")}
               disabled={loadingFormat !== null}
-              className="h-10 rounded-lg border border-brand-dark bg-white px-4 font-semibold text-brand-dark text-xs transition-colors hover:bg-[#E7ECF8] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 cursor-pointer rounded-lg border border-brand-dark bg-white px-4 font-semibold text-brand-dark text-xs transition-colors hover:bg-[#E7ECF8] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingFormat === "pdf" ? "Gerando PDF..." : "Gerar PDF"}
             </button>
@@ -198,7 +198,7 @@ export const ReportPreviewPanel = ({
               type="button"
               onClick={() => handleExport("csv")}
               disabled={loadingFormat !== null}
-              className="h-10 rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingFormat === "csv" ? "Exportando..." : "Exportar"}
             </button>
