@@ -168,6 +168,52 @@ export interface FrequenciaCoordenador {
 export type TipoCertificado = "aluno";
 export type StatusCertificado = "pendente" | "emitido" | "cancelado";
 
+export type CoordinatorReportType =
+  | "frequencia_turma"
+  | "reprovados_falta"
+  | "elegiveis_certificado"
+  | "certificados_emitidos"
+  | "matriculas_curso"
+  | "turmas_andamento";
+
+export type ReportAggregation = "average" | "count" | "sum";
+
+export interface ReportTableColumn {
+  key: string;
+  label: string;
+}
+
+export interface ReportDataRow {
+  id: string;
+  data: string;
+  curso: string;
+  turma: string;
+  chartLabel: string;
+  chartValue: number;
+  metricNumerator?: number;
+  metricDenominator?: number;
+  values: Record<string, string | number>;
+}
+
+export interface FiltrosRelatorioCoordenador {
+  dataInicio?: string;
+  dataFim?: string;
+  curso?: string;
+  turma?: string;
+}
+
+export interface RelatorioCoordenador {
+  type: CoordinatorReportType;
+  title: string;
+  description: string;
+  metricLabel: string;
+  metricSuffix?: string;
+  metricValue?: number;
+  aggregation: ReportAggregation;
+  columns: ReportTableColumn[];
+  rows: ReportDataRow[];
+}
+
 export interface CertificadoListagemCoordenador {
   referenciaId: string;
   certificadoId: string | null;
@@ -334,6 +380,7 @@ export interface CoordenadorRepository {
   listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
   ): Promise<FrequenciaCoordenador[]>;
+  listarRelatorios(): Promise<RelatorioCoordenador[]>;
   listarCertificados(): Promise<CertificadoListagemCoordenador[]>;
   buscarCertificadoAluno(
     matriculaId: string,

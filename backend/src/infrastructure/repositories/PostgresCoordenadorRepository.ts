@@ -24,6 +24,8 @@ import {
   MatriculaCriada,
   MatriculaEncontrada,
   MatriculaStatusAtualizado,
+  RelatorioCoordenador,
+  ReportDataRow,
   TurmaDetalhe,
   TurmaListagem,
   TurmaParaMatricula,
@@ -654,6 +656,418 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       frequencia: Number(linha.frequencia),
       situacao: linha.situacao,
     }));
+  }
+
+  async listarRelatorios(): Promise<RelatorioCoordenador[]> {
+    const [
+      frequenciaTurma,
+      reprovadosFalta,
+      elegiveisCertificado,
+      certificadosEmitidos,
+      matriculasCurso,
+      turmasAndamento,
+    ] = await Promise.all([
+      this.relatorioFrequenciaTurma(),
+      this.relatorioReprovadosFalta(),
+      this.relatorioElegiveisCertificado(),
+      this.relatorioCertificadosEmitidos(),
+      this.relatorioMatriculasCurso(),
+      this.relatorioTurmasAndamento(),
+    ]);
+
+    return [
+      frequenciaTurma,
+      reprovadosFalta,
+      elegiveisCertificado,
+      certificadosEmitidos,
+      matriculasCurso,
+      turmasAndamento,
+    ];
+  }
+
+  private async relatorioFrequenciaTurma(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        tu.id AS turma_id,
+        tu.nome AS turma,
+        tr.nome AS curso,
+        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        COALESCE(
+          ROUND(
+            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
+            / NULLIF(COUNT(f.id), 0)
+          ),
+          0
+        ) AS frequencia,
+        COUNT(f.id) FILTER (WHERE f.presente) AS presencas,
+        COUNT(f.id) AS registros
+      FROM turmas tu
+      JOIN treinamentos tr ON tr.id = tu.treinamento_id
+      LEFT JOIN matriculas m
+        ON m.turma_id = tu.id AND m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      GROUP BY tu.id, tu.nome, tr.nome, tu.data_inicio
+      ORDER BY tu.data_inicio ASC, tu.nome ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const frequenciaNumero = Number(linha.frequencia);
+      const turma = linha.turma ?? "";
+      const curso = linha.curso ?? "";
+      return {
+        id: `freq-turma-${linha.turma_id}`,
+        data: linha.data_inicio ?? "",
+        curso,
+        turma,
+        chartLabel: turma,
+        chartValue: frequenciaNumero,
+        metricNumerator: Number(linha.presencas),
+        metricDenominator: Number(linha.registros),
+        values: {
+          turma,
+          curso,
+          frequencia: `${frequenciaNumero}%`,
+        },
+      };
+    });
+
+    const totalPresencas = rows.reduce(
+      (total, row) => total + (row.metricNumerator ?? 0),
+      0,
+    );
+    const totalRegistros = rows.reduce(
+      (total, row) => total + (row.metricDenominator ?? 0),
+      0,
+    );
+
+    return {
+      type: "frequencia_turma",
+      title: "Frequência por turma",
+      description: "Média de frequência registrada em cada turma.",
+      metricLabel: "Frequência média",
+      metricSuffix: "%",
+      metricValue:
+        totalRegistros > 0
+          ? Math.round((totalPresencas / totalRegistros) * 100)
+          : 0,
+      aggregation: "average",
+      columns: [
+        { key: "turma", label: "Turma" },
+        { key: "curso", label: "Curso" },
+        { key: "frequencia", label: "Frequência" },
+      ],
+      rows,
+    };
+  }
+
+  private async relatorioReprovadosFalta(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        m.id AS matricula_id,
+        u.nome AS aluno,
+        tu.nome AS turma,
+        tr.nome AS curso,
+        to_char(
+          COALESCE(m.data_conclusao, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_ref,
+        COALESCE(
+          ROUND(
+            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
+            / NULLIF(COUNT(f.id), 0)
+          ),
+          0
+        ) AS frequencia
+      FROM matriculas m
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN turmas tu ON tu.id = m.turma_id
+      JOIN treinamentos tr ON tr.id = tu.treinamento_id
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      WHERE m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+      GROUP BY
+        m.id, u.nome, tu.nome, tr.nome,
+        m.data_conclusao, tu.data_inicio, m.status
+      HAVING
+        m.status = 'reprovado_falta'
+        OR COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
+      ORDER BY aluno ASC, turma ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const frequenciaNumero = Number(linha.frequencia);
+      const aluno = linha.aluno ?? "";
+      const turma = linha.turma ?? "";
+      const curso = linha.curso ?? "";
+      return {
+        id: `rep-${linha.matricula_id}`,
+        data: linha.data_ref ?? "",
+        curso,
+        turma,
+        chartLabel: aluno,
+        chartValue: 1,
+        values: {
+          aluno,
+          turma,
+          frequencia: `${frequenciaNumero}%`,
+        },
+      };
+    });
+
+    return {
+      type: "reprovados_falta",
+      title: "Alunos reprovados por falta",
+      description:
+        "Alunos com reprovação consolidada ou com 3 ou mais faltas.",
+      metricLabel: "Alunos reprovados",
+      aggregation: "count",
+      columns: [
+        { key: "aluno", label: "Aluno" },
+        { key: "turma", label: "Turma" },
+        { key: "frequencia", label: "Frequência" },
+      ],
+      rows,
+    };
+  }
+
+  private async relatorioElegiveisCertificado(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        m.id AS matricula_id,
+        u.nome AS aluno,
+        tr.nome AS curso,
+        tu.nome AS turma,
+        to_char(
+          COALESCE(m.data_conclusao, tu.data_fim, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_ref,
+        COALESCE(
+          ROUND(
+            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
+            / NULLIF(COUNT(f.id), 0)
+          ),
+          0
+        ) AS frequencia
+      FROM matriculas m
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      JOIN turmas tu ON tu.id = m.turma_id
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      LEFT JOIN certificados c ON c.matricula_id = m.id
+      WHERE m.status = 'aprovado'
+        AND tu.status = 'concluida'
+        AND u.status = 'ativo'
+        AND (c.status IS NULL OR c.status NOT IN ('pendente', 'emitido'))
+      GROUP BY
+        m.id, u.nome, tr.nome, tu.nome,
+        m.data_conclusao, tu.data_fim, tu.data_inicio
+      HAVING COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
+      ORDER BY aluno ASC, turma ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const frequenciaNumero = Number(linha.frequencia);
+      const aluno = linha.aluno ?? "";
+      const curso = linha.curso ?? "";
+      const turma = linha.turma ?? "";
+      return {
+        id: `eleg-${linha.matricula_id}`,
+        data: linha.data_ref ?? "",
+        curso,
+        turma,
+        chartLabel: aluno,
+        chartValue: 1,
+        values: {
+          aluno,
+          curso,
+          frequencia: `${frequenciaNumero}%`,
+          status: "Apto à emissão",
+        },
+      };
+    });
+
+    return {
+      type: "elegiveis_certificado",
+      title: "Alunos elegíveis para certificado",
+      description: "Alunos que atendem aos critérios de elegibilidade.",
+      metricLabel: "Alunos elegíveis",
+      aggregation: "count",
+      columns: [
+        { key: "aluno", label: "Aluno" },
+        { key: "curso", label: "Curso" },
+        { key: "frequencia", label: "Frequência" },
+        { key: "status", label: "Status" },
+      ],
+      rows,
+    };
+  }
+
+  private async relatorioCertificadosEmitidos(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        c.id AS certificado_id,
+        c.codigo,
+        to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
+        u.nome AS aluno,
+        tr.nome AS curso,
+        tu.nome AS turma
+      FROM certificados c
+      JOIN matriculas m ON m.id = c.matricula_id
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      LEFT JOIN turmas tu ON tu.id = m.turma_id
+      WHERE c.status = 'emitido'
+      ORDER BY c.data_emissao DESC, aluno ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const aluno = linha.aluno ?? "";
+      const curso = linha.curso ?? "";
+      const turma = linha.turma ?? "";
+      const codigo = linha.codigo ?? "";
+      return {
+        id: `cert-${linha.certificado_id}`,
+        data: linha.data_emissao ?? "",
+        curso,
+        turma,
+        chartLabel: aluno,
+        chartValue: 1,
+        values: {
+          aluno,
+          curso,
+          turma,
+          certificado: codigo,
+        },
+      };
+    });
+
+    return {
+      type: "certificados_emitidos",
+      title: "Certificados emitidos",
+      description: "Certificados concluídos e disponíveis para os alunos.",
+      metricLabel: "Certificados emitidos",
+      aggregation: "count",
+      columns: [
+        { key: "aluno", label: "Aluno" },
+        { key: "curso", label: "Curso" },
+        { key: "turma", label: "Turma" },
+        { key: "certificado", label: "Certificado" },
+      ],
+      rows,
+    };
+  }
+
+  private async relatorioMatriculasCurso(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        tr.id AS treinamento_id,
+        tr.nome AS curso,
+        COUNT(DISTINCT tu.id) AS turmas,
+        COUNT(m.id) AS matriculas,
+        MIN(to_char(tu.data_inicio, 'YYYY-MM-DD')) AS data_inicio
+      FROM treinamentos tr
+      LEFT JOIN turmas tu ON tu.treinamento_id = tr.id
+      LEFT JOIN matriculas m
+        ON m.turma_id = tu.id
+        AND m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+      GROUP BY tr.id, tr.nome
+      ORDER BY tr.nome ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const curso = linha.curso ?? "";
+      const turmas = Number(linha.turmas);
+      const matriculas = Number(linha.matriculas);
+      return {
+        id: `mat-curso-${linha.treinamento_id}`,
+        data: linha.data_inicio ?? "",
+        curso,
+        turma: "",
+        chartLabel: curso,
+        chartValue: matriculas,
+        values: {
+          curso,
+          turmas,
+          matriculas,
+        },
+      };
+    });
+
+    return {
+      type: "matriculas_curso",
+      title: "Matrículas por curso",
+      description: "Distribuição de alunos matriculados entre os cursos.",
+      metricLabel: "Total de matrículas",
+      aggregation: "sum",
+      columns: [
+        { key: "curso", label: "Curso" },
+        { key: "turmas", label: "Turmas" },
+        { key: "matriculas", label: "Matrículas" },
+      ],
+      rows,
+    };
+  }
+
+  private async relatorioTurmasAndamento(): Promise<RelatorioCoordenador> {
+    const resultado = await this.db.query(`
+      SELECT
+        tu.id AS turma_id,
+        tu.nome AS turma,
+        tr.nome AS curso,
+        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        COALESCE(usuario_instrutor.nome, '-') AS instrutor,
+        COUNT(m.id) FILTER (
+          WHERE m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+        ) AS alunos_ativos
+      FROM turmas tu
+      JOIN treinamentos tr ON tr.id = tu.treinamento_id
+      LEFT JOIN instrutores i ON i.id = tu.instrutor_id
+      LEFT JOIN usuarios usuario_instrutor ON usuario_instrutor.id = i.usuario_id
+      LEFT JOIN matriculas m ON m.turma_id = tu.id
+      WHERE tu.status = 'em_andamento'
+      GROUP BY
+        tu.id, tu.nome, tr.nome, tu.data_inicio,
+        usuario_instrutor.nome
+      ORDER BY tu.data_inicio ASC, tu.nome ASC
+    `);
+
+    const rows: ReportDataRow[] = resultado.rows.map((linha) => {
+      const turma = linha.turma ?? "";
+      const curso = linha.curso ?? "";
+      const instrutor = linha.instrutor ?? "-";
+      const alunos = Number(linha.alunos_ativos);
+      return {
+        id: `turma-${linha.turma_id}`,
+        data: linha.data_inicio ?? "",
+        curso,
+        turma,
+        chartLabel: turma,
+        chartValue: alunos,
+        values: {
+          turma,
+          curso,
+          instrutor,
+          alunos,
+        },
+      };
+    });
+
+    return {
+      type: "turmas_andamento",
+      title: "Turmas em andamento",
+      description: "Turmas ativas no período selecionado.",
+      metricLabel: "Turmas em andamento",
+      aggregation: "count",
+      columns: [
+        { key: "turma", label: "Turma" },
+        { key: "curso", label: "Curso" },
+        { key: "instrutor", label: "Instrutor" },
+        { key: "alunos", label: "Alunos" },
+      ],
+      rows,
+    };
   }
 
   async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {

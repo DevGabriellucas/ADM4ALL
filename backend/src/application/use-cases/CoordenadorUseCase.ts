@@ -11,15 +11,18 @@ import {
   AtualizarAlunoCoordenadorInput,
   CertificadoDetalhe,
   CertificadoListagemCoordenador,
+  CoordinatorReportType,
   ConviteCriado,
   CoordenadorRepository,
   CursoResumo,
   DashboardResumo,
   FiltrosFrequenciaCoordenador,
+  FiltrosRelatorioCoordenador,
   FrequenciaCoordenador,
   InstrutorListagem,
   MatriculaCriada,
   MatriculaStatusAtualizado,
+  RelatorioCoordenador,
   StatusMatriculaEditavel,
   TipoCertificado,
   TurmaDetalhe,
@@ -103,6 +106,15 @@ const STATUS_MATRICULA_EDITAVEIS: readonly StatusMatriculaEditavel[] = [
   "aprovado",
   "reprovado_falta",
 ];
+const TIPOS_RELATORIO: readonly CoordinatorReportType[] = [
+  "frequencia_turma",
+  "reprovados_falta",
+  "elegiveis_certificado",
+  "certificados_emitidos",
+  "matriculas_curso",
+  "turmas_andamento",
+];
+const DATA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const isStatusMatriculaEditavel = (
   status: string,
@@ -111,6 +123,37 @@ const isStatusMatriculaEditavel = (
 
 const isTipoCertificado = (tipo: string): tipo is TipoCertificado =>
   tipo === "aluno";
+
+const isTipoRelatorio = (tipo: string): tipo is CoordinatorReportType =>
+  TIPOS_RELATORIO.includes(tipo as CoordinatorReportType);
+
+const calcularMetricaRelatorio = (
+  relatorio: RelatorioCoordenador,
+): number => {
+  if (relatorio.type === "frequencia_turma") {
+    const numerador = relatorio.rows.reduce(
+      (total, row) => total + (row.metricNumerator ?? 0),
+      0,
+    );
+    const denominador = relatorio.rows.reduce(
+      (total, row) => total + (row.metricDenominator ?? 0),
+      0,
+    );
+    return denominador > 0
+      ? Math.round((numerador / denominador) * 100)
+      : 0;
+  }
+
+  if (relatorio.aggregation === "count") return relatorio.rows.length;
+
+  const total = relatorio.rows.reduce(
+    (sum, row) => sum + row.chartValue,
+    0,
+  );
+  return relatorio.aggregation === "average" && relatorio.rows.length > 0
+    ? Math.round(total / relatorio.rows.length)
+    : total;
+};
 
 const gerarCodigoCertificado = () =>
   `CERT-ALU-${new Date().getFullYear()}-${randomBytes(4)
@@ -426,6 +469,62 @@ export class CoordenadorUseCase {
     if (input.periodo) filtros.periodo = input.periodo;
 
     return await this.coordenadorRepository.listarFrequencias(filtros);
+  }
+
+  async listarRelatorios(): Promise<RelatorioCoordenador[]> {
+    return await this.coordenadorRepository.listarRelatorios();
+  }
+
+  async obterRelatorioFiltrado(
+    tipo: string,
+    filtros: FiltrosRelatorioCoordenador = {},
+  ): Promise<RelatorioCoordenador> {
+    if (!isTipoRelatorio(tipo)) {
+      throw new BadRequestError(
+        `Tipo de relatorio invalido. Use: ${TIPOS_RELATORIO.join(", ")}.`,
+      );
+    }
+    if (filtros.dataInicio && !DATA_PATTERN.test(filtros.dataInicio)) {
+      throw new BadRequestError("Data inicial invalida. Use YYYY-MM-DD.");
+    }
+    if (filtros.dataFim && !DATA_PATTERN.test(filtros.dataFim)) {
+      throw new BadRequestError("Data final invalida. Use YYYY-MM-DD.");
+    }
+    if (
+      filtros.dataInicio &&
+      filtros.dataFim &&
+      filtros.dataFim < filtros.dataInicio
+    ) {
+      throw new BadRequestError(
+        "A data final nao pode ser anterior a data inicial.",
+      );
+    }
+
+    const relatorios = await this.coordenadorRepository.listarRelatorios();
+    const relatorio = relatorios.find((item) => item.type === tipo);
+    if (!relatorio) {
+      throw new BadRequestError("Relatorio nao encontrado.");
+    }
+
+    const curso = filtros.curso?.trim();
+    const turma = filtros.turma?.trim();
+    const rows = relatorio.rows.filter((row) => {
+      if (
+        filtros.dataInicio &&
+        (!row.data || row.data < filtros.dataInicio)
+      ) {
+        return false;
+      }
+      if (filtros.dataFim && (!row.data || row.data > filtros.dataFim)) {
+        return false;
+      }
+      if (curso && row.curso !== curso) return false;
+      if (turma && row.turma !== turma) return false;
+      return true;
+    });
+
+    const filtrado: RelatorioCoordenador = { ...relatorio, rows };
+    return { ...filtrado, metricValue: calcularMetricaRelatorio(filtrado) };
   }
 
   async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {

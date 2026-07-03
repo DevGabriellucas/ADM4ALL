@@ -9,11 +9,16 @@ import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
 import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
+import type { FiltrosRelatorioCoordenador } from "../../domain/repositories/CoordenadorRepository";
 import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
 import { gerarCertificadoPdf } from "../pdf/CertificatePdfService";
+import {
+  gerarRelatorioCsv,
+  gerarRelatorioPdf,
+} from "../reports/CoordinatorReportExportService";
 
 type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
 
@@ -22,6 +27,23 @@ interface ArquivoUploadJson {
   tipoMime: string;
   conteudoBase64: string;
 }
+
+const obterFiltrosRelatorio = (req: Request): FiltrosRelatorioCoordenador => {
+  const filtros: FiltrosRelatorioCoordenador = {};
+  if (typeof req.query.dataInicio === "string" && req.query.dataInicio) {
+    filtros.dataInicio = req.query.dataInicio;
+  }
+  if (typeof req.query.dataFim === "string" && req.query.dataFim) {
+    filtros.dataFim = req.query.dataFim;
+  }
+  if (typeof req.query.curso === "string" && req.query.curso) {
+    filtros.curso = req.query.curso;
+  }
+  if (typeof req.query.turma === "string" && req.query.turma) {
+    filtros.turma = req.query.turma;
+  }
+  return filtros;
+};
 
 export class ExpressAdapter {
   private app = express();
@@ -582,6 +604,15 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/relatorios",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const relatorios = await this.coordenadorUseCase.listarRelatorios();
+        res.json({ relatorios });
+      }),
+    );
+
+    this.app.get(
       "/cursos",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {
@@ -634,6 +665,48 @@ export class ExpressAdapter {
           nome: convite.nome,
           mensagem: "Convite de ativacao enviado por e-mail.",
         });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/:tipo/pdf",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo } = req.params as { tipo: string };
+        const filtros = obterFiltrosRelatorio(req);
+        const relatorio = await this.coordenadorUseCase.obterRelatorioFiltrado(
+          tipo,
+          filtros,
+        );
+        const pdf = await gerarRelatorioPdf(relatorio, filtros);
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="relatorio-${tipo}.pdf"`,
+        );
+        res.status(200).send(pdf);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/:tipo/csv",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { tipo } = req.params as { tipo: string };
+        const filtros = obterFiltrosRelatorio(req);
+        const relatorio = await this.coordenadorUseCase.obterRelatorioFiltrado(
+          tipo,
+          filtros,
+        );
+        const csv = gerarRelatorioCsv(relatorio, filtros);
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="relatorio-${tipo}.csv"`,
+        );
+        res.status(200).send(csv);
       }),
     );
 
