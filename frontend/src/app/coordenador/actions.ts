@@ -5,6 +5,8 @@ import * as coordinatorService from "@/services/coordinatorService";
 import type {
   CertificateDetail,
   ClassGroup,
+  CoordinatorReportFilters,
+  CoordinatorReportType,
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
@@ -25,6 +27,14 @@ interface ResultadoCertificadoAction extends ResultadoAction {
 }
 
 interface ResultadoDownloadCertificadoAction extends ResultadoAction {
+  arquivo: {
+    base64: string;
+    contentType: string;
+    fileName: string;
+  } | null;
+}
+
+interface ResultadoExportacaoRelatorioAction extends ResultadoAction {
   arquivo: {
     base64: string;
     contentType: string;
@@ -385,6 +395,34 @@ export async function cancelarCertificadoAction(
         error instanceof Error
           ? error.message
           : "Falha ao cancelar o certificado.",
+    };
+  }
+}
+
+export async function exportarRelatorioAction(
+  tipo: CoordinatorReportType,
+  formato: "pdf" | "csv",
+  filtros: CoordinatorReportFilters,
+): Promise<ResultadoExportacaoRelatorioAction> {
+  try {
+    const arquivo = await coordinatorService.exportReport(
+      tipo,
+      formato,
+      filtros,
+    );
+    return {
+      sucesso: true,
+      mensagem: "Relatório gerado com sucesso.",
+      arquivo,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar o relatório.",
+      arquivo: null,
     };
   }
 }

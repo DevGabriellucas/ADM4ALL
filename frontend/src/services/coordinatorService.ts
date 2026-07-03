@@ -6,7 +6,6 @@ import {
   coordinatorClassMaterialsMock,
   coordinatorLessonsMock,
   coordinatorProcessesMock,
-  coordinatorReportsMock,
   coordinatorSettingsMock,
   coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
@@ -25,6 +24,8 @@ import type {
   ClassMaterial,
   CoordinatorDashboardSummary,
   CoordinatorReportData,
+  CoordinatorReportFilters,
+  CoordinatorReportType,
   CoordinatorSettings,
   Course,
   EditableEnrollmentStatus,
@@ -39,9 +40,10 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: materiais, processos, relatorios, usuarios e configuracoes
+// MOCK TEMPORARIO: materiais, processos, usuarios e configuracoes
 // ainda nao tem backend e continuam retornando mock. Dashboard, cursos,
-// instrutores, alunos, turmas, frequencia e certificados consultam a API real.
+// instrutores, alunos, turmas, frequencia, certificados e relatorios
+// consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -611,7 +613,32 @@ export const getProcesses = async (): Promise<ProcessRecord[]> => {
 };
 
 export const getReports = async (): Promise<CoordinatorReportData[]> => {
-  return coordinatorReportsMock;
+  const resposta = await authenticatedRequest<{
+    relatorios: CoordinatorReportData[];
+  }>("/coordenador/relatorios", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os relatórios.",
+  });
+
+  return resposta.relatorios;
+};
+
+export const exportReport = async (
+  type: CoordinatorReportType,
+  format: "pdf" | "csv",
+  filters: CoordinatorReportFilters,
+): Promise<AuthenticatedFileResponse> => {
+  const params = new URLSearchParams();
+  if (filters.dataInicio) params.set("dataInicio", filters.dataInicio);
+  if (filters.dataFim) params.set("dataFim", filters.dataFim);
+  if (filters.curso) params.set("curso", filters.curso);
+  if (filters.turma) params.set("turma", filters.turma);
+  const query = params.toString();
+
+  return await authenticatedFileRequest(
+    `/coordenador/relatorios/${type}/${format}${query ? `?${query}` : ""}`,
+    `Falha ao gerar o relatório em ${format === "pdf" ? "PDF" : "CSV"}.`,
+  );
 };
 
 export const getCoordinatorSettings =

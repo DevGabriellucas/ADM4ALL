@@ -272,7 +272,16 @@ export interface ReportDataRow {
   turma: string;
   chartLabel: string;
   chartValue: number;
+  metricNumerator?: number;
+  metricDenominator?: number;
   values: Record<string, string | number>;
+}
+
+export interface CoordinatorReportFilters {
+  dataInicio?: string;
+  dataFim?: string;
+  curso?: string;
+  turma?: string;
 }
 
 export interface CoordinatorReportData {
@@ -281,6 +290,7 @@ export interface CoordinatorReportData {
   description: string;
   metricLabel: string;
   metricSuffix?: string;
+  metricValue?: number;
   aggregation: ReportAggregation;
   columns: ReportTableColumn[];
   rows: ReportDataRow[];
