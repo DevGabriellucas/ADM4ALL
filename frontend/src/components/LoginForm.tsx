@@ -8,13 +8,68 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
-import { saveSession } from "@/services/sessionService";
+import {
+  type SessionProfile,
+  saveSession,
+} from "@/services/sessionService";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
-interface LoginFormProps extends ComponentProps<"form"> {}
+interface LoginFormProps extends ComponentProps<"form"> {
+  redirectTo?: string;
+}
 
-export const LoginForm = ({ className, ...props }: LoginFormProps) => {
+const DASHBOARD_POR_PERFIL: Record<SessionProfile, string> = {
+  aluno: "/aluno/dashboard",
+  instrutor: "/instrutor/dashboard",
+  coordenador: "/coordenador/dashboard",
+  admin: "/coordenador/dashboard",
+};
+
+const PREFIXO_POR_PERFIL: Record<SessionProfile, string> = {
+  aluno: "/aluno",
+  instrutor: "/instrutor",
+  coordenador: "/coordenador",
+  admin: "/coordenador",
+};
+
+const isRedirectToSeguro = (
+  redirectTo: string,
+  perfil: SessionProfile,
+): boolean => {
+  if (!redirectTo.startsWith("/")) {
+    return false;
+  }
+
+  if (redirectTo.startsWith("//")) {
+    return false;
+  }
+
+  const lower = redirectTo.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+    return false;
+  }
+
+  const prefixo = PREFIXO_POR_PERFIL[perfil];
+  return redirectTo === prefixo || redirectTo.startsWith(`${prefixo}/`);
+};
+
+const resolverRedirectTo = (
+  redirectTo: string | undefined,
+  perfil: SessionProfile,
+): string => {
+  if (redirectTo && isRedirectToSeguro(redirectTo, perfil)) {
+    return redirectTo;
+  }
+
+  return DASHBOARD_POR_PERFIL[perfil];
+};
+
+export const LoginForm = ({
+  className,
+  redirectTo,
+  ...props
+}: LoginFormProps) => {
   const router = useRouter();
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [message, setMessage] = useState<{
@@ -45,14 +100,7 @@ export const LoginForm = ({ className, ...props }: LoginFormProps) => {
 
       saveSession(result);
 
-      const destinoPorPerfil = {
-        aluno: "/aluno/dashboard",
-        instrutor: "/instrutor/dashboard",
-        coordenador: "/coordenador/dashboard",
-        admin: "/coordenador/dashboard",
-      } as const;
-
-      router.replace(destinoPorPerfil[result.usuario.perfil]);
+      router.replace(resolverRedirectTo(redirectTo, result.usuario.perfil));
     } catch (error: unknown) {
       setMessage({
         type: "error",

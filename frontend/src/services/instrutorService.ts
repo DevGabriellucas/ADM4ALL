@@ -2,7 +2,7 @@
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
 import { instrutorDashboardMock } from "@/mocks/instrutorDashboardMock";
-import { authenticatedRequest } from "@/services/apiClient";
+import { ApiError, authenticatedRequest } from "@/services/apiClient";
 import { getServerSession } from "@/services/serverSessionService";
 import type {
   AdicionarAulaInput,
@@ -17,6 +17,10 @@ import type {
 
 const INSTRUTOR_ID_DEMO =
   process.env.INSTRUTOR_ID ?? "9ab264bc-036b-4e62-ba6b-6a93d2da94c2";
+
+const isErroAutenticacao = (error: unknown): boolean => {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+};
 
 export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
   const session = await getServerSession();
@@ -38,6 +42,12 @@ export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
       },
     );
   } catch (error) {
+    // Sessao invalida/expirada ou sem permissao nunca cai em mock: propaga
+    // o erro para o layout/page tratar (redirect para login ou erro real).
+    if (isErroAutenticacao(error)) {
+      throw error;
+    }
+
     console.warn(
       "[instrutorService] usando dados mockados; falha ao consultar a API:",
       error,
