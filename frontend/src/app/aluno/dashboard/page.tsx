@@ -10,7 +10,7 @@ export default async function AlunoDashboardPage() {
   const session = await getAlunoSession();
 
   if (!session) {
-    redirect("/");
+    redirect("/?redirectTo=/aluno/dashboard");
   }
 
   const aluno = await getAlunoDashboard();

@@ -76,7 +76,6 @@ export interface AlunoDetalheCoordenador {
   usuarioId: string;
   nome: string;
   email: string;
-  cpf: string | null;
   telefone: string | null;
   dataNascimento: string | null;
   rgm: string | null;

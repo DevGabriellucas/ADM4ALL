@@ -1,11 +1,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { CoordinatorLayout } from "@/components/coordenador/CoordinatorLayout";
 import { getServerSession } from "@/services/serverSessionService";
 import type { SessionProfile } from "@/services/sessionService";
 
-interface CoordinatorRouteLayoutProps {
+interface InstrutorRouteLayoutProps {
   children: ReactNode;
 }
 
@@ -16,20 +15,20 @@ const DASHBOARD_POR_PERFIL: Record<SessionProfile, string> = {
   admin: "/coordenador/dashboard",
 };
 
-export default async function CoordinatorRouteLayout({
+export default async function InstrutorRouteLayout({
   children,
-}: CoordinatorRouteLayoutProps) {
+}: InstrutorRouteLayoutProps) {
   const session = await getServerSession();
   const pathname =
-    (await headers()).get("x-pathname") ?? "/coordenador/dashboard";
+    (await headers()).get("x-pathname") ?? "/instrutor/dashboard";
 
   if (!session) {
     redirect(`/?redirectTo=${encodeURIComponent(pathname)}`);
   }
 
-  if (session.perfil !== "coordenador" && session.perfil !== "admin") {
+  if (session.perfil !== "instrutor") {
     redirect(DASHBOARD_POR_PERFIL[session.perfil]);
   }
 
-  return <CoordinatorLayout>{children}</CoordinatorLayout>;
+  return <>{children}</>;
 }

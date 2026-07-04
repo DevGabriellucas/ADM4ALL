@@ -137,7 +137,6 @@ export interface StudentDetail {
   usuarioId: string;
   nome: string;
   email: string;
-  cpf: string | null;
   telefone: string | null;
   dataNascimento: string | null;
   rgm: string | null;
@@ -228,7 +227,6 @@ interface CertificateDetailBase {
 export interface StudentCertificateDetail extends CertificateDetailBase {
   tipo: "aluno";
   nomeAluno: string;
-  cpfAluno: string;
   nomeCurso: string;
   cargaHoraria: number;
   dataInicio: string;

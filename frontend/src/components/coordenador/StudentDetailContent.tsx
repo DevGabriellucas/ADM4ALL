@@ -262,12 +262,6 @@ export const StudentDetailContent = ({
           </h2>
           <dl className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <dt className="font-medium text-slate-500 text-xs">CPF</dt>
-              <dd className="mt-1 text-slate-900 text-sm">
-                {student.cpf ?? "Não informado"}
-              </dd>
-            </div>
-            <div>
               <dt className="font-medium text-slate-500 text-xs">Telefone</dt>
               <dd className="mt-1 text-slate-900 text-sm">
                 {student.telefone ?? "Não informado"}

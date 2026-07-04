@@ -9,7 +9,10 @@ import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
 import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
-import type { FiltrosRelatorioCoordenador } from "../../domain/repositories/CoordenadorRepository";
+import type {
+  CertificadoDetalhe,
+  FiltrosRelatorioCoordenador,
+} from "../../domain/repositories/CoordenadorRepository";
 import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
@@ -43,6 +46,16 @@ const obterFiltrosRelatorio = (req: Request): FiltrosRelatorioCoordenador => {
     filtros.turma = req.query.turma;
   }
   return filtros;
+};
+
+// Remove o CPF do payload enviado ao frontend. O PDF continua usando o
+// certificado completo (com cpfAluno) internamente, pois o CPF e parte do
+// documento oficial. Apenas as respostas JSON sao sanitizadas.
+const toPublicCertificadoDetalhe = (
+  certificado: CertificadoDetalhe,
+): Omit<CertificadoDetalhe, "cpfAluno"> => {
+  const { cpfAluno: _cpfAluno, ...publico } = certificado;
+  return publico;
 };
 
 export class ExpressAdapter {
@@ -538,7 +551,7 @@ export class ExpressAdapter {
           tipo,
           referenciaId,
         );
-        res.json(certificado);
+        res.json(toPublicCertificadoDetalhe(certificado));
       }),
     );
 
@@ -589,7 +602,7 @@ export class ExpressAdapter {
             matriculaId,
             usuario.sub,
           );
-        res.status(201).json(certificado);
+        res.status(201).json(toPublicCertificadoDetalhe(certificado));
       }),
     );
 
