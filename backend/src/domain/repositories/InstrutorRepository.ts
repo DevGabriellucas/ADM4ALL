@@ -40,20 +40,40 @@ export interface AulaResumo {
   status: string;
 }
 
+export interface AulaDetalheNotificacao extends AulaResumo {
+  turmaId: string;
+  turma: string;
+  curso: string;
+}
+
 export interface AlunoPresenca {
   matriculaId: string;
   alunoId: string;
   nome: string;
   statusPresenca: StatusPresenca | null;
+  presencas: number;
+  faltas: number;
+  aulasRegistradas: number;
+  frequencia: number;
+}
+
+export interface AlunoNotificacaoAula {
+  alunoId: string;
+  nome: string;
+  email: string;
 }
 
 export interface MaterialResumo {
   id: string;
   titulo: string;
+  descricao: string | null;
   tipo: string;
   tamanhoBytes: number | null;
   dataPublicacao: string; // YYYY-MM-DD
   urlArquivo: string | null;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  visibilidade: "visivel" | "oculto";
 }
 
 export interface InstrutorDashboard {
@@ -85,10 +105,13 @@ export interface RegistrarPresencasInput {
 export interface AdicionarMaterialInput {
   turmaId: string;
   titulo: string;
+  descricao?: string | null;
   tipo: TipoMaterial;
   urlArquivo?: string | null;
   tamanhoBytes?: number | null;
   publicadoPorId?: string | null;
+  aulaId?: string | null;
+  visibilidade?: "visivel" | "oculto";
 }
 
 export interface AdicionarAulaInput {
@@ -99,8 +122,19 @@ export interface AdicionarAulaInput {
   horaFim?: string | null;
 }
 
+export interface AtualizarAulaInput {
+  turmaId: string;
+  aulaId: string;
+  titulo?: string;
+  data?: string;
+  horaInicio?: string | null;
+  horaFim?: string | null;
+  status?: "planejada" | "realizada" | "cancelada";
+}
+
 export interface InstrutorRepository {
   buscarDashboard(instrutorId: string): Promise<InstrutorDashboard | null>;
+  listarMateriaisTurma(turmaId: string): Promise<MaterialResumo[]>;
   turmaPertenceAoInstrutor(
     turmaId: string,
     instrutorId: string,
@@ -108,7 +142,20 @@ export interface InstrutorRepository {
   registrarPresencas(input: RegistrarPresencasInput): Promise<void>;
   adicionarMaterial(input: AdicionarMaterialInput): Promise<MaterialResumo>;
   removerMaterial(materialId: string, turmaId: string): Promise<void>;
+  atualizarMaterialVisibilidade(
+    materialId: string,
+    turmaId: string,
+    visibilidade: "visivel" | "oculto",
+  ): Promise<MaterialResumo>;
   adicionarAula(input: AdicionarAulaInput): Promise<AulaResumo>;
+  buscarAulaParaNotificacao(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<AulaDetalheNotificacao | null>;
+  listarAlunosParaNotificacaoAula(
+    turmaId: string,
+  ): Promise<AlunoNotificacaoAula[]>;
+  atualizarAula(input: AtualizarAulaInput): Promise<AulaResumo>;
   removerAula(aulaId: string, turmaId: string): Promise<void>;
   buscarPresencasPorAula(
     turmaId: string,

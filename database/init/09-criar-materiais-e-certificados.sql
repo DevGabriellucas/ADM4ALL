@@ -3,11 +3,14 @@
 CREATE TABLE IF NOT EXISTS materiais (
     id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     turma_id          UUID         NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+    aula_id           UUID         REFERENCES aulas(id) ON DELETE SET NULL,
     publicado_por_id  UUID         REFERENCES usuarios(id) ON DELETE SET NULL,
     titulo            VARCHAR(120) NOT NULL,
+    descricao         TEXT,
     tipo              VARCHAR(30)  NOT NULL,
     url_arquivo       TEXT,
     tamanho_bytes     INTEGER,
+    visibilidade      VARCHAR(20)  NOT NULL DEFAULT 'visivel',
     status            VARCHAR(20)  NOT NULL DEFAULT 'ativo',
     data_publicacao   TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
@@ -17,14 +20,20 @@ CREATE TABLE IF NOT EXISTS materiais (
         CHECK (tipo IN ('pdf', 'video', 'imagem', 'documento', 'link', 'outro')),
     CONSTRAINT chk_materiais_tamanho
         CHECK (tamanho_bytes IS NULL OR tamanho_bytes > 0),
+    CONSTRAINT chk_materiais_visibilidade
+        CHECK (visibilidade IN ('visivel', 'oculto')),
     CONSTRAINT chk_materiais_status
         CHECK (status IN ('ativo', 'arquivado'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_materiais_turma
     ON materiais (turma_id);
+CREATE INDEX IF NOT EXISTS idx_materiais_aula
+    ON materiais (aula_id);
 CREATE INDEX IF NOT EXISTS idx_materiais_publicado_por
     ON materiais (publicado_por_id);
+CREATE INDEX IF NOT EXISTS idx_materiais_visibilidade
+    ON materiais (visibilidade);
 
 CREATE TABLE IF NOT EXISTS certificados (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

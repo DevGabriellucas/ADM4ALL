@@ -93,7 +93,9 @@ Esse comando apaga todo o banco local. Use-o somente depois de confirmar que nã
 | Aluno em andamento | `priscilla.cahino@example.com` ou `12345678909` | `Aluno@123` | Progresso de 60%, presença e aulas pendentes |
 | Aluno aprovado | `diego.martins@example.com` ou `98765432100` | `Aluno@123` | Curso concluído e certificado disponível |
 | Aluno reprovado por falta | `jose.santos@example.com` ou `52998224725` | `Aluno@123` | Alerta de reprovação por falta |
-| Instrutor | `eduardo.lima@example.com` ou `24681357928` | `Instrutor@123` | Dashboard da turma |
+| Instrutor | `eduardo.lima@example.com` ou `24681357928` | `Instrutor@123` | Dashboard da turma | 
+| Instrutor | `instrutor.contabil@example.com` | `Instrutor@123` | Area de contabil
+| Instrutor | `instrutor.rh@example.com` | `Instrutor@123` | Area de RH
 | Coordenador | `amanda.souza@example.com` ou `13579246828` | `Coordenador@123` | Área de gestão |
 | Administrador | `admin.ti@example.com` ou `86420975310` | `Admin@123` | Área do coordenador com perfil administrativo |
 

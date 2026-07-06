@@ -3,6 +3,9 @@ import {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  AlunoNotificacaoAula,
+  AtualizarAulaInput,
+  AulaDetalheNotificacao,
   AulaResumo,
   InstrutorDashboard,
   InstrutorRepository,
@@ -18,11 +21,37 @@ const STATUS_PRESENCA_VALIDOS: StatusPresenca[] = [
   "falta",
   "justificada",
 ];
+const STATUS_AULA_VALIDOS = ["planejada", "realizada", "cancelada"];
+const VISIBILIDADES_MATERIAL = ["visivel", "oculto"];
 
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+interface EmailSender {
+  enviar(destinatario: string, assunto: string, html: string): Promise<void>;
+}
+
+const escaparHtml = (valor: string) =>
+  valor
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const formatarDataPtBr = (data: string) => {
+  const [ano, mes, dia] = data.split("-");
+  if (!ano || !mes || !dia) {
+    return data;
+  }
+
+  return `${dia}/${mes}/${ano}`;
+};
+
 export class InstrutorUseCase {
-  constructor(private instrutorRepository: InstrutorRepository) {}
+  constructor(
+    private instrutorRepository: InstrutorRepository,
+    private emailService?: EmailSender,
+  ) {}
 
   async obterDashboard(instrutorId: string): Promise<InstrutorDashboard> {
     if (!instrutorId || instrutorId.trim() === "") {
@@ -54,6 +83,14 @@ export class InstrutorUseCase {
     if (!permitido) {
       throw new Error("Instrutor sem acesso a esta turma.");
     }
+  }
+
+  async listarMateriaisTurma(turmaId: string): Promise<MaterialResumo[]> {
+    if (!turmaId) {
+      throw new BadRequestError("A turma e obrigatoria.");
+    }
+
+    return await this.instrutorRepository.listarMateriaisTurma(turmaId);
   }
 
   async registrarPresencas(input: RegistrarPresencasInput): Promise<void> {
@@ -104,6 +141,9 @@ export class InstrutorUseCase {
     return await this.instrutorRepository.adicionarMaterial({
       ...input,
       titulo: input.titulo.trim(),
+      descricao: input.descricao?.trim() || null,
+      aulaId: input.aulaId || null,
+      visibilidade: input.visibilidade ?? "visivel",
     });
   }
 
@@ -113,6 +153,26 @@ export class InstrutorUseCase {
     }
 
     await this.instrutorRepository.removerMaterial(materialId, turmaId);
+  }
+
+  async atualizarMaterialVisibilidade(
+    materialId: string,
+    turmaId: string,
+    visibilidade: string,
+  ): Promise<MaterialResumo> {
+    if (!materialId || !turmaId) {
+      throw new BadRequestError("Material e turma sao obrigatorios.");
+    }
+
+    if (!VISIBILIDADES_MATERIAL.includes(visibilidade)) {
+      throw new BadRequestError("Visibilidade invalida. Use: visivel ou oculto.");
+    }
+
+    return await this.instrutorRepository.atualizarMaterialVisibilidade(
+      materialId,
+      turmaId,
+      visibilidade as "visivel" | "oculto",
+    );
   }
 
   async adicionarAula(input: AdicionarAulaInput): Promise<AulaResumo> {
@@ -142,6 +202,65 @@ export class InstrutorUseCase {
       ...input,
       titulo: input.titulo.trim(),
     });
+  }
+
+  async atualizarAula(input: AtualizarAulaInput): Promise<AulaResumo> {
+    if (!input.turmaId || !input.aulaId) {
+      throw new BadRequestError("Turma e aula sao obrigatorias.");
+    }
+
+    if (input.titulo !== undefined && input.titulo.trim() === "") {
+      throw new BadRequestError("O titulo da aula nao pode ficar vazio.");
+    }
+
+    if (input.data !== undefined && !DATA_REGEX.test(input.data)) {
+      throw new BadRequestError("Informe uma data valida (AAAA-MM-DD).");
+    }
+
+    if (input.status && !STATUS_AULA_VALIDOS.includes(input.status)) {
+      throw new BadRequestError(
+        "Status de aula invalido. Use: planejada, realizada ou cancelada.",
+      );
+    }
+
+    if (
+      input.horaInicio &&
+      input.horaFim &&
+      input.horaFim <= input.horaInicio
+    ) {
+      throw new BadRequestError(
+        "O horario de termino deve ser depois do horario de inicio.",
+      );
+    }
+
+    const aulaAnterior =
+      input.status === "cancelada"
+        ? await this.instrutorRepository.buscarAulaParaNotificacao(
+            input.turmaId,
+            input.aulaId,
+          )
+        : null;
+
+    const dadosAtualizacao: AtualizarAulaInput = {
+      ...input,
+    };
+
+    if (input.titulo !== undefined) {
+      dadosAtualizacao.titulo = input.titulo.trim();
+    }
+
+    const aulaAtualizada =
+      await this.instrutorRepository.atualizarAula(dadosAtualizacao);
+
+    if (
+      input.status === "cancelada" &&
+      aulaAnterior &&
+      aulaAnterior.status !== "cancelada"
+    ) {
+      await this.notificarCancelamentoAula(aulaAnterior, aulaAtualizada);
+    }
+
+    return aulaAtualizada;
   }
 
   async removerAula(aulaId: string, turmaId: string): Promise<void> {
@@ -179,5 +298,52 @@ export class InstrutorUseCase {
     }
 
     await this.instrutorRepository.atualizarAvatar(instrutorId, avatarUrl);
+  }
+
+  private async notificarCancelamentoAula(
+    aulaAnterior: AulaDetalheNotificacao,
+    aulaAtualizada: AulaResumo,
+  ): Promise<void> {
+    if (!this.emailService) {
+      return;
+    }
+
+    const alunos =
+      await this.instrutorRepository.listarAlunosParaNotificacaoAula(
+        aulaAnterior.turmaId,
+      );
+
+    if (alunos.length === 0) {
+      return;
+    }
+
+    const titulo = aulaAtualizada.titulo || aulaAnterior.titulo;
+    const data = aulaAtualizada.data || aulaAnterior.data;
+    const assunto = `Aula cancelada - ${titulo}`;
+    const htmlPorAluno = (aluno: AlunoNotificacaoAula) => `
+      <p>Olá, ${escaparHtml(aluno.nome)}!</p>
+      <p>A aula abaixo foi cancelada:</p>
+      <ul>
+        <li><strong>Curso:</strong> ${escaparHtml(aulaAnterior.curso)}</li>
+        <li><strong>Turma:</strong> ${escaparHtml(aulaAnterior.turma)}</li>
+        <li><strong>Aula:</strong> ${escaparHtml(titulo)}</li>
+        <li><strong>Data:</strong> ${formatarDataPtBr(data)}</li>
+      </ul>
+      <p>Fique atento ao cronograma da turma para acompanhar novas atualizações.</p>
+      <p>ADM Para Todos</p>
+    `;
+
+    const envios = await Promise.allSettled(
+      alunos.map((aluno) =>
+        this.emailService!.enviar(aluno.email, assunto, htmlPorAluno(aluno)),
+      ),
+    );
+
+    const falhas = envios.filter((envio) => envio.status === "rejected");
+    if (falhas.length > 0) {
+      console.warn(
+        `Falha ao enviar notificacao de cancelamento para ${falhas.length} aluno(s).`,
+      );
+    }
   }
 }

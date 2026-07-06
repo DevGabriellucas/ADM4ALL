@@ -41,6 +41,7 @@ describe("AlunoUseCase", () => {
       buscarMaterialVisivelParaDownload: jest.fn(),
       buscarCertificadoEmitidoPorAlunoId: jest.fn(),
       atualizarUrlArquivoCertificado: jest.fn(),
+      listarMateriaisVisiveis: jest.fn(),
     };
     mockEmailService = {
       enviar: jest.fn(),

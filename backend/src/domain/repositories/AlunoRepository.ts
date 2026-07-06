@@ -76,6 +76,21 @@ export interface MaterialAlunoDownload {
   turmaNome: string;
 }
 
+export interface MaterialVisivelAluno {
+  id: string;
+  turmaId: string;
+  turma: string;
+  curso: string;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  titulo: string;
+  descricao: string | null;
+  tipo: string;
+  urlArquivo: string | null;
+  tamanhoBytes: number | null;
+  dataPublicacao: string;
+}
+
 export interface AlunoRepository {
   cadastrar(aluno: Aluno): Promise<Aluno>;
   buscarPorId(id: string): Promise<Aluno | null>;
@@ -88,6 +103,7 @@ export interface AlunoRepository {
   registrarRecuperacaoSenha(dados: RegistrarRecuperacaoSenhaInput): Promise<void>;
   buscarRecuperacaoValidaPorTokenHash(tokenHash: string): Promise<RecuperacaoSenhaValida | null>;
   buscarDashboardPorAlunoId(alunoId: string): Promise<AlunoDashboard | null>;
+  listarMateriaisVisiveis(alunoId: string): Promise<MaterialVisivelAluno[]>;
   redefinirSenhaUsuario(
     usuarioId: string,
     novaSenhaHash: string,
