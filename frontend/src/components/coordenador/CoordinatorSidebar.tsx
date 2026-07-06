@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearSession } from "@/services/sessionService";
+import { clearSession, SESSION_COOKIE_NAMES } from "@/services/sessionService";
 
 interface NavItem {
   label: string;
@@ -41,9 +41,62 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const getIniciais = (nome?: string) => {
+  if (!nome) return "";
+
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  const primeira = partes[0]?.[0] ?? "";
+  const ultima =
+    partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
+
+  return `${primeira}${ultima || primeira}`.toUpperCase();
+};
+
+const getNomeFromToken = (): { nome: string; perfil: string } | null => {
+  if (typeof document === "undefined") return null;
+
+  const prefix = `${encodeURIComponent(SESSION_COOKIE_NAMES.token)}=`;
+  const cookie = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(prefix));
+
+  if (!cookie) return null;
+
+  try {
+    const token = decodeURIComponent(cookie.slice(prefix.length));
+    const partes = token.split(".");
+    if (partes.length !== 3 || !partes[0] || !partes[1] || !partes[2]) {
+      return null;
+    }
+
+    const payload = JSON.parse(atob(partes[1])) as {
+      nome?: string;
+      perfil?: string;
+    };
+
+    return {
+      nome: payload.nome ?? "",
+      perfil: payload.perfil ?? "",
+    };
+  } catch {
+    return null;
+  }
+};
+
+const PERFIL_LABEL: Record<string, string> = {
+  coordenador: "Coordenador",
+  admin: "Admin",
+};
+
 export const CoordinatorSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
+
+  const usuario = getNomeFromToken();
+  const nomeUsuario = usuario?.nome ?? "";
+  const perfilUsuario = usuario?.perfil ?? "";
+  const cargo = PERFIL_LABEL[perfilUsuario] ?? "Coordenador";
 
   const logout = () => {
     clearSession();
@@ -53,13 +106,15 @@ export const CoordinatorSidebar = () => {
   return (
     <aside className="flex w-full flex-col gap-y-5 bg-brand-medium px-4 py-5 text-slate-950 sm:px-6 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:gap-y-8 lg:overflow-y-auto lg:px-6 lg:py-8">
       <div className="flex items-center gap-x-4 lg:flex-col lg:gap-y-3 lg:text-center">
-        <span className="flex size-18 items-center justify-center rounded-full border-2 border-[#E7ECF8] bg-brand-dark font-semibold text-lg text-white shadow-md">
-          CA
+        <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-[#E7ECF8] bg-brand-dark font-semibold text-lg text-white shadow-md lg:size-18">
+          {getIniciais(nomeUsuario) || cargo.charAt(0)}
         </span>
 
-        <div className="flex flex-col lg:items-center">
-          <span className="font-semibold text-base">Coordenador/Admin</span>
-          <span className="text-sm">Área de gestão</span>
+        <div className="flex min-w-0 flex-col lg:items-center">
+          <span className="font-semibold text-base">{cargo}</span>
+          <span className="truncate text-sm lg:whitespace-normal">
+            {nomeUsuario || cargo}
+          </span>
         </div>
       </div>
 

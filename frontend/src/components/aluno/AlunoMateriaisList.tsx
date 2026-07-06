@@ -124,7 +124,7 @@ export const AlunoMateriaisList = ({ materiais }: AlunoMateriaisListProps) => {
                         type="button"
                         disabled={isLoading}
                         onClick={() => handleDownload(material)}
-                        className="inline-flex w-fit items-center gap-x-1 rounded-md bg-brand-medium px-3 py-1.5 font-medium text-slate-950 text-xs transition-colors hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex w-fit cursor-pointer items-center gap-x-1 rounded-md bg-brand-medium px-3 py-1.5 font-medium text-slate-950 text-xs transition-colors hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isLoading ? "Baixando..." : "Baixar material"}
                       </button>
