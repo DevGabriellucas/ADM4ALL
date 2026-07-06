@@ -4,10 +4,6 @@
 import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
   coordinatorClassMaterialsMock,
-  coordinatorLessonsMock,
-  coordinatorProcessesMock,
-  coordinatorSettingsMock,
-  coordinatorUsersMock,
 } from "@/mocks/coordinatorMock";
 import {
   ApiError,
@@ -17,7 +13,6 @@ import {
 } from "@/services/apiClient";
 import type {
   AttendanceSummary,
-  BaseUser,
   CertificateDetail,
   CertificateRecord,
   ClassGroup,
@@ -26,13 +21,11 @@ import type {
   CoordinatorReportData,
   CoordinatorReportFilters,
   CoordinatorReportType,
-  CoordinatorSettings,
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
   Instructor,
   Lesson,
-  ProcessRecord,
   Student,
   StudentDetail,
   StudentEnrollmentCreated,
@@ -40,10 +33,9 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: materiais, processos, usuarios e configuracoes
-// ainda nao tem backend e continuam retornando mock. Dashboard, cursos,
-// instrutores, alunos, turmas, frequencia, certificados e relatorios
-// consultam a API real.
+// Mock temporario: materiais da turma ainda nao possuem backend real
+// no fluxo do coordenador. Dashboard, cursos, instrutores, alunos,
+// turmas, frequencia, certificados e relatorios consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -545,10 +537,6 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
   });
 };
 
-export const getLessons = async (): Promise<Lesson[]> => {
-  return coordinatorLessonsMock;
-};
-
 export const getCertificates = async (): Promise<CertificateRecord[]> => {
   const certificados = await authenticatedRequest<CertificadoApi[]>(
     "/coordenador/certificados",
@@ -608,10 +596,6 @@ export const cancelCertificate = async (
   );
 };
 
-export const getProcesses = async (): Promise<ProcessRecord[]> => {
-  return coordinatorProcessesMock;
-};
-
 export const getReports = async (): Promise<CoordinatorReportData[]> => {
   const resposta = await authenticatedRequest<{
     relatorios: CoordinatorReportData[];
@@ -639,13 +623,4 @@ export const exportReport = async (
     `/coordenador/relatorios/${type}/${format}${query ? `?${query}` : ""}`,
     `Falha ao gerar o relatório em ${format === "pdf" ? "PDF" : "CSV"}.`,
   );
-};
-
-export const getCoordinatorSettings =
-  async (): Promise<CoordinatorSettings> => {
-    return coordinatorSettingsMock;
-  };
-
-export const getUsers = async (): Promise<BaseUser[]> => {
-  return coordinatorUsersMock;
 };
