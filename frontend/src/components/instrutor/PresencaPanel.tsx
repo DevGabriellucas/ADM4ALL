@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   buscarPresencasPorAulaAction,
   salvarPresencasAction,
@@ -50,13 +51,17 @@ export const PresencaPanel = ({
   cronograma,
   alunos,
 }: PresencaPanelProps) => {
+  const router = useRouter();
+  const cronogramaSeguro = Array.isArray(cronograma) ? cronograma : [];
+  const alunosSeguro = Array.isArray(alunos) ? alunos : [];
   const [aulaSelecionadaId, setAulaSelecionadaId] = useState<string | null>(
-    aulaReferencia?.id ?? cronograma[0]?.id ?? null,
+    aulaReferencia?.id ?? cronogramaSeguro[0]?.id ?? null,
   );
-  const [alunosAtuais, setAlunosAtuais] = useState<AlunoPresenca[]>(alunos);
+  const [alunosAtuais, setAlunosAtuais] =
+    useState<AlunoPresenca[]>(alunosSeguro);
   const [statuses, setStatuses] = useState<
     Record<string, StatusPresenca | null>
-  >(() => paraStatuses(alunos));
+  >(() => paraStatuses(alunosSeguro));
   const [busca, setBusca] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSalvando, startSalvando] = useTransition();
@@ -72,8 +77,40 @@ export const PresencaPanel = ({
     );
   }, [alunosAtuais, busca]);
 
+  const resumoPresenca = useMemo(
+    () =>
+      alunosAtuais.reduce(
+        (resumo, aluno) => {
+          const status = statuses[aluno.matriculaId];
+          if (status === "presente") {
+            resumo.presentes += 1;
+          } else if (status === "falta") {
+            resumo.faltas += 1;
+          } else if (status === "justificada") {
+            resumo.justificadas += 1;
+          } else {
+            resumo.pendentes += 1;
+          }
+
+          return resumo;
+        },
+        { presentes: 0, faltas: 0, justificadas: 0, pendentes: 0 },
+      ),
+    [alunosAtuais, statuses],
+  );
+
   const definirStatus = (matriculaId: string, status: StatusPresenca) => {
     setStatuses((anterior) => ({ ...anterior, [matriculaId]: status }));
+    setFeedback(null);
+  };
+
+  const marcarTodosPresentes = () => {
+    setStatuses((anterior) => ({
+      ...anterior,
+      ...(Object.fromEntries(
+        alunosAtuais.map((aluno) => [aluno.matriculaId, "presente"]),
+      ) as Record<string, StatusPresenca>),
+    }));
     setFeedback(null);
   };
 
@@ -90,12 +127,17 @@ export const PresencaPanel = ({
       const resultado = await buscarPresencasPorAulaAction(turmaId, novaAulaId);
 
       if (resultado.ok) {
-        setAlunosAtuais(resultado.alunos);
-        setStatuses(paraStatuses(resultado.alunos));
+        const alunosResultado = Array.isArray(resultado.alunos)
+          ? resultado.alunos
+          : [];
+        setAlunosAtuais(alunosResultado);
+        setStatuses(paraStatuses(alunosResultado));
       } else {
-        setAlunosAtuais(alunos);
+        setAlunosAtuais(alunosSeguro);
         setStatuses(
-          Object.fromEntries(alunos.map((aluno) => [aluno.matriculaId, null])),
+          Object.fromEntries(
+            alunosSeguro.map((aluno) => [aluno.matriculaId, null]),
+          ),
         );
         setFeedback({ tipo: "erro", texto: resultado.erro });
       }
@@ -143,6 +185,9 @@ export const PresencaPanel = ({
           ? { tipo: "ok", texto: resultado.mensagem }
           : { tipo: "erro", texto: resultado.erro },
       );
+      if (resultado.ok) {
+        router.refresh();
+      }
     });
   };
 
@@ -175,7 +220,7 @@ export const PresencaPanel = ({
         </div>
       </div>
 
-      {cronograma.length > 0 && (
+      {cronogramaSeguro.length > 0 && (
         <label className="mt-4 flex flex-col gap-y-1 text-slate-600 text-xs">
           Aula
           <select
@@ -184,7 +229,7 @@ export const PresencaPanel = ({
             disabled={desabilitado}
             className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {cronograma.map((aula) => (
+            {cronogramaSeguro.map((aula) => (
               <option key={aula.id} value={aula.id}>
                 Aula {aula.numero} - {aula.titulo} ({formatData(aula.data)})
               </option>
@@ -216,6 +261,32 @@ export const PresencaPanel = ({
           disabled={isTrocandoAula}
           className="w-full rounded-md border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
         />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
+            Presentes: {resumoPresenca.presentes}
+          </span>
+          <span className="rounded-full bg-red-50 px-3 py-1 font-medium text-red-700">
+            Faltas: {resumoPresenca.faltas}
+          </span>
+          <span className="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
+            Justificadas: {resumoPresenca.justificadas}
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+            Pendentes: {resumoPresenca.pendentes}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={marcarTodosPresentes}
+          disabled={desabilitado || alunosAtuais.length === 0}
+          className="rounded-md border border-emerald-200 px-3 py-1.5 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Marcar todos presentes
+        </button>
       </div>
 
       <ul className="mt-4 flex flex-col divide-y divide-slate-100">

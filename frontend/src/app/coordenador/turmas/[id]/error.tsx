@@ -2,18 +2,18 @@
 
 import { CoordinatorRouteError } from "@/components/coordenador/CoordinatorRouteError";
 
-interface CoordinatorCertificatesErrorProps {
+interface CoordinatorClassDetailErrorProps {
   error: Error;
   reset: () => void;
 }
 
-export default function CoordinatorCertificatesError({
+export default function CoordinatorClassDetailError({
   error,
   reset,
-}: CoordinatorCertificatesErrorProps) {
+}: CoordinatorClassDetailErrorProps) {
   return (
     <CoordinatorRouteError
-      title="Não foi possível carregar os certificados"
+      title="Não foi possível carregar a turma"
       error={error}
       reset={reset}
     />

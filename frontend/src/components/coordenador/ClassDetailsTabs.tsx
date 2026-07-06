@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
@@ -35,6 +36,16 @@ const TABS: Array<{ id: ClassDetailsTab; label: string }> = [
   { id: "materiais", label: "Materiais" },
   { id: "certificados", label: "Certificados" },
 ];
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+const resolverUrlMaterial = (url: string | null | undefined) => {
+  if (!url) {
+    return null;
+  }
+
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+};
 
 const formatDate = (date: string) => {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
@@ -149,15 +160,12 @@ export const ClassDetailsTabs = ({
                         />
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3">
-                        <button
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          title="Funcionalidade ainda não disponível no MVP"
-                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                        <Link
+                          href={`/coordenador/alunos/${student.id}`}
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                         >
                           Visualizar
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -304,42 +312,63 @@ export const ClassDetailsTabs = ({
                     Tamanho
                   </th>
                   <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                    Aula
+                  </th>
+                  <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                    Visibilidade
+                  </th>
+                  <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                     Ações
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {materials.map((material) => (
-                  <tr key={material.id}>
-                    <td className="border-slate-100 border-b px-3 py-3 font-medium text-slate-900">
-                      {material.nome}
-                    </td>
-                    <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                      {material.tipo}
-                    </td>
-                    <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                      {formatDate(material.data)}
-                    </td>
-                    <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                      {material.tamanho}
-                    </td>
-                    <td className="border-slate-100 border-b px-3 py-3">
-                      <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Funcionalidade ainda não disponível no MVP"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
-                      >
-                        Visualizar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {materials.map((material) => {
+                  const urlMaterial = resolverUrlMaterial(material.urlArquivo);
+
+                  return (
+                    <tr key={material.id}>
+                      <td className="border-slate-100 border-b px-3 py-3 font-medium text-slate-900">
+                        {material.nome}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                        {material.tipo}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                        {formatDate(material.data)}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                        {material.tamanho}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                        {material.aulaTitulo ?? "Geral"}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                        {material.visibilidade === "oculto"
+                          ? "Oculto"
+                          : "Visivel"}
+                      </td>
+                      <td className="border-slate-100 border-b px-3 py-3">
+                        {urlMaterial ? (
+                          <a
+                            href={urlMaterial}
+                            className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                          >
+                            Visualizar
+                          </a>
+                        ) : (
+                          <span className="font-semibold text-slate-400 text-xs">
+                            Sem arquivo
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {materials.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={7}
                       className="px-3 py-8 text-center text-slate-500"
                     >
                       Nenhum material publicado nesta turma.
@@ -395,7 +424,6 @@ export const ClassDetailsTabs = ({
                           type="button"
                           disabled
                           aria-disabled="true"
-                          title="Funcionalidade ainda não disponível no MVP"
                           className="cursor-not-allowed font-semibold text-slate-400 text-xs"
                         >
                           {certificateStatus === "emitido"

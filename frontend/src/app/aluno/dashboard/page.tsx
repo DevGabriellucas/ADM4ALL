@@ -2,9 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlunoCompletionMessage } from "@/components/aluno/AlunoCompletionMessage";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
+import { AlunoMateriaisPanel } from "@/components/aluno/AlunoMateriaisPanel";
 import { AlunoStatusPanel } from "@/components/aluno/AlunoStatusPanel";
 import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
-import { getAlunoDashboard } from "@/services/alunoService";
+import {
+  getAlunoDashboard,
+  getMateriaisVisiveisAluno,
+} from "@/services/alunoService";
 import { getAlunoSession } from "@/services/serverSessionService";
 
 export default async function AlunoDashboardPage() {
@@ -14,7 +18,10 @@ export default async function AlunoDashboardPage() {
     redirect("/?redirectTo=/aluno/dashboard");
   }
 
-  const aluno = await getAlunoDashboard();
+  const [aluno, materiais] = await Promise.all([
+    getAlunoDashboard(),
+    getMateriaisVisiveisAluno(),
+  ]);
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 font-poppins text-slate-950 sm:px-6 lg:px-8">
@@ -73,6 +80,8 @@ export default async function AlunoDashboardPage() {
             certificadoDisponivel={aluno.certificadoDisponivel}
           />
         )}
+
+        <AlunoMateriaisPanel materiais={materiais} />
       </div>
     </main>
   );

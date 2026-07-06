@@ -1,11 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   adicionarAulaAction,
   atualizarAulaAction,
+  removerAulaAction,
 } from "@/app/instrutor/actions";
-import type { AulaResumo } from "@/types/instrutor";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import type { AtualizarAulaInput, AulaResumo } from "@/types/instrutor";
 import { formatData } from "@/utils/format";
 
 interface CronogramaListProps {
@@ -14,6 +17,8 @@ interface CronogramaListProps {
 }
 
 type Feedback = { tipo: "ok" | "erro"; texto: string } | null;
+type Confirmacao = { tipo: "remover" | "cancelar"; aula: AulaResumo } | null;
+type DadosAtualizacaoAula = Omit<AtualizarAulaInput, "turmaId" | "aulaId">;
 
 const STATUS_COR: Record<string, string> = {
   realizada: "bg-emerald-500",
@@ -21,7 +26,15 @@ const STATUS_COR: Record<string, string> = {
   cancelada: "bg-red-400",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  realizada: "Realizada",
+  planejada: "Planejada",
+  cancelada: "Cancelada",
+};
+
 export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
+  const router = useRouter();
+  const aulasSeguras = Array.isArray(aulas) ? aulas : [];
   const [aberto, setAberto] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [data, setData] = useState("");
@@ -29,16 +42,14 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
   const [horaFim, setHoraFim] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isPending, startTransition] = useTransition();
-  const [aulaParaCancelar, setAulaParaCancelar] = useState<AulaResumo | null>(
-    null,
-  );
-  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
-  const [isCancelando, startCancelamento] = useTransition();
+  const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const [isRemovendo, startRemocao] = useTransition();
+  const [atualizandoId, setAtualizandoId] = useState<string | null>(null);
+  const [isAtualizando, startAtualizacao] = useTransition();
+  const [confirmacao, setConfirmacao] = useState<Confirmacao>(null);
 
   const enviar = () => {
-    if (!turmaId) {
-      return;
-    }
+    if (!turmaId) return;
 
     if (titulo.trim() === "") {
       setFeedback({ tipo: "erro", texto: "Informe o titulo da aula." });
@@ -66,32 +77,42 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
         setHoraInicio("");
         setHoraFim("");
         setAberto(false);
+        router.refresh();
       } else {
         setFeedback({ tipo: "erro", texto: resultado.erro });
       }
     });
   };
 
-  const abrirCancelamento = (aula: AulaResumo) => {
-    if (!turmaId || aula.status === "cancelada") {
-      return;
-    }
+  const confirmarRemocao = (aula: AulaResumo) => {
+    if (!turmaId) return;
 
-    setFeedback(null);
-    setAulaParaCancelar(aula);
+    setConfirmacao(null);
+    setRemovendoId(aula.id);
+    startRemocao(async () => {
+      const resultado = await removerAulaAction(turmaId, aula.id);
+
+      setFeedback(
+        resultado.ok
+          ? { tipo: "ok", texto: resultado.mensagem }
+          : { tipo: "erro", texto: resultado.erro },
+      );
+      setRemovendoId(null);
+      if (resultado.ok) {
+        router.refresh();
+      }
+    });
   };
 
-  const cancelarAula = () => {
-    if (!turmaId || !aulaParaCancelar) {
-      return;
-    }
+  const atualizar = (aula: AulaResumo, input: DadosAtualizacaoAula) => {
+    if (!turmaId) return;
 
-    setCancelandoId(aulaParaCancelar.id);
-    startCancelamento(async () => {
+    setAtualizandoId(aula.id);
+    startAtualizacao(async () => {
       const resultado = await atualizarAulaAction({
         turmaId,
-        aulaId: aulaParaCancelar.id,
-        status: "cancelada",
+        aulaId: aula.id,
+        ...input,
       });
 
       setFeedback(
@@ -99,11 +120,23 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
           ? { tipo: "ok", texto: resultado.mensagem }
           : { tipo: "erro", texto: resultado.erro },
       );
-      setCancelandoId(null);
-
+      setAtualizandoId(null);
       if (resultado.ok) {
-        setAulaParaCancelar(null);
+        router.refresh();
       }
+    });
+  };
+
+  const editar = (aula: AulaResumo) => {
+    const novoTitulo = window.prompt("Titulo da aula", aula.titulo);
+    if (novoTitulo === null) return;
+
+    const novaData = window.prompt("Data da aula (AAAA-MM-DD)", aula.data);
+    if (novaData === null) return;
+
+    atualizar(aula, {
+      titulo: novoTitulo.trim(),
+      data: novaData.trim(),
     });
   };
 
@@ -118,7 +151,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
           id="cronograma-heading"
           className="font-semibold text-base text-slate-900"
         >
-          Cronograma das Aulas
+          Cronograma das aulas
         </h2>
 
         {turmaId && (
@@ -130,7 +163,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
             }}
             className="rounded-md bg-brand-dark px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-brand-medium"
           >
-            {aberto ? "Cancelar" : "+ Adicionar Aula"}
+            {aberto ? "Cancelar" : "+ Adicionar aula"}
           </button>
         )}
       </div>
@@ -157,7 +190,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
               Inicio (opcional)
               <input
@@ -202,24 +235,25 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
         </output>
       )}
 
-      {aulas.length === 0 ? (
+      {aulasSeguras.length === 0 ? (
         <p className="mt-4 text-slate-500 text-sm">Nenhuma aula cadastrada.</p>
       ) : (
         <ol className="mt-4 flex flex-col gap-y-2">
-          {aulas.map((aula) => {
-            const cancelandoEsta = isCancelando && cancelandoId === aula.id;
-            const jaCancelada = aula.status === "cancelada";
+          {aulasSeguras.map((aula) => {
+            const removendoEsta = isRemovendo && removendoId === aula.id;
+            const atualizandoEsta =
+              isAtualizando && atualizandoId === aula.id;
 
             return (
               <li
                 key={aula.id}
-                className="flex items-start gap-x-3 border-slate-100 border-b pb-2 last:border-b-0"
+                className="flex flex-wrap items-start gap-3 border-slate-100 border-b pb-3 last:border-b-0"
               >
                 <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-light/40 font-semibold text-slate-700 text-xs">
                   {aula.numero}
                 </span>
 
-                <div className="flex flex-1 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col">
                   <span className="font-medium text-slate-800 text-sm leading-snug">
                     {aula.titulo}
                   </span>
@@ -228,39 +262,68 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                   </span>
                 </div>
 
-                <span
-                  title={aula.status}
-                  className={`mt-1.5 size-2.5 shrink-0 rounded-full ${
-                    STATUS_COR[aula.status] ?? "bg-slate-300"
-                  }`}
-                />
+                <span className="mt-0.5 inline-flex items-center gap-x-2 rounded-full bg-slate-50 px-3 py-1 font-medium text-slate-600 text-xs">
+                  <span
+                    title={aula.status}
+                    className={`size-2 shrink-0 rounded-full ${
+                      STATUS_COR[aula.status] ?? "bg-slate-300"
+                    }`}
+                  />
+                  {STATUS_LABEL[aula.status] ?? aula.status}
+                </span>
 
                 {turmaId && (
-                  <button
-                    type="button"
-                    onClick={() => abrirCancelamento(aula)}
-                    disabled={cancelandoEsta || jaCancelada}
-                    title={jaCancelada ? "Aula ja cancelada" : "Cancelar aula"}
-                    aria-label={
-                      jaCancelada ? "Aula ja cancelada" : "Cancelar aula"
-                    }
-                    className="shrink-0 text-red-600 transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => editar(aula)}
+                      disabled={atualizandoEsta}
+                      className="rounded-md border border-slate-200 px-2.5 py-1 font-medium text-slate-700 text-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <title>Cancelar aula</title>
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M9 9l6 6" />
-                      <path d="M15 9l-6 6" />
-                    </svg>
-                  </button>
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => atualizar(aula, { status: "realizada" })}
+                      disabled={atualizandoEsta || aula.status === "realizada"}
+                      className="rounded-md border border-emerald-200 px-2.5 py-1 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Realizada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmacao({ tipo: "cancelar", aula })}
+                      disabled={atualizandoEsta || aula.status === "cancelada"}
+                      className="rounded-md border border-amber-200 px-2.5 py-1 font-medium text-amber-700 text-xs transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmacao({ tipo: "remover", aula })}
+                      disabled={removendoEsta}
+                      title="Remover aula"
+                      aria-label="Remover aula"
+                      className="shrink-0 text-red-600 transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="size-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                      >
+                        <title>Remover aula</title>
+                        <path d="M4 7h16" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+                        <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </li>
             );
@@ -268,45 +331,33 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
         </ol>
       )}
 
-      {aulaParaCancelar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cancelar-aula-title"
-            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
-          >
-            <h3
-              id="cancelar-aula-title"
-              className="font-semibold text-lg text-slate-950"
-            >
-              Cancelar aula?
-            </h3>
-            <p className="mt-3 text-slate-600 text-sm leading-relaxed">
-              A aula "{aulaParaCancelar.titulo}" sera marcada como cancelada. Os
-              alunos ativos da turma receberao uma notificacao por e-mail.
-            </p>
+      {confirmacao && (
+        <ConfirmDialog
+          title={
+            confirmacao.tipo === "remover" ? "Remover aula?" : "Cancelar aula?"
+          }
+          description={
+            confirmacao.tipo === "remover"
+              ? `A aula "${confirmacao.aula.titulo}" sera removida do cronograma. Essa acao nao pode ser desfeita.`
+              : `A aula "${confirmacao.aula.titulo}" sera marcada como cancelada no cronograma. Os alunos ativos da turma receberao uma notificacao por e-mail.`
+          }
+          confirmLabel={
+            confirmacao.tipo === "remover" ? "Remover aula" : "Cancelar aula"
+          }
+          tone={confirmacao.tipo === "remover" ? "danger" : "warning"}
+          isLoading={isRemovendo || isAtualizando}
+          onCancel={() => setConfirmacao(null)}
+          onConfirm={() => {
+            if (confirmacao.tipo === "remover") {
+              confirmarRemocao(confirmacao.aula);
+              return;
+            }
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setAulaParaCancelar(null)}
-                disabled={isCancelando}
-                className="rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-700 text-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={cancelarAula}
-                disabled={isCancelando}
-                className="rounded-md bg-red-700 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isCancelando ? "Cancelando..." : "Cancelar aula"}
-              </button>
-            </div>
-          </div>
-        </div>
+            const aula = confirmacao.aula;
+            setConfirmacao(null);
+            atualizar(aula, { status: "cancelada" });
+          }}
+        />
       )}
     </section>
   );

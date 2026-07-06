@@ -8,6 +8,7 @@ import {
   cancelarMatriculaAction,
   reenviarAtivacaoAction,
 } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StudentEditForm } from "@/components/coordenador/StudentEditForm";
@@ -21,6 +22,11 @@ import type {
 
 interface StudentDetailContentProps {
   student: StudentDetail;
+}
+
+interface EnrollmentCancelTarget {
+  classId: string;
+  enrollmentId: string;
 }
 
 const accountStatusInfo: Record<
@@ -37,9 +43,7 @@ const accountStatusInfo: Record<
 };
 
 const formatDate = (date: string | null) => {
-  if (!date) {
-    return "Não informado";
-  }
+  if (!date) return "Não informado";
 
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
     new Date(date),
@@ -55,6 +59,8 @@ export const StudentDetailContent = ({
   const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<
     string | null
   >(null);
+  const [enrollmentParaCancelar, setEnrollmentParaCancelar] =
+    useState<EnrollmentCancelTarget | null>(null);
   const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
   const [selectedStatuses, setSelectedStatuses] = useState<
     Record<string, EditableEnrollmentStatus>
@@ -92,10 +98,7 @@ export const StudentDetailContent = ({
     classId: string,
     enrollmentId: string,
   ) => {
-    if (!window.confirm("Deseja realmente cancelar esta matrícula?")) {
-      return;
-    }
-
+    setEnrollmentParaCancelar(null);
     setCancelingEnrollmentId(enrollmentId);
     setEnrollmentMessage(null);
     setEnrollmentError(null);
@@ -162,7 +165,9 @@ export const StudentDetailContent = ({
                 tone={accountStatus.tone}
               />
             </div>
-            <p className="mt-2 text-slate-600 text-sm">{student.email}</p>
+            <p className="mt-2 break-all text-slate-600 text-sm">
+              {student.email}
+            </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -442,7 +447,10 @@ export const StudentDetailContent = ({
                           type="button"
                           disabled={cancelingEnrollmentId === enrollment.id}
                           onClick={() =>
-                            handleCancelEnrollment(classId, enrollment.id)
+                            setEnrollmentParaCancelar({
+                              classId,
+                              enrollmentId: enrollment.id,
+                            })
                           }
                           className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -474,6 +482,25 @@ export const StudentDetailContent = ({
           </table>
         </div>
       </section>
+
+      {enrollmentParaCancelar && (
+        <ConfirmDialog
+          title="Cancelar matrícula?"
+          description="A matrícula será marcada como cancelada e o aluno deixará de aparecer como ativo nesta turma."
+          confirmLabel="Cancelar matrícula"
+          tone="danger"
+          isLoading={
+            cancelingEnrollmentId === enrollmentParaCancelar.enrollmentId
+          }
+          onCancel={() => setEnrollmentParaCancelar(null)}
+          onConfirm={() =>
+            handleCancelEnrollment(
+              enrollmentParaCancelar.classId,
+              enrollmentParaCancelar.enrollmentId,
+            )
+          }
+        />
+      )}
     </>
   );
 };

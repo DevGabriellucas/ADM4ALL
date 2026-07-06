@@ -40,6 +40,25 @@ export interface MaterialAluno {
   criadoEm: string;
 }
 
+export interface MaterialVisivelAluno {
+  id: string;
+  turmaId: string;
+  turma: string;
+  curso: string;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  titulo: string;
+  descricao: string | null;
+  tipo: string;
+  urlArquivo: string | null;
+  tamanhoBytes: number | null;
+  dataPublicacao: string;
+}
+
 export interface MateriaisAlunoResponse {
   materiais: MaterialAluno[];
+}
+
+export interface MateriaisVisiveisAlunoResponse {
+  materiais: MaterialVisivelAluno[];
 }

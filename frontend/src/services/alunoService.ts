@@ -6,6 +6,8 @@ import type {
   AlunoDashboard,
   AlunoDashboardResponse,
   MateriaisAlunoResponse,
+  MateriaisVisiveisAlunoResponse,
+  MaterialVisivelAluno,
 } from "@/types/aluno";
 
 export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
@@ -39,6 +41,20 @@ export const getMateriaisAluno = async (): Promise<MateriaisAlunoResponse> => {
       fallbackError: "Falha ao carregar os materiais.",
     },
   );
+};
+
+export const getMateriaisVisiveisAluno = async (): Promise<
+  MaterialVisivelAluno[]
+> => {
+  const resposta = await authenticatedRequest<MateriaisVisiveisAlunoResponse>(
+    "/alunos/me/materiais",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os materiais da turma.",
+    },
+  );
+
+  return Array.isArray(resposta.materiais) ? resposta.materiais : [];
 };
 
 export const downloadMaterialAluno = async (materialId: string) => {
