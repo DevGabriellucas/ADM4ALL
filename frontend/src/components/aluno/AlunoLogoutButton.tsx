@@ -16,7 +16,7 @@ export const AlunoLogoutButton = () => {
       type="button"
       onClick={handleLogout}
       aria-label="Sair da conta"
-      className="flex items-center gap-x-2 rounded-md px-3 py-2 font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8F1D2C] focus-visible:outline-offset-2 sm:ml-auto"
+      className="flex cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8F1D2C] focus-visible:outline-offset-2 sm:ml-auto"
     >
       <svg
         aria-hidden

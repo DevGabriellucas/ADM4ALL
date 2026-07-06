@@ -62,7 +62,7 @@ export const CertificateIssueModal = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 text-sm hover:bg-slate-50 disabled:opacity-60"
+            className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancelar
           </button>
@@ -70,7 +70,7 @@ export const CertificateIssueModal = ({
             type="button"
             onClick={handleIssue}
             disabled={loading}
-            className="rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white hover:bg-[#23275F] disabled:opacity-60"
+            className="cursor-pointer rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Emitindo..." : "Emitir certificado"}
           </button>

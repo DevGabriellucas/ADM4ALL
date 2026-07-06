@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { StudentDetailContent } from "@/components/coordenador/StudentDetailContent";
+import { BackButton } from "@/components/shared/BackButton";
 import { getStudentById } from "@/services/coordinatorService";
 
 interface CoordinatorStudentDetailPageProps {
@@ -16,5 +17,10 @@ export default async function CoordinatorStudentDetailPage({
     notFound();
   }
 
-  return <StudentDetailContent student={student} />;
+  return (
+    <>
+      <BackButton className="mb-4" />
+      <StudentDetailContent student={student} />
+    </>
+  );
 }

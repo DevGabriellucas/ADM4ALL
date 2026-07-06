@@ -66,7 +66,7 @@ export const CoordinatorSidebar = () => {
         <button
           type="button"
           onClick={logout}
-          className="flex min-w-max items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 lg:mt-2"
+          className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 lg:mt-2"
         >
           <svg
             aria-hidden
