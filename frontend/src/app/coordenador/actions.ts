@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import * as coordinatorService from "@/services/coordinatorService";
+import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
+import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import type {
   CertificateDetail,
   ClassGroup,
@@ -452,4 +454,10 @@ export async function criarTurmaAction(input: {
         error instanceof Error ? error.message : "Falha ao cadastrar a turma.",
     };
   }
+}
+
+export async function atualizarPeriodoLetivoAction(
+  periodoLetivo: string,
+): Promise<PeriodoLetivoResponse> {
+  return await atualizarPeriodoLetivo(periodoLetivo);
 }
