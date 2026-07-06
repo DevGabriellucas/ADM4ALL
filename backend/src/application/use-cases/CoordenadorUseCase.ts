@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
+import fs from "fs/promises";
+import path from "path";
 import {
   CampoPendenteAtivacao,
 } from "../../domain/repositories/ActivationRepository";
@@ -33,6 +35,7 @@ import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
 import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CriarCursoEntrada {
@@ -611,6 +614,34 @@ export class CoordenadorUseCase {
       if (!certificado) {
         throw new BadRequestError("Matricula nao encontrada.");
       }
+
+      if (!certificado.certificadoId) {
+        throw new Error("Falha ao recuperar o ID do certificado emitido.");
+      }
+
+      try {
+        const pdf = await gerarCertificadoPdf(certificado);
+        const certificadosDir = path.resolve(
+          process.cwd(),
+          "storage",
+          "certificados",
+        );
+        await fs.mkdir(certificadosDir, { recursive: true });
+        const arquivoNome = `cert-${certificado.codigo}.pdf`;
+        const arquivoCaminho = path.join(certificadosDir, arquivoNome);
+        await fs.writeFile(arquivoCaminho, pdf);
+        const urlArquivo = `/storage/certificados/${arquivoNome}`;
+        await this.coordenadorRepository.atualizarUrlArquivoCertificado(
+          certificado.certificadoId,
+          urlArquivo,
+        );
+      } catch (erroPdf) {
+        console.error(
+          "Falha ao salvar PDF do certificado:",
+          erroPdf,
+        );
+      }
+
       return certificado;
     } catch (error) {
       if (error instanceof BadRequestError) throw error;

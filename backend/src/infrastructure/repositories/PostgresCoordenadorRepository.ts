@@ -1257,6 +1257,16 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return (resultado.rowCount ?? 0) > 0;
   }
 
+  async atualizarUrlArquivoCertificado(
+    certificadoId: string,
+    urlArquivo: string,
+  ): Promise<void> {
+    await this.db.query(
+      `UPDATE certificados SET url_arquivo = $1 WHERE id = $2`,
+      [urlArquivo, certificadoId],
+    );
+  }
+
   async buscarInstrutorAtivoPorNome(
     nome: string,
   ): Promise<IdentificadorPorNome | null> {

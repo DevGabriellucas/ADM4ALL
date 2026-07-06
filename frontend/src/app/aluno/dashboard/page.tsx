@@ -71,7 +71,6 @@ export default async function AlunoDashboardPage() {
           <AlunoCompletionMessage
             curso={aluno.curso}
             certificadoDisponivel={aluno.certificadoDisponivel}
-            certificadoUrl={aluno.certificadoUrl}
           />
         )}
       </div>
