@@ -1,3 +1,5 @@
+// Componente preservado para futura integracao com endpoint real de
+// aulas do coordenador (Gabriel). Nao importa mock — recebe dados por props.
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { Lesson } from "@/types/coordinator";
 import { formatData } from "@/utils/format";
