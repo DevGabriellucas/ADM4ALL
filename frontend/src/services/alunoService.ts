@@ -1,5 +1,12 @@
-import { authenticatedRequest } from "@/services/apiClient";
-import type { AlunoDashboard, AlunoDashboardResponse } from "@/types/aluno";
+import {
+  authenticatedFileRequest,
+  authenticatedRequest,
+} from "@/services/apiClient";
+import type {
+  AlunoDashboard,
+  AlunoDashboardResponse,
+  MateriaisAlunoResponse,
+} from "@/types/aluno";
 
 export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
   const resposta = await authenticatedRequest<AlunoDashboardResponse>(
@@ -22,4 +29,21 @@ export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
     certificadoDisponivel: resposta.certificadoDisponivel,
     certificadoUrl: resposta.certificadoUrl,
   };
+};
+
+export const getMateriaisAluno = async (): Promise<MateriaisAlunoResponse> => {
+  return await authenticatedRequest<MateriaisAlunoResponse>(
+    "/alunos/me/materiais",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os materiais.",
+    },
+  );
+};
+
+export const downloadMaterialAluno = async (materialId: string) => {
+  return await authenticatedFileRequest(
+    `/alunos/me/materiais/${materialId}/download`,
+    "Falha ao baixar o material.",
+  );
 };

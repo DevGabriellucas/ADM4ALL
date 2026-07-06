@@ -40,6 +40,42 @@ export interface AlunoDashboard {
   certificadoUrl: string | null;
 }
 
+export interface CertificadoEmitidoDoAluno {
+  certificadoId: string;
+  codigo: string | null;
+  urlArquivo: string | null;
+  nomeAluno: string;
+  cpfAluno: string;
+  nomeCurso: string;
+  cargaHoraria: number;
+  dataInicio: string;
+  dataFim: string;
+  dataEmissao: string | null;
+  cidade: string;
+  nomeCoordenadora: string;
+  nomeProjeto: string;
+  textoDescritivo: string;
+}
+
+export interface MaterialAluno {
+  id: string;
+  titulo: string;
+  tipo: string;
+  urlArquivo: string | null;
+  turmaId: string;
+  turmaNome: string;
+  criadoEm: Date;
+}
+
+export interface MaterialAlunoDownload {
+  id: string;
+  titulo: string;
+  tipo: string;
+  urlArquivo: string | null;
+  turmaId: string;
+  turmaNome: string;
+}
+
 export interface AlunoRepository {
   cadastrar(aluno: Aluno): Promise<Aluno>;
   buscarPorId(id: string): Promise<Aluno | null>;
@@ -59,5 +95,17 @@ export interface AlunoRepository {
   ): Promise<void>;
   listarTodos(): Promise<Aluno[]>;
   atualizar(aluno: Aluno): Promise<Aluno>;
+  listarMateriaisVisiveisPorAluno(alunoId: string): Promise<MaterialAluno[]>;
+  buscarMaterialVisivelParaDownload(
+    alunoId: string,
+    materialId: string,
+  ): Promise<MaterialAlunoDownload | null>;
+  buscarCertificadoEmitidoPorAlunoId(
+    alunoId: string,
+  ): Promise<CertificadoEmitidoDoAluno | null>;
+  atualizarUrlArquivoCertificado(
+    certificadoId: string,
+    urlArquivo: string,
+  ): Promise<void>;
   deletar(id: string): Promise<void>;
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlunoCompletionMessage } from "@/components/aluno/AlunoCompletionMessage";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
@@ -34,6 +35,28 @@ export default async function AlunoDashboardPage() {
           <AlunoStatusPanel aluno={aluno} />
         </section>
 
+        <section
+          aria-labelledby="materiais-heading"
+          className="flex flex-col gap-y-4 rounded-lg bg-[#F1F4FC] px-5 py-6"
+        >
+          <h3
+            id="materiais-heading"
+            className="font-semibold text-sm tracking-[0.35em]"
+          >
+            Materiais recentes
+          </h3>
+          <p className="text-slate-600 text-sm">
+            Acesse a página de materiais para visualizar os conteúdos
+            disponibilizados pelos instrutores.
+          </p>
+          <Link
+            href="/aluno/materiais"
+            className="inline-flex w-fit items-center gap-x-1 rounded-md bg-brand-medium px-4 py-2 font-medium text-slate-950 text-sm transition-colors hover:bg-brand-light"
+          >
+            Ver materiais
+          </Link>
+        </section>
+
         {aluno.status === MATRICULA_STATUS.REPROVADO_FALTA && (
           <section
             className="mx-auto max-w-3xl text-center font-medium text-red-800 text-xs leading-6 tracking-[0.25em]"
@@ -48,7 +71,6 @@ export default async function AlunoDashboardPage() {
           <AlunoCompletionMessage
             curso={aluno.curso}
             certificadoDisponivel={aluno.certificadoDisponivel}
-            certificadoUrl={aluno.certificadoUrl}
           />
         )}
       </div>

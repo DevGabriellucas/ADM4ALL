@@ -1,10 +1,16 @@
 import bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
+import fs from "fs/promises";
+import path from "path";
 import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
+  CertificadoEmitidoDoAluno,
+  MaterialAluno,
+  MaterialAlunoDownload,
 } from "../../domain/repositories/AlunoRepository";
+import type { CertificadoAlunoDetalhe } from "../../domain/repositories/CoordenadorRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
@@ -12,6 +18,7 @@ import { EmailService } from "../../infrastructure/email/EmailService";
 import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
+import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
 import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CadastrarAlunoInput {
@@ -144,6 +151,112 @@ export class AlunoUseCase {
     }
 
     return dashboard;
+  }
+
+  async listarMateriais(alunoId: string): Promise<MaterialAluno[]> {
+    return await this.alunoRepository.listarMateriaisVisiveisPorAluno(alunoId);
+  }
+
+  async buscarMaterialParaDownload(
+    alunoId: string,
+    materialId: string,
+  ): Promise<MaterialAlunoDownload | null> {
+    return await this.alunoRepository.buscarMaterialVisivelParaDownload(
+      alunoId,
+      materialId,
+    );
+  }
+
+  async baixarCertificado(
+    alunoId: string,
+  ): Promise<{ buffer: Buffer; nomeArquivo: string }> {
+    const cert =
+      await this.alunoRepository.buscarCertificadoEmitidoPorAlunoId(alunoId);
+
+    if (!cert) {
+      throw new BadRequestError(
+        "Nenhum certificado emitido encontrado para este aluno.",
+      );
+    }
+
+    const codigoSeguro = (cert.codigo ?? "certificado").replace(
+      /[^a-zA-Z0-9_-]/g,
+      "-",
+    );
+    const nomeArquivo = `certificado-aluno-${codigoSeguro}.pdf`;
+
+    const certificadosDir = path.resolve(
+      process.cwd(),
+      "storage",
+      "certificados",
+    );
+
+    const ehLegado =
+      cert.urlArquivo?.startsWith("/uploads/certificados/") === true;
+
+    if (cert.urlArquivo && !ehLegado) {
+      const caminhoRelativo = cert.urlArquivo.replace(
+        /^\/storage\/certificados\//,
+        "",
+      );
+      const caminhoAbsoluto = path.resolve(certificadosDir, caminhoRelativo);
+
+      if (caminhoAbsoluto.startsWith(certificadosDir + path.sep)) {
+        try {
+          await fs.access(caminhoAbsoluto);
+          const buffer = await fs.readFile(caminhoAbsoluto);
+          return { buffer, nomeArquivo };
+        } catch {
+          console.warn(
+            "Arquivo do certificado nao encontrado em disco. Gerando fallback.",
+          );
+        }
+      }
+    }
+
+    const detalhe: CertificadoAlunoDetalhe = {
+      tipo: "aluno",
+      certificadoId: cert.certificadoId,
+      referenciaId: "",
+      status: "emitido",
+      nomeAluno: cert.nomeAluno,
+      cpfAluno: cert.cpfAluno,
+      nomeCurso: cert.nomeCurso,
+      cargaHoraria: cert.cargaHoraria,
+      dataInicio: cert.dataInicio,
+      dataFim: cert.dataFim,
+      dataEmissao: cert.dataEmissao,
+      cidade: cert.cidade,
+      nomeCoordenadora: cert.nomeCoordenadora,
+      nomeProjeto: cert.nomeProjeto,
+      textoDescritivo: cert.textoDescritivo,
+      codigo: cert.codigo,
+      statusMatricula: "",
+      statusTurma: "",
+      statusUsuario: "",
+      faltas: 0,
+    };
+
+    const pdf = await gerarCertificadoPdf(detalhe);
+
+    try {
+      await fs.mkdir(certificadosDir, { recursive: true });
+      const arquivoNome = `cert-${codigoSeguro}.pdf`;
+      const arquivoCaminho = path.join(certificadosDir, arquivoNome);
+      await fs.writeFile(arquivoCaminho, pdf);
+      const urlArquivo = `/storage/certificados/${arquivoNome}`;
+      await this.alunoRepository.atualizarUrlArquivoCertificado(
+        cert.certificadoId,
+        urlArquivo,
+      );
+    } catch (erroSalvar) {
+      console.error(
+        "Falha ao persistir PDF do certificado no fallback:",
+        erroSalvar,
+      );
+    }
+
+    return { buffer: pdf, nomeArquivo };
   }
 
   async atualizar(

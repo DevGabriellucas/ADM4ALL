@@ -388,6 +388,10 @@ export interface CoordenadorRepository {
     input: EmitirCertificadoAlunoInput,
   ): Promise<CertificadoAlunoDetalhe | null>;
   cancelarCertificado(certificadoId: string): Promise<boolean>;
+  atualizarUrlArquivoCertificado(
+    certificadoId: string,
+    urlArquivo: string,
+  ): Promise<void>;
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
