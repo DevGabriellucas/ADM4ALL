@@ -276,7 +276,7 @@ export const MateriaisPanel = ({
             setAberto((anterior) => !anterior);
             setFeedback(null);
           }}
-          className="rounded-md bg-brand-dark px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium"
+          className="cursor-pointer rounded-md bg-brand-dark px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium"
         >
           {aberto ? "Cancelar" : "+ Adicionar material"}
         </button>
@@ -404,7 +404,7 @@ export const MateriaisPanel = ({
               type="button"
               onClick={enviar}
               disabled={isPending}
-              className="rounded-md bg-brand-medium px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-md bg-brand-medium px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? "Enviando..." : "Salvar material"}
             </button>
@@ -587,7 +587,7 @@ export const MateriaisPanel = ({
                               ? "Ocultar dos alunos"
                               : "Mostrar para alunos"
                           }
-                          className="text-brand-dark transition-colors hover:text-brand-medium disabled:cursor-not-allowed disabled:opacity-40"
+                          className="cursor-pointer text-brand-dark transition-colors hover:text-brand-medium disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <span className="font-semibold text-xs">
                             {material.visibilidade === "visivel"
@@ -601,7 +601,7 @@ export const MateriaisPanel = ({
                           disabled={removendoEste}
                           title="Remover material"
                           aria-label="Remover material"
-                          className="text-red-600 transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="cursor-pointer text-red-600 transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <svg
                             viewBox="0 0 24 24"
