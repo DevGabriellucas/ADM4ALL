@@ -21,7 +21,10 @@ database/
     08-criar-acompanhamento-aluno.sql
     09-criar-materiais-e-certificados.sql
     10-comentar-tabelas.sql
+    11-adicionar-visibilidade-materiais.sql
+    12-criar-configuracoes-sistema.sql
     20-inserir-dados-teste.sql
+    21-inserir-aluno-demo-aprovacao.sql
 ```
 
 ## Como subir
@@ -41,19 +44,32 @@ locais diferentes. Use sempre o `docker-compose.yml` da raiz.
 
 Os arquivos em `database/init/` sao numerados porque o Postgres executa tudo
 em ordem alfabetica na primeira inicializacao. Por isso os arquivos `01` a
-`10` criam a estrutura, e o arquivo `20` insere os dados de teste.
+`12` criam a estrutura, e os arquivos `20` e `21` inserem os dados de teste.
+
+## Volumes Docker e persistencia de dados
+
+- `docker compose down` **nao apaga** os dados. O volume `pgdata` permanece.
+- `docker compose down -v` **apaga** o volume e todos os dados. Use com
+  cuidado.
+- Scripts em `database/init/` rodam apenas na **primeira criacao** do volume.
+  Se o banco ja existe e voce adicionar um novo script de init, ele nao sera
+  executado automaticamente.
+
+### Aplicar nova migration em banco existente
+
+Se uma nova tabela for adicionada em `database/init/` apos a criacao inicial
+do banco, execute o script manualmente:
+
+```bash
+docker exec -i adm4all_db psql -U adm4all -d adm4all < database/init/NN-novo-script.sql
+```
 
 ## Resetar o banco local
-
-Os scripts em `database/init/` rodam apenas na primeira criacao do volume do
-Postgres. Se mudar schema ou seed e quiser recriar tudo:
 
 ```bash
 docker compose down -v
 docker compose up -d
 ```
-
-O `-v` apaga o volume `pgdata` e todos os dados locais.
 
 ## Acessar os dados
 
@@ -82,6 +98,7 @@ Comandos uteis dentro do `psql`:
 \d+ turmas
 \d+ aulas
 \d+ matriculas
+\d+ configuracoes_sistema
 ```
 
 ## Modelo de dados
@@ -96,6 +113,7 @@ Tabelas criadas:
 | `perfis` | Perfis de acesso: aluno, instrutor, coordenador e admin |
 | `usuarios` | Identidade central de autenticacao por e-mail ou CPF |
 | `recuperacoes_senha` | Tokens de recuperacao de senha com validade de 15 minutos |
+| `ativacoes_conta` | Tokens de ativacao de conta para convites e cadastro publico |
 | `alunos` | Dados academicos do aluno vinculado a um usuario |
 | `instrutores` | Dados dos instrutores vinculados a usuarios |
 | `coordenadores` | Dados de coordenacao vinculados a usuarios |
@@ -108,12 +126,13 @@ Tabelas criadas:
 | `materiais` | Materiais publicados para as turmas |
 | `documentos_aluno` | Controle de documentos pendentes/enviados/aprovados |
 | `certificados` | Certificados emitidos para matriculas concluidas |
+| `configuracoes_sistema` | Parametros ajustaveis da aplicacao (periodo letivo, etc.) |
 
 ## Qualidade dos dados
 
 O schema reforca regras importantes:
 
-- CPF de usuario com 11 digitos e nao repetido, como `11111111111`.
+- CPF de usuario com 11 digitos e nao repetido.
 - Telefone com 10 ou 11 digitos.
 - Email de usuario em minusculo, sem espacos e unico ignorando maiusculas/minusculas.
 - Nome, treinamento e tipos de documento nao podem ser texto vazio.
@@ -153,13 +172,16 @@ O arquivo `init/20-inserir-dados-teste.sql` cria dados para testar cenarios reai
 - perfis de aluno, instrutor, coordenador e admin;
 - usuarios para cada perfil;
 - instrutor e coordenadora;
-- turma e cronograma de aulas;
+- turmas e cronograma de aulas;
 - aluno em andamento;
-- aluno aprovado;
+- aluno aprovado com certificado emitido;
 - aluno reprovado por falta;
 - materiais de turma;
 - documentos aprovados e pendentes;
 - frequencias, avaliacoes e certificado emitido.
+
+O arquivo `init/21-inserir-aluno-demo-aprovacao.sql` cria um aluno adicional
+para demonstracao do fluxo de aprovacao e emissao de certificado.
 
 Esse seed nao e outro banco. Ele apenas popula o banco local criado pelo
 compose da raiz.

@@ -33,6 +33,7 @@ erDiagram
     ALUNOS ||--o{ DOCUMENTOS_ALUNO : entrega
     MATRICULAS ||--o| CERTIFICADOS : gera
     USUARIOS ||--o{ CERTIFICADOS : emite
+    USUARIOS ||--o{ CONFIGURACOES_SISTEMA : atualiza
 
     PERFIS {
         uuid id PK
@@ -200,6 +201,14 @@ erDiagram
         text url_arquivo
         uuid emitido_por_id FK
     }
+
+    CONFIGURACOES_SISTEMA {
+        text chave PK
+        text valor
+        text descricao
+        uuid atualizado_por_id FK
+        timestamptz atualizado_em
+    }
 ```
 
 ## Perfis do sistema
@@ -270,3 +279,6 @@ erDiagram
 - `aulas`, `frequencias` e `materiais` sustentam a tela do instrutor.
 - `certificados` permite gerar e consultar certificado quando a matricula for
   aprovada.
+- `configuracoes_sistema` armazena parametros chave/valor ajustaveis pelo
+  coordenador sem deploy, como o periodo letivo (`periodo_letivo_atual`).
+  `atualizado_por_id` referencia `usuarios.id` (FK opcional com SET NULL).
