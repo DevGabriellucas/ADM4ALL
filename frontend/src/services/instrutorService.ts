@@ -8,6 +8,7 @@ import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  AtualizarAulaInput,
   AtualizarAvatarInput,
   AulaResumo,
   InstrutorDashboard,
@@ -19,7 +20,9 @@ const INSTRUTOR_ID_DEMO =
   process.env.INSTRUTOR_ID ?? "9ab264bc-036b-4e62-ba6b-6a93d2da94c2";
 
 const isErroAutenticacao = (error: unknown): boolean => {
-  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+  return (
+    error instanceof ApiError && (error.status === 401 || error.status === 403)
+  );
 };
 
 export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
@@ -116,6 +119,25 @@ export const adicionarAula = async (
         horaFim: input.horaFim ?? null,
       }),
       fallbackError: "Falha ao adicionar a aula.",
+    },
+  );
+};
+
+export const atualizarAula = async (
+  input: AtualizarAulaInput,
+): Promise<AulaResumo> => {
+  return await authenticatedRequest<AulaResumo>(
+    `/turmas/${input.turmaId}/aulas/${input.aulaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        titulo: input.titulo,
+        data: input.data,
+        horaInicio: input.horaInicio,
+        horaFim: input.horaFim,
+        status: input.status,
+      }),
+      fallbackError: "Falha ao atualizar a aula.",
     },
   );
 };

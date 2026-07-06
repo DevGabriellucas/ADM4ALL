@@ -1,4 +1,5 @@
 export type StatusPresenca = "presente" | "falta" | "justificada";
+export type StatusAula = "planejada" | "realizada" | "cancelada";
 
 export type TipoMaterial =
   | "pdf"
@@ -30,7 +31,7 @@ export interface AulaResumo {
   numero: number;
   titulo: string;
   data: string; // YYYY-MM-DD
-  status: string;
+  status: StatusAula;
 }
 
 export interface AlunoPresenca {
@@ -95,6 +96,16 @@ export interface AdicionarAulaInput {
   data: string; // YYYY-MM-DD
   horaInicio?: string | null;
   horaFim?: string | null;
+}
+
+export interface AtualizarAulaInput {
+  turmaId: string;
+  aulaId: string;
+  titulo?: string;
+  data?: string; // YYYY-MM-DD
+  horaInicio?: string | null;
+  horaFim?: string | null;
+  status?: StatusAula;
 }
 
 export interface AtualizarAvatarInput {

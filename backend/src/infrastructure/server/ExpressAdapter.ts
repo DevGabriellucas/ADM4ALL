@@ -380,11 +380,7 @@ export class ExpressAdapter {
           );
         }
 
-<<<<<<< Updated upstream
-        const materiais = await this.alunoUseCase.listarMateriais(
-=======
         const materiais = await this.alunoUseCase.listarMateriaisVisiveis(
->>>>>>> Stashed changes
           usuario.alunoId,
         );
         res.json({ materiais });
@@ -392,7 +388,6 @@ export class ExpressAdapter {
     );
 
     this.app.get(
-<<<<<<< Updated upstream
       "/alunos/me/materiais/:materialId/download",
       this.exigirPerfis(["aluno"]),
       asyncHandler(async (req: Request, res: Response) => {
@@ -481,8 +476,6 @@ export class ExpressAdapter {
     );
 
     this.app.get(
-=======
->>>>>>> Stashed changes
       "/alunos",
       this.exigirApiKey,
       asyncHandler(async (_req: Request, res: Response) => {

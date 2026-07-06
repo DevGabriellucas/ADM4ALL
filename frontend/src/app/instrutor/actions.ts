@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   adicionarAula,
   adicionarMaterial,
+  atualizarAula,
   atualizarAvatarInstrutor,
   getPresencasPorAula,
   registrarPresencas,
@@ -14,6 +15,7 @@ import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  AtualizarAulaInput,
   AtualizarAvatarInput,
   AulaResumo,
   RegistrarPresencasInput,
@@ -108,6 +110,28 @@ export const removerAulaAction = async (
     return {
       ok: false,
       erro: traduzirErro(error, "Falha ao remover a aula."),
+    };
+  }
+};
+
+export const atualizarAulaAction = async (
+  input: AtualizarAulaInput,
+): Promise<ActionResult & { aula?: AulaResumo }> => {
+  try {
+    const aula = await atualizarAula(input);
+    revalidatePath("/instrutor/dashboard");
+    return {
+      ok: true,
+      mensagem:
+        input.status === "cancelada"
+          ? "Aula cancelada com sucesso. Os alunos ativos serao notificados por e-mail."
+          : "Aula atualizada com sucesso.",
+      aula,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: traduzirErro(error, "Falha ao atualizar a aula."),
     };
   }
 };

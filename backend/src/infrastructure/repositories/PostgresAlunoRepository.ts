@@ -3,13 +3,10 @@ import { Aluno } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
-<<<<<<< Updated upstream
   CertificadoEmitidoDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
-=======
   MaterialVisivelAluno,
->>>>>>> Stashed changes
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
   UsuarioRecuperacaoSenha,

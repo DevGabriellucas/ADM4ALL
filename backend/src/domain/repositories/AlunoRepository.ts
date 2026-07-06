@@ -40,7 +40,6 @@ export interface AlunoDashboard {
   certificadoUrl: string | null;
 }
 
-<<<<<<< Updated upstream
 export interface CertificadoEmitidoDoAluno {
   certificadoId: string;
   codigo: string | null;
@@ -75,7 +74,8 @@ export interface MaterialAlunoDownload {
   urlArquivo: string | null;
   turmaId: string;
   turmaNome: string;
-=======
+}
+
 export interface MaterialVisivelAluno {
   id: string;
   turmaId: string;
@@ -89,7 +89,6 @@ export interface MaterialVisivelAluno {
   urlArquivo: string | null;
   tamanhoBytes: number | null;
   dataPublicacao: string;
->>>>>>> Stashed changes
 }
 
 export interface AlunoRepository {

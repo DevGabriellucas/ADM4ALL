@@ -5,6 +5,7 @@ import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 describe("InstrutorUseCase", () => {
   let instrutorUseCase: InstrutorUseCase;
   let mockInstrutorRepository: jest.Mocked<InstrutorRepository>;
+  let mockEmailService: { enviar: jest.Mock };
 
   beforeEach(() => {
     mockInstrutorRepository = {
@@ -24,7 +25,14 @@ describe("InstrutorUseCase", () => {
       atualizarAvatar: jest.fn(),
     } as any;
 
-    instrutorUseCase = new InstrutorUseCase(mockInstrutorRepository);
+    mockEmailService = {
+      enviar: jest.fn().mockResolvedValue(undefined),
+    };
+
+    instrutorUseCase = new InstrutorUseCase(
+      mockInstrutorRepository,
+      mockEmailService,
+    );
   });
 
   afterEach(() => {
@@ -62,6 +70,87 @@ describe("InstrutorUseCase", () => {
     it("deve lançar erro se a turma for vazia", async () => {
       const input = { turmaId: "", titulo: "Material", tipo: "pdf" };
       await expect(instrutorUseCase.adicionarMaterial(input as any)).rejects.toThrow("A turma e obrigatoria.");
+    });
+  });
+
+  describe("atualizarAula", () => {
+    it("deve notificar alunos ativos quando uma aula for cancelada", async () => {
+      mockInstrutorRepository.buscarAulaParaNotificacao.mockResolvedValue({
+        id: "aula-1",
+        turmaId: "turma-1",
+        numero: 1,
+        titulo: "Aula de contratos",
+        data: "2026-07-08",
+        status: "planejada",
+        turma: "ADM 2026.1",
+        curso: "Assistente Administrativo",
+      });
+      mockInstrutorRepository.atualizarAula.mockResolvedValue({
+        id: "aula-1",
+        numero: 1,
+        titulo: "Aula de contratos",
+        data: "2026-07-08",
+        status: "cancelada",
+      });
+      mockInstrutorRepository.listarAlunosParaNotificacaoAula.mockResolvedValue([
+        {
+          alunoId: "aluno-1",
+          nome: "Ana Silva",
+          email: "ana@example.com",
+        },
+        {
+          alunoId: "aluno-2",
+          nome: "Bruno Lima",
+          email: "bruno@example.com",
+        },
+      ]);
+
+      await instrutorUseCase.atualizarAula({
+        turmaId: "turma-1",
+        aulaId: "aula-1",
+        status: "cancelada",
+      });
+
+      expect(
+        mockInstrutorRepository.listarAlunosParaNotificacaoAula,
+      ).toHaveBeenCalledWith("turma-1");
+      expect(mockEmailService.enviar).toHaveBeenCalledTimes(2);
+      expect(mockEmailService.enviar).toHaveBeenCalledWith(
+        "ana@example.com",
+        "Aula cancelada - Aula de contratos",
+        expect.stringContaining("A aula abaixo foi cancelada"),
+      );
+    });
+
+    it("nao deve reenviar notificacao se a aula ja estava cancelada", async () => {
+      mockInstrutorRepository.buscarAulaParaNotificacao.mockResolvedValue({
+        id: "aula-1",
+        turmaId: "turma-1",
+        numero: 1,
+        titulo: "Aula de contratos",
+        data: "2026-07-08",
+        status: "cancelada",
+        turma: "ADM 2026.1",
+        curso: "Assistente Administrativo",
+      });
+      mockInstrutorRepository.atualizarAula.mockResolvedValue({
+        id: "aula-1",
+        numero: 1,
+        titulo: "Aula de contratos",
+        data: "2026-07-08",
+        status: "cancelada",
+      });
+
+      await instrutorUseCase.atualizarAula({
+        turmaId: "turma-1",
+        aulaId: "aula-1",
+        status: "cancelada",
+      });
+
+      expect(
+        mockInstrutorRepository.listarAlunosParaNotificacaoAula,
+      ).not.toHaveBeenCalled();
+      expect(mockEmailService.enviar).not.toHaveBeenCalled();
     });
   });
 });

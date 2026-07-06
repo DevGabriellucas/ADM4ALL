@@ -6,13 +6,10 @@ import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
-<<<<<<< Updated upstream
   CertificadoEmitidoDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
-=======
   MaterialVisivelAluno,
->>>>>>> Stashed changes
 } from "../../domain/repositories/AlunoRepository";
 import type { CertificadoAlunoDetalhe } from "../../domain/repositories/CoordenadorRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
@@ -176,7 +173,16 @@ export class AlunoUseCase {
     return dashboard;
   }
 
-<<<<<<< Updated upstream
+  async listarMateriaisVisiveis(
+    alunoId: string,
+  ): Promise<MaterialVisivelAluno[]> {
+    if (!alunoId) {
+      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
+    }
+
+    return await this.alunoRepository.listarMateriaisVisiveis(alunoId);
+  }
+
   async listarMateriais(alunoId: string): Promise<MaterialAluno[]> {
     return await this.alunoRepository.listarMateriaisVisiveisPorAluno(alunoId);
   }
@@ -281,16 +287,6 @@ export class AlunoUseCase {
     }
 
     return { buffer: pdf, nomeArquivo };
-=======
-  async listarMateriaisVisiveis(
-    alunoId: string,
-  ): Promise<MaterialVisivelAluno[]> {
-    if (!alunoId) {
-      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
-    }
-
-    return await this.alunoRepository.listarMateriaisVisiveis(alunoId);
->>>>>>> Stashed changes
   }
 
   async atualizar(
