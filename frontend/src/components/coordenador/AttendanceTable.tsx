@@ -21,7 +21,7 @@ const getSituationInfo = (situation: AttendanceSituation) => {
     return { label: "Atenção", tone: "amber" as const };
   }
   if (situation === "risco_reprovacao") {
-    return { label: "Risco de reprovação", tone: "red" as const };
+    return { label: "Risco de reprovação", tone: "orange" as const };
   }
   return getMatriculaStatusInfo(MATRICULA_STATUS.REPROVADO_FALTA);
 };
