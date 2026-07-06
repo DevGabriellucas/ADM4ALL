@@ -20,7 +20,7 @@ const getSituationInfo = (situacao: AttendanceSummary["situacao"]) => {
   }
 
   if (situacao === "risco_reprovacao") {
-    return { label: "Risco de reprovação", tone: "red" as const };
+    return { label: "Risco de reprovação", tone: "orange" as const };
   }
 
   return { label: "Regular", tone: "green" as const };
