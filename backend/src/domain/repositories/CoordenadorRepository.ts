@@ -256,6 +256,13 @@ export interface CertificadoAlunoDetalhe {
 
 export type CertificadoDetalhe = CertificadoAlunoDetalhe;
 
+export interface PeriodoLetivoResponse {
+  periodoLetivo: string;
+  origem: "automatico" | "manual";
+  atualizadoEm: string | null;
+  atualizadoPor: string | null;
+}
+
 export interface EmitirCertificadoAlunoInput {
   matriculaId: string;
   codigo: string;
@@ -402,5 +409,12 @@ export interface CoordenadorRepository {
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;
   criarTurma(input: CriarTurmaInput): Promise<TurmaListagem>;
   buscarTreinamentoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
+
+  buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse>;
+  salvarPeriodoLetivo(
+    periodoLetivo: string,
+    usuarioId: string,
+  ): Promise<PeriodoLetivoResponse>;
+  excluirPeriodoLetivoManual(): Promise<void>;
 
 }

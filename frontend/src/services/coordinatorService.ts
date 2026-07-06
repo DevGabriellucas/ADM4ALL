@@ -3,9 +3,7 @@
 // nunca por componentes "use client".
 import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
-  coordinatorProcessesMock,
-  coordinatorSettingsMock,
-  coordinatorUsersMock,
+  coordinatorClassMaterialsMock,
 } from "@/mocks/coordinatorMock";
 import {
   ApiError,
@@ -15,7 +13,6 @@ import {
 } from "@/services/apiClient";
 import type {
   AttendanceSummary,
-  BaseUser,
   CertificateDetail,
   CertificateRecord,
   ClassGroup,
@@ -24,13 +21,11 @@ import type {
   CoordinatorReportData,
   CoordinatorReportFilters,
   CoordinatorReportType,
-  CoordinatorSettings,
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
   Instructor,
   Lesson,
-  ProcessRecord,
   Student,
   StudentDetail,
   StudentEnrollmentCreated,
@@ -38,9 +33,9 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// MOCK TEMPORARIO: processos, usuarios e configuracoes ainda nao tem backend.
-// Dashboard, cursos, instrutores, alunos, turmas, cronograma, materiais,
-// frequencia, certificados e relatorios consultam a API real.
+// Mock temporario: materiais da turma ainda nao possuem backend real.
+// Dashboard, cursos, instrutores, alunos, turmas, frequencia,
+// certificados, relatorios e cronograma consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -771,10 +766,6 @@ export const cancelCertificate = async (
   );
 };
 
-export const getProcesses = async (): Promise<ProcessRecord[]> => {
-  return coordinatorProcessesMock;
-};
-
 export const getReports = async (): Promise<CoordinatorReportData[]> => {
   const resposta = await authenticatedRequest<{
     relatorios: CoordinatorReportData[];
@@ -802,13 +793,4 @@ export const exportReport = async (
     `/coordenador/relatorios/${type}/${format}${query ? `?${query}` : ""}`,
     `Falha ao gerar o relatório em ${format === "pdf" ? "PDF" : "CSV"}.`,
   );
-};
-
-export const getCoordinatorSettings =
-  async (): Promise<CoordinatorSettings> => {
-    return coordinatorSettingsMock;
-  };
-
-export const getUsers = async (): Promise<BaseUser[]> => {
-  return coordinatorUsersMock;
 };

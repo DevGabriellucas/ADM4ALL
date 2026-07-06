@@ -786,6 +786,32 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/periodo-letivo",
+      this.exigirPerfis(["coordenador", "admin", "instrutor", "aluno"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const periodo =
+          await this.coordenadorUseCase.obterPeriodoLetivo();
+        res.json(periodo);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/periodo-letivo",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { periodoLetivo } = req.body ?? {};
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        const periodo =
+          await this.coordenadorUseCase.atualizarPeriodoLetivo(
+            periodoLetivo,
+            usuario.sub,
+          );
+        res.json(periodo);
+      }),
+    );
+
+    this.app.get(
       "/coordenador/relatorios",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {

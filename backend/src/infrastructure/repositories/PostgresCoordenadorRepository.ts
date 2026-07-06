@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { calcularPeriodoLetivoAtual } from "../../application/utils/calcularPeriodoLetivo";
 import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
@@ -24,6 +25,7 @@ import {
   MatriculaCriada,
   MatriculaEncontrada,
   MatriculaStatusAtualizado,
+  PeriodoLetivoResponse,
   RelatorioCoordenador,
   ReportDataRow,
   TurmaDetalhe,
@@ -1610,5 +1612,93 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       data: linha.data_aula,
       status: linha.status,
     };
+  }
+
+  async buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse> {
+    const CHAVE = "periodo_letivo_atual";
+
+    try {
+      const resultado = await this.db.query(
+        `SELECT chave, valor, descricao,
+                to_char(atualizado_em, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS atualizado_em,
+                atualizado_por_id
+           FROM configuracoes_sistema
+          WHERE chave = $1
+          LIMIT 1`,
+        [CHAVE],
+      );
+
+      const linha = resultado.rows[0];
+
+      if (!linha) {
+        return {
+          periodoLetivo: calcularPeriodoLetivoAtual(),
+          origem: "automatico",
+          atualizadoEm: null,
+          atualizadoPor: null,
+        };
+      }
+
+      let atualizadoPorNome: string | null = null;
+      if (linha.atualizado_por_id) {
+        const usuarioRes = await this.db.query(
+          `SELECT nome FROM usuarios WHERE id = $1 LIMIT 1`,
+          [linha.atualizado_por_id],
+        );
+        atualizadoPorNome = usuarioRes.rows[0]?.nome ?? null;
+      }
+
+      return {
+        periodoLetivo: linha.valor,
+        origem: "manual",
+        atualizadoEm: linha.atualizado_em ?? null,
+        atualizadoPor: atualizadoPorNome,
+      };
+    } catch {
+      return {
+        periodoLetivo: calcularPeriodoLetivoAtual(),
+        origem: "automatico",
+        atualizadoEm: null,
+        atualizadoPor: null,
+      };
+    }
+  }
+
+  async salvarPeriodoLetivo(
+    periodoLetivo: string,
+    usuarioId: string,
+  ): Promise<PeriodoLetivoResponse> {
+    const CHAVE = "periodo_letivo_atual";
+
+    try {
+      await this.db.query(
+        `INSERT INTO configuracoes_sistema (chave, valor, descricao, atualizado_por_id, atualizado_em)
+         VALUES ($1, $2, 'Periodo letivo definido manualmente pelo coordenador.', $3, now())
+         ON CONFLICT (chave) DO UPDATE
+           SET valor = EXCLUDED.valor,
+               atualizado_por_id = EXCLUDED.atualizado_por_id,
+               atualizado_em = now()`,
+        [CHAVE, periodoLetivo, usuarioId],
+      );
+
+      return await this.buscarPeriodoLetivo();
+    } catch {
+      throw new Error(
+        "A tabela de configuracoes do sistema nao esta disponivel. Execute a migration 12-criar-configuracoes-sistema.sql no banco de dados.",
+      );
+    }
+  }
+
+  async excluirPeriodoLetivoManual(): Promise<void> {
+    const CHAVE = "periodo_letivo_atual";
+
+    try {
+      await this.db.query(
+        `DELETE FROM configuracoes_sistema WHERE chave = $1`,
+        [CHAVE],
+      );
+    } catch {
+      // Tabela nao existe = ja esta em modo automatico.
+    }
   }
 }

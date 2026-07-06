@@ -1,14 +1,25 @@
-import { ProcessesPageContent } from "@/components/coordenador/ProcessesPageContent";
+import Link from "next/link";
 import { BackButton } from "@/components/shared/BackButton";
-import { getProcesses, getUsers } from "@/services/coordinatorService";
 
-export default async function CoordinatorProcessesPage() {
-  const [processes, users] = await Promise.all([getProcesses(), getUsers()]);
-
+export default function CoordinatorProcessesPage() {
   return (
     <>
       <BackButton className="mb-4" />
-      <ProcessesPageContent processes={processes} users={users} />
+      <section className="flex flex-col items-center justify-center rounded-lg border border-[#D5DDEC] bg-white px-6 py-16 text-center shadow-sm">
+        <h1 className="font-semibold text-xl text-slate-950">
+          Funcionalidade em desenvolvimento
+        </h1>
+        <p className="mt-3 max-w-lg text-slate-600 text-sm leading-relaxed">
+          A gestão de processos administrativos está planejada para evolução do
+          sistema.
+        </p>
+        <Link
+          href="/coordenador/dashboard"
+          className="mt-6 inline-flex cursor-pointer items-center gap-x-2 rounded-lg bg-brand-dark px-4 py-2.5 font-semibold text-sm text-white transition-colors hover:bg-[#23275F]"
+        >
+          Voltar ao dashboard
+        </Link>
+      </section>
     </>
   );
 }

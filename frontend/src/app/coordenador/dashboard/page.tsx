@@ -1,33 +1,25 @@
+import Link from "next/link";
 import { AttentionStudentsTable } from "@/components/coordenador/AttentionStudentsTable";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { DashboardInfoCard } from "@/components/coordenador/DashboardInfoCard";
-import { UpcomingLessonsList } from "@/components/coordenador/UpcomingLessonsList";
+import { PeriodoLetivoEditor } from "@/components/coordenador/PeriodoLetivoEditor";
 import {
   getAttendanceSummary,
   getCertificates,
   getClasses,
   getDashboardSummary,
-  getLessons,
-  getProcesses,
 } from "@/services/coordinatorService";
-import { getLessonScheduleStatus } from "@/utils/getLessonScheduleStatus";
+import { getPeriodoLetivo } from "@/services/periodoLetivoService";
 
 export default async function CoordinatorDashboardPage() {
-  const [
-    summary,
-    classes,
-    attendanceSummary,
-    lessons,
-    certificates,
-    processes,
-  ] = await Promise.all([
-    getDashboardSummary(),
-    getClasses(),
-    getAttendanceSummary(),
-    getLessons(),
-    getCertificates(),
-    getProcesses(),
-  ]);
+  const [summary, classes, attendanceSummary, certificates, periodo] =
+    await Promise.all([
+      getDashboardSummary(),
+      getClasses(),
+      getAttendanceSummary(),
+      getCertificates(),
+      getPeriodoLetivo(),
+    ]);
 
   const activeClasses = classes.filter(
     (classGroup) => classGroup.status === "em_andamento",
@@ -38,12 +30,6 @@ export default async function CoordinatorDashboardPage() {
   const attentionStudents = attendanceSummary.filter(
     (student) => student.situacao !== "regular",
   );
-  const upcomingLessons = lessons
-    .filter((lesson) => getLessonScheduleStatus(lesson) === "proxima")
-    .slice(0, 4);
-  const processesInProgress = processes.filter(
-    (process) => process.status === "em_analise",
-  ).length;
 
   return (
     <>
@@ -58,10 +44,7 @@ export default async function CoordinatorDashboardPage() {
         </div>
 
         <div className="rounded-lg bg-brand-light/80 px-5 py-4 text-center text-slate-950">
-          <p className="font-semibold text-xs uppercase tracking-[0.35em]">
-            Período letivo
-          </p>
-          <p className="mt-1 font-medium text-sm sm:text-base">2026.1</p>
+          <PeriodoLetivoEditor periodoInicial={periodo.periodoLetivo} />
         </div>
       </section>
 
@@ -95,45 +78,53 @@ export default async function CoordinatorDashboardPage() {
         />
       </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(22rem,0.8fr)]">
+      <section aria-label="Alunos em atenção">
         <AttentionStudentsTable students={attentionStudents} />
-        <UpcomingLessonsList lessons={upcomingLessons} />
-      </div>
+      </section>
 
       <section
         aria-label="Resumo operacional"
-        className="grid grid-cols-1 gap-4 md:grid-cols-3"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2"
       >
         <DashboardInfoCard
           title="Ativações pendentes"
           value={summary.usuariosPendentes}
           description="Usuários aguardando liberação para acessar o sistema."
         />
-        <DashboardInfoCard
-          title="Processos em andamento"
-          value={processesInProgress}
-          description={`${summary.processosAbertos} processos ainda estão abertos.`}
-        />
         <article className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
           <p className="font-semibold text-slate-900 text-sm tracking-[0.18em]">
             Relatórios recentes
           </p>
 
-          <div className="mt-4 flex flex-col gap-y-3">
-            {summary.relatorios.slice(0, 3).map((report) => (
-              <div
-                key={report.id}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+          {summary.relatorios.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-y-3">
+              {summary.relatorios.slice(0, 3).map((report) => (
+                <div
+                  key={report.id}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                >
+                  <p className="font-semibold text-slate-900 text-sm">
+                    {report.titulo}
+                  </p>
+                  <p className="mt-1 text-slate-500 text-xs leading-5">
+                    {report.descricao}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+              <p className="text-slate-500 text-sm">
+                Nenhum relatório gerado ainda.
+              </p>
+              <Link
+                href="/coordenador/relatorios"
+                className="mt-2 inline-block cursor-pointer font-semibold text-brand-dark text-sm underline transition-colors hover:text-[#23275F]"
               >
-                <p className="font-semibold text-slate-900 text-sm">
-                  {report.titulo}
-                </p>
-                <p className="mt-1 text-slate-500 text-xs leading-5">
-                  {report.descricao}
-                </p>
-              </div>
-            ))}
-          </div>
+                Ir para relatórios
+              </Link>
+            </div>
+          )}
         </article>
       </section>
     </>
