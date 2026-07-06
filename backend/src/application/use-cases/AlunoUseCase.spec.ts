@@ -37,10 +37,14 @@ describe("AlunoUseCase", () => {
       redefinirSenhaUsuario: jest.fn(),
       buscarUsuarioIdPorAlunoId: jest.fn(),
       buscarDashboardPorAlunoId: jest.fn(),
+<<<<<<< Updated upstream
       listarMateriaisVisiveisPorAluno: jest.fn(),
       buscarMaterialVisivelParaDownload: jest.fn(),
       buscarCertificadoEmitidoPorAlunoId: jest.fn(),
       atualizarUrlArquivoCertificado: jest.fn(),
+=======
+      listarMateriaisVisiveis: jest.fn(),
+>>>>>>> Stashed changes
     };
     mockEmailService = {
       enviar: jest.fn(),

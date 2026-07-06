@@ -245,14 +245,14 @@ VALUES
     ),
     (
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
-        'Excel Basico',
-        'Planilhas, formulas simples e organizacao de dados.',
+        'Assistente Contábil',
+        'Rotinas contábeis, documentos fiscais e apoio ao setor financeiro.',
         20
     ),
     (
         '2f9a746b-70dc-4261-b150-2ec16d2b842c',
-        'Power BI',
-        'Introducao a paineis, indicadores e visualizacao de dados.',
+        'RH',
+        'Rotinas de recursos humanos, admissão, documentos e atendimento.',
         30
     )
 ON CONFLICT (nome) DO NOTHING;
@@ -323,6 +323,26 @@ VALUES
         30,
         '2026-02-03',
         '2026-03-20'
+    ),
+    (
+        '8ec26641-b923-4475-9675-d12480b3b438',
+        'f765e463-5eaf-4bbf-84ee-c8a78872114a',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        'em_andamento',
+        0,
+        '2026-03-02',
+        NULL
+    ),
+    (
+        '9826e53a-847c-409c-b457-c189ed5cf4f6',
+        '3aa75cc6-8a7d-43a9-8b5d-e25cf9b527ae',
+        '524963bc-e82c-447f-8e6f-7fd567f99e87',
+        'df349e38-0e92-4971-b67b-2deb56b90c7b',
+        'em_andamento',
+        0,
+        '2026-03-02',
+        NULL
     )
 ON CONFLICT (aluno_id, treinamento_id) DO NOTHING;
 

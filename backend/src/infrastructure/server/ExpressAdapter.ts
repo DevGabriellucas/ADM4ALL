@@ -266,7 +266,7 @@ export class ExpressAdapter {
           cursoUnipe,
         } = req.body;
 
-        const aluno = await this.alunoUseCase.cadastrar({
+        const cadastro = await this.alunoUseCase.cadastrar({
           nome,
           cpf,
           telefone,
@@ -278,13 +278,39 @@ export class ExpressAdapter {
           rgm,
           cursoUnipe,
         });
+        const deveExporLinkAtivacao =
+          !cadastro.emailEnviado &&
+          (process.env.NODE_ENV !== "production" ||
+            process.env.EXPOSE_ACTIVATION_LINK === "true");
 
         res.status(201).json({
-          id: aluno.id,
-          nome: aluno.nome,
-          mensagem:
-            "Cadastro realizado. Verifique seu e-mail para ativar sua conta.",
+          id: cadastro.aluno.id,
+          nome: cadastro.aluno.nome,
+          mensagem: cadastro.emailEnviado
+            ? "Cadastro realizado. Verifique seu e-mail para ativar sua conta."
+            : "Cadastro realizado, mas nao foi possivel enviar o e-mail de ativacao. Use o link abaixo para ativar a conta.",
+          emailEnviado: cadastro.emailEnviado,
+          linkAtivacao: deveExporLinkAtivacao
+            ? cadastro.linkAtivacao
+            : undefined,
         });
+      }),
+    );
+
+    this.app.get(
+      "/treinamentos/publicos",
+      asyncHandler(async (_req: Request, res: Response) => {
+        const cursos = await this.coordenadorUseCase.listarCursos();
+        const cursosAtivos = cursos
+          .filter((curso) => curso.status !== "encerrado")
+          .map((curso) => ({
+            id: curso.id,
+            nome: curso.nome,
+            descricao: curso.descricao,
+            cargaHoraria: curso.cargaHoraria,
+          }));
+
+        res.status(200).json(cursosAtivos);
       }),
     );
 
@@ -354,7 +380,11 @@ export class ExpressAdapter {
           );
         }
 
+<<<<<<< Updated upstream
         const materiais = await this.alunoUseCase.listarMateriais(
+=======
+        const materiais = await this.alunoUseCase.listarMateriaisVisiveis(
+>>>>>>> Stashed changes
           usuario.alunoId,
         );
         res.json({ materiais });
@@ -362,6 +392,7 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+<<<<<<< Updated upstream
       "/alunos/me/materiais/:materialId/download",
       this.exigirPerfis(["aluno"]),
       asyncHandler(async (req: Request, res: Response) => {
@@ -450,6 +481,8 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+=======
+>>>>>>> Stashed changes
       "/alunos",
       this.exigirApiKey,
       asyncHandler(async (_req: Request, res: Response) => {
@@ -560,8 +593,17 @@ export class ExpressAdapter {
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { turmaId } = req.params;
-        const { titulo, tipo, urlArquivo, tamanhoBytes, publicadoPorId, arquivo } =
-          req.body;
+        const {
+          titulo,
+          descricao,
+          tipo,
+          urlArquivo,
+          tamanhoBytes,
+          publicadoPorId,
+          arquivo,
+          aulaId,
+          visibilidade,
+        } = req.body;
         const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!turmaId || typeof turmaId !== "string") {
@@ -580,13 +622,40 @@ export class ExpressAdapter {
         const material = await this.instrutorUseCase.adicionarMaterial({
           turmaId,
           titulo,
+          descricao,
           tipo,
           urlArquivo: arquivoSalvo.urlArquivo ?? urlArquivo,
           tamanhoBytes: arquivoSalvo.tamanhoBytes ?? tamanhoBytes,
           publicadoPorId: publicadoPorId ?? usuario.sub,
+          aulaId: aulaId ?? null,
+          visibilidade: visibilidade ?? "visivel",
         });
 
         res.status(201).json(material);
+      }),
+    );
+
+    this.app.get(
+      "/turmas/:turmaId/materiais",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const materiais =
+          await this.instrutorUseCase.listarMateriaisTurma(turmaId);
+        res.json({ materiais });
       }),
     );
 
@@ -1000,6 +1069,39 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.patch(
+      "/turmas/:turmaId/materiais/:materialId",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, materialId } = req.params as {
+          turmaId: string;
+          materialId: string;
+        };
+        const { visibilidade } = req.body ?? {};
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !materialId) {
+          throw new BadRequestError("Turma e material sao obrigatorios.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const material =
+          await this.instrutorUseCase.atualizarMaterialVisibilidade(
+            materialId,
+            turmaId,
+            visibilidade,
+          );
+
+        res.status(200).json(material);
+      }),
+    );
+
     this.app.post(
       "/turmas/:turmaId/aulas",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
@@ -1055,6 +1157,42 @@ export class ExpressAdapter {
         await this.instrutorUseCase.removerAula(aulaId, turmaId);
 
         res.status(200).json({ mensagem: "Aula removida com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/turmas/:turmaId/aulas/:aulaId",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, aulaId } = req.params as {
+          turmaId: string;
+          aulaId: string;
+        };
+        const { titulo, data, horaInicio, horaFim, status } = req.body ?? {};
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !aulaId) {
+          throw new BadRequestError("Turma e aula sao obrigatorias.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const aula = await this.instrutorUseCase.atualizarAula({
+          turmaId,
+          aulaId,
+          titulo,
+          data,
+          horaInicio,
+          horaFim,
+          status,
+        });
+
+        res.status(200).json(aula);
       }),
     );
 

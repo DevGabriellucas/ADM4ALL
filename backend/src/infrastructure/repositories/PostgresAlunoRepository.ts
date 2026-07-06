@@ -3,9 +3,13 @@ import { Aluno } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
+<<<<<<< Updated upstream
   CertificadoEmitidoDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
+=======
+  MaterialVisivelAluno,
+>>>>>>> Stashed changes
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
   UsuarioRecuperacaoSenha,
@@ -13,6 +17,7 @@ import {
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { BadRequestError } from "../errors/BadRequestError";
 
 export class PostgresAlunoRepository implements AlunoRepository {
   constructor(private db: Pool) {}
@@ -169,6 +174,52 @@ export class PostgresAlunoRepository implements AlunoRepository {
     };
   }
 
+  async listarMateriaisVisiveis(
+    alunoId: string,
+  ): Promise<MaterialVisivelAluno[]> {
+    const query = `
+      SELECT
+        mat.id,
+        t.id AS turma_id,
+        t.nome AS turma,
+        tr.nome AS curso,
+        au.id AS aula_id,
+        au.titulo AS aula_titulo,
+        mat.titulo,
+        mat.descricao,
+        mat.tipo,
+        mat.url_arquivo,
+        mat.tamanho_bytes,
+        to_char(mat.data_publicacao, 'YYYY-MM-DD') AS data_publicacao
+      FROM matriculas m
+      JOIN turmas t ON t.id = m.turma_id
+      JOIN treinamentos tr ON tr.id = t.treinamento_id
+      JOIN materiais mat ON mat.turma_id = t.id
+      LEFT JOIN aulas au ON au.id = mat.aula_id
+      WHERE m.aluno_id = $1
+        AND m.status <> 'cancelado'
+        AND mat.status = 'ativo'
+        AND mat.visibilidade = 'visivel'
+      ORDER BY mat.data_publicacao DESC, mat.titulo ASC
+    `;
+    const resultado = await this.db.query(query, [alunoId]);
+
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      turmaId: linha.turma_id,
+      turma: linha.turma,
+      curso: linha.curso,
+      aulaId: linha.aula_id ?? null,
+      aulaTitulo: linha.aula_titulo ?? null,
+      titulo: linha.titulo,
+      descricao: linha.descricao ?? null,
+      tipo: linha.tipo,
+      urlArquivo: linha.url_arquivo ?? null,
+      tamanhoBytes: linha.tamanho_bytes ?? null,
+      dataPublicacao: linha.data_publicacao,
+    }));
+  }
+
   async buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null> {
     const query = `
       SELECT id, nome, email
@@ -274,8 +325,27 @@ export class PostgresAlunoRepository implements AlunoRepository {
       }
 
       await client.query("COMMIT");
-    } catch (error) {
+    } catch (error: any) {
       await client.query("ROLLBACK");
+
+      if (error?.code === "23505") {
+        const constraint = String(error.constraint ?? "");
+
+        if (constraint.includes("rgm")) {
+          throw new BadRequestError("Ja existe um aluno cadastrado com este RGM.");
+        }
+
+        if (constraint.includes("cpf")) {
+          throw new BadRequestError("Ja existe um aluno cadastrado com este CPF.");
+        }
+
+        if (constraint.includes("email")) {
+          throw new BadRequestError(
+            "Ja existe um aluno cadastrado com este e-mail.",
+          );
+        }
+      }
+
       throw error;
     } finally {
       client.release();
@@ -327,6 +397,52 @@ export class PostgresAlunoRepository implements AlunoRepository {
         aluno.cursoUnipe ?? null,
       ]);
 
+      const referenciaTreinamento = await client.query(
+        `
+          SELECT
+            tr.id AS treinamento_id,
+            turma_disponivel.id AS turma_id
+          FROM treinamentos tr
+          LEFT JOIN LATERAL (
+            SELECT t.id
+            FROM turmas t
+            WHERE t.treinamento_id = tr.id
+              AND t.status IN ('planejada', 'em_andamento')
+              AND (
+                SELECT COUNT(*)
+                FROM matriculas m
+                WHERE m.turma_id = t.id
+                  AND m.status <> 'cancelado'
+              ) < t.capacidade
+            ORDER BY
+              CASE t.status WHEN 'em_andamento' THEN 0 ELSE 1 END,
+              t.data_inicio ASC
+            LIMIT 1
+          ) turma_disponivel ON TRUE
+          WHERE tr.nome = $1
+            AND tr.ativo = TRUE
+            AND tr.status <> 'encerrado'
+          LIMIT 1
+        `,
+        [aluno.treinamento],
+      );
+
+      const referencia = referenciaTreinamento.rows[0];
+
+      if (!referencia) {
+        throw new BadRequestError("Treinamento selecionado nao esta disponivel.");
+      }
+
+      await client.query(
+        `
+          INSERT INTO matriculas (
+            aluno_id, treinamento_id, turma_id, status, progresso
+          )
+          VALUES ($1, $2, $3, 'em_andamento', 0)
+        `,
+        [aluno.id, referencia.treinamento_id, referencia.turma_id ?? null],
+      );
+
       const resultado = await client.query(
         `${this.selecionarAluno} WHERE a.id = $1`,
         [aluno.id],
@@ -334,8 +450,30 @@ export class PostgresAlunoRepository implements AlunoRepository {
 
       await client.query("COMMIT");
       return this.mapearLinhaParaAluno(resultado.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       await client.query("ROLLBACK");
+
+      if (error?.code === "23505") {
+        const constraint = String(error.constraint ?? "");
+        const detail = String(error.detail ?? "");
+
+        if (constraint.includes("rgm") || detail.includes("(rgm)=")) {
+          throw new BadRequestError(
+            "Este RGM ja existe. Informe outro RGM para continuar.",
+          );
+        }
+
+        if (constraint.includes("cpf") || detail.includes("(cpf)=")) {
+          throw new BadRequestError("Ja existe um aluno cadastrado com este CPF.");
+        }
+
+        if (constraint.includes("email") || detail.includes("(email)=")) {
+          throw new BadRequestError(
+            "Ja existe um aluno cadastrado com este e-mail.",
+          );
+        }
+      }
+
       throw error;
     } finally {
       client.release();

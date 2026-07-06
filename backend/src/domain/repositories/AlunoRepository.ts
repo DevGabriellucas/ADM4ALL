@@ -40,6 +40,7 @@ export interface AlunoDashboard {
   certificadoUrl: string | null;
 }
 
+<<<<<<< Updated upstream
 export interface CertificadoEmitidoDoAluno {
   certificadoId: string;
   codigo: string | null;
@@ -74,6 +75,21 @@ export interface MaterialAlunoDownload {
   urlArquivo: string | null;
   turmaId: string;
   turmaNome: string;
+=======
+export interface MaterialVisivelAluno {
+  id: string;
+  turmaId: string;
+  turma: string;
+  curso: string;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  titulo: string;
+  descricao: string | null;
+  tipo: string;
+  urlArquivo: string | null;
+  tamanhoBytes: number | null;
+  dataPublicacao: string;
+>>>>>>> Stashed changes
 }
 
 export interface AlunoRepository {
@@ -88,6 +104,7 @@ export interface AlunoRepository {
   registrarRecuperacaoSenha(dados: RegistrarRecuperacaoSenhaInput): Promise<void>;
   buscarRecuperacaoValidaPorTokenHash(tokenHash: string): Promise<RecuperacaoSenhaValida | null>;
   buscarDashboardPorAlunoId(alunoId: string): Promise<AlunoDashboard | null>;
+  listarMateriaisVisiveis(alunoId: string): Promise<MaterialVisivelAluno[]>;
   redefinirSenhaUsuario(
     usuarioId: string,
     novaSenhaHash: string,

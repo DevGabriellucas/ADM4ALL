@@ -28,6 +28,7 @@ const emailService = new EmailService(
   process.env.GMAIL_APP_PASSWORD ?? process.env.EMAIL_PASS ?? "",
   process.env.EMAIL_HOST,
   process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : undefined,
+  process.env.EMAIL_TLS_REJECT_UNAUTHORIZED !== "false",
 );
 
 const authUseCase = new AuthUseCase(authRepository, jwtService);
@@ -37,7 +38,7 @@ const alunoUseCase = new AlunoUseCase(
   emailService,
   activationUseCase,
 );
-const instrutorUseCase = new InstrutorUseCase(instrutorRepository);
+const instrutorUseCase = new InstrutorUseCase(instrutorRepository, emailService);
 const coordenadorUseCase = new CoordenadorUseCase(
   coordenadorRepository,
   emailService,

@@ -4,6 +4,9 @@ import {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  AlunoNotificacaoAula,
+  AtualizarAulaInput,
+  AulaDetalheNotificacao,
   AulaResumo,
   InstrutorDashboard,
   InstrutorRepository,
@@ -45,7 +48,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         this.buscarAulaReferencia(turma.id),
         this.buscarProximaAula(turma.id),
         this.listarCronograma(turma.id),
-        this.listarMateriais(turma.id),
+        this.listarMateriaisTurma(turma.id),
         this.calcularFrequenciaMedia(turma.id),
       ]);
 
@@ -182,18 +185,23 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     return resultado.rows.map((linha) => this.mapearAula(linha)!);
   }
 
-  private async listarMateriais(turmaId: string): Promise<MaterialResumo[]> {
+  async listarMateriaisTurma(turmaId: string): Promise<MaterialResumo[]> {
     const query = `
       SELECT
-        id,
-        titulo,
-        tipo,
-        tamanho_bytes,
-        to_char(data_publicacao, 'YYYY-MM-DD') AS data_publicacao,
-        url_arquivo
-      FROM materiais
-      WHERE turma_id = $1 AND status = 'ativo'
-      ORDER BY data_publicacao ASC
+        m.id,
+        m.titulo,
+        m.descricao,
+        m.tipo,
+        m.tamanho_bytes,
+        to_char(m.data_publicacao, 'YYYY-MM-DD') AS data_publicacao,
+        m.url_arquivo,
+        m.aula_id,
+        m.visibilidade,
+        a.titulo AS aula_titulo
+      FROM materiais m
+      LEFT JOIN aulas a ON a.id = m.aula_id
+      WHERE m.turma_id = $1 AND m.status = 'ativo'
+      ORDER BY m.data_publicacao ASC
     `;
     const resultado = await this.db.query(query, [turmaId]);
     return resultado.rows.map((linha) => this.mapearMaterial(linha));
@@ -209,13 +217,28 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         a.id AS aluno_id,
         u.nome,
         f.presente,
-        f.observacao
+        f.observacao,
+        COALESCE(freq.presencas, 0) AS presencas,
+        COALESCE(freq.faltas, 0) AS faltas,
+        COALESCE(freq.aulas_registradas, 0) AS aulas_registradas,
+        CASE
+          WHEN COALESCE(freq.aulas_registradas, 0) = 0 THEN 0
+          ELSE ROUND((freq.presencas::numeric / freq.aulas_registradas::numeric) * 100)
+        END AS frequencia
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
       JOIN usuarios u ON u.id = a.usuario_id
       LEFT JOIN frequencias f
         ON f.matricula_id = m.id
        AND f.aula_id = $2
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) FILTER (WHERE f2.presente) AS presencas,
+          COUNT(*) FILTER (WHERE NOT f2.presente) AS faltas,
+          COUNT(*) AS aulas_registradas
+        FROM frequencias f2
+        WHERE f2.matricula_id = m.id
+      ) freq ON TRUE
       WHERE m.turma_id = $1
       ORDER BY u.nome ASC
     `;
@@ -226,6 +249,10 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       alunoId: linha.aluno_id,
       nome: linha.nome,
       statusPresenca: this.mapearStatusPresenca(linha.presente, linha.observacao),
+      presencas: Number(linha.presencas),
+      faltas: Number(linha.faltas),
+      aulasRegistradas: Number(linha.aulas_registradas),
+      frequencia: Number(linha.frequencia),
     }));
   }
 
@@ -303,25 +330,48 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
   async adicionarMaterial(
     input: AdicionarMaterialInput,
   ): Promise<MaterialResumo> {
+    if (input.aulaId) {
+      const aulaResultado = await this.db.query(
+        "SELECT 1 FROM aulas WHERE id = $1 AND turma_id = $2 LIMIT 1",
+        [input.aulaId, input.turmaId],
+      );
+
+      if (!aulaResultado.rows[0]) {
+        throw new BadRequestError("Aula nao encontrada para esta turma.");
+      }
+    }
+
     const query = `
-      INSERT INTO materiais (turma_id, publicado_por_id, titulo, tipo, url_arquivo, tamanho_bytes)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO materiais (
+        turma_id, aula_id, publicado_por_id, titulo, descricao,
+        tipo, url_arquivo, tamanho_bytes, visibilidade
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING
         id,
         titulo,
+        descricao,
         tipo,
         tamanho_bytes,
         to_char(data_publicacao, 'YYYY-MM-DD') AS data_publicacao,
-        url_arquivo
+        url_arquivo,
+        aula_id,
+        visibilidade,
+        (
+          SELECT titulo FROM aulas WHERE aulas.id = materiais.aula_id
+        ) AS aula_titulo
     `;
 
     const resultado = await this.db.query(query, [
       input.turmaId,
+      input.aulaId ?? null,
       input.publicadoPorId ?? null,
       input.titulo,
+      input.descricao ?? null,
       input.tipo,
       input.urlArquivo ?? null,
       input.tamanhoBytes ?? null,
+      input.visibilidade ?? "visivel",
     ]);
 
     return this.mapearMaterial(resultado.rows[0]);
@@ -338,6 +388,41 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     if (resultado.rowCount === 0) {
       throw new BadRequestError("Material nao encontrado para esta turma.");
     }
+  }
+
+  async atualizarMaterialVisibilidade(
+    materialId: string,
+    turmaId: string,
+    visibilidade: "visivel" | "oculto",
+  ): Promise<MaterialResumo> {
+    const resultado = await this.db.query(
+      `
+      UPDATE materiais
+      SET visibilidade = $1
+      WHERE id = $2 AND turma_id = $3 AND status = 'ativo'
+      RETURNING
+        id,
+        titulo,
+        descricao,
+        tipo,
+        tamanho_bytes,
+        to_char(data_publicacao, 'YYYY-MM-DD') AS data_publicacao,
+        url_arquivo,
+        aula_id,
+        visibilidade,
+        (
+          SELECT titulo FROM aulas WHERE aulas.id = materiais.aula_id
+        ) AS aula_titulo
+      `,
+      [visibilidade, materialId, turmaId],
+    );
+
+    const material = resultado.rows[0];
+    if (!material) {
+      throw new BadRequestError("Material nao encontrado para esta turma.");
+    }
+
+    return this.mapearMaterial(material);
   }
 
   async adicionarAula(input: AdicionarAulaInput): Promise<AulaResumo> {
@@ -367,6 +452,71 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     }
   }
 
+  async buscarAulaParaNotificacao(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<AulaDetalheNotificacao | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        a.id,
+        a.numero_aula,
+        a.titulo,
+        to_char(a.data_aula, 'YYYY-MM-DD') AS data_aula,
+        a.status,
+        t.id AS turma_id,
+        t.nome AS turma,
+        tr.nome AS curso
+      FROM aulas a
+      JOIN turmas t ON t.id = a.turma_id
+      JOIN treinamentos tr ON tr.id = t.treinamento_id
+      WHERE a.id = $1 AND a.turma_id = $2
+      LIMIT 1
+      `,
+      [aulaId, turmaId],
+    );
+
+    const aula = this.mapearAula(resultado.rows[0]);
+    if (!aula) {
+      return null;
+    }
+
+    return {
+      ...aula,
+      turmaId: resultado.rows[0].turma_id,
+      turma: resultado.rows[0].turma,
+      curso: resultado.rows[0].curso,
+    };
+  }
+
+  async listarAlunosParaNotificacaoAula(
+    turmaId: string,
+  ): Promise<AlunoNotificacaoAula[]> {
+    const resultado = await this.db.query(
+      `
+      SELECT DISTINCT
+        a.id AS aluno_id,
+        u.nome,
+        u.email
+      FROM matriculas m
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      WHERE m.turma_id = $1
+        AND m.status <> 'cancelado'
+        AND u.status = 'ativo'
+        AND u.email IS NOT NULL
+      ORDER BY u.nome ASC
+      `,
+      [turmaId],
+    );
+
+    return resultado.rows.map((linha) => ({
+      alunoId: linha.aluno_id,
+      nome: linha.nome,
+      email: linha.email,
+    }));
+  }
+
   async removerAula(aulaId: string, turmaId: string): Promise<void> {
     const frequenciasResultado = await this.db.query(
       "SELECT 1 FROM frequencias WHERE aula_id = $1 LIMIT 1",
@@ -386,6 +536,54 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
 
     if (resultado.rowCount === 0) {
       throw new BadRequestError("Aula nao encontrada para esta turma.");
+    }
+  }
+
+  async atualizarAula(input: AtualizarAulaInput): Promise<AulaResumo> {
+    const campos: string[] = [];
+    const valores: unknown[] = [];
+
+    const adicionarCampo = (sql: string, valor: unknown) => {
+      valores.push(valor);
+      campos.push(`${sql} = $${valores.length}`);
+    };
+
+    if (input.titulo !== undefined) adicionarCampo("titulo", input.titulo);
+    if (input.data !== undefined) adicionarCampo("data_aula", input.data);
+    if (input.horaInicio !== undefined) {
+      adicionarCampo("hora_inicio", input.horaInicio);
+    }
+    if (input.horaFim !== undefined) adicionarCampo("hora_fim", input.horaFim);
+    if (input.status !== undefined) adicionarCampo("status", input.status);
+
+    if (campos.length === 0) {
+      throw new BadRequestError("Informe ao menos um campo para atualizar.");
+    }
+
+    valores.push(input.aulaId, input.turmaId);
+
+    try {
+      const resultado = await this.db.query(
+        `
+        UPDATE aulas
+        SET ${campos.join(", ")}
+        WHERE id = $${valores.length - 1} AND turma_id = $${valores.length}
+        RETURNING id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+        `,
+        valores,
+      );
+
+      const aula = resultado.rows[0];
+      if (!aula) {
+        throw new BadRequestError("Aula nao encontrada para esta turma.");
+      }
+
+      return this.mapearAula(aula)!;
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new BadRequestError("Ja existe uma aula cadastrada para esta data.");
+      }
+      throw error;
     }
   }
 
@@ -430,10 +628,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     return {
       id: linha.id,
       titulo: linha.titulo,
+      descricao: linha.descricao ?? null,
       tipo: linha.tipo,
       tamanhoBytes: linha.tamanho_bytes ?? null,
       dataPublicacao: linha.data_publicacao,
       urlArquivo: linha.url_arquivo ?? null,
+      aulaId: linha.aula_id ?? null,
+      aulaTitulo: linha.aula_titulo ?? null,
+      visibilidade: linha.visibilidade ?? "visivel",
     };
   }
 

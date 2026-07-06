@@ -9,11 +9,16 @@ describe("InstrutorUseCase", () => {
   beforeEach(() => {
     mockInstrutorRepository = {
       buscarDashboard: jest.fn(),
+      listarMateriaisTurma: jest.fn(),
       turmaPertenceAoInstrutor: jest.fn(),
       registrarPresencas: jest.fn(),
       adicionarMaterial: jest.fn(),
       removerMaterial: jest.fn(),
+      atualizarMaterialVisibilidade: jest.fn(),
       adicionarAula: jest.fn(),
+      buscarAulaParaNotificacao: jest.fn(),
+      listarAlunosParaNotificacaoAula: jest.fn(),
+      atualizarAula: jest.fn(),
       removerAula: jest.fn(),
       buscarPresencasPorAula: jest.fn(),
       atualizarAvatar: jest.fn(),

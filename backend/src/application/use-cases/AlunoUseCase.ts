@@ -6,9 +6,13 @@ import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
+<<<<<<< Updated upstream
   CertificadoEmitidoDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
+=======
+  MaterialVisivelAluno,
+>>>>>>> Stashed changes
 } from "../../domain/repositories/AlunoRepository";
 import type { CertificadoAlunoDetalhe } from "../../domain/repositories/CoordenadorRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
@@ -32,6 +36,13 @@ export interface CadastrarAlunoInput {
   senha: string;
   treinamento: string;
   rgm?: string | undefined;
+}
+
+export interface CadastrarAlunoOutput {
+  aluno: Aluno;
+  linkAtivacao: string;
+  emailEnviado: boolean;
+  erroEnvioEmail?: string;
 }
 
 export interface AtualizarAlunoInput {
@@ -62,10 +73,11 @@ export class AlunoUseCase {
     private activationUseCase: ActivationUseCase,
   ) {}
 
-  async cadastrar(dados: CadastrarAlunoInput): Promise<Aluno> {
-    const cpfVo = new Cpf(dados.cpf);
-    const telefoneVo = new Telefone(dados.telefone);
-    const emailVo = new Email(dados.email);
+  async cadastrar(dados: CadastrarAlunoInput): Promise<CadastrarAlunoOutput> {
+    const dadosNormalizados = this.normalizarCadastro(dados);
+    const cpfVo = this.criarCpf(dadosNormalizados.cpf);
+    const telefoneVo = this.criarTelefone(dadosNormalizados.telefone);
+    const emailVo = this.criarEmail(dadosNormalizados.email);
     const dataNascimento = this.normalizarDataNascimento(dados.dataNascimento);
 
     const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
@@ -82,17 +94,17 @@ export class AlunoUseCase {
       );
     }
 
-    const senhaCriptografada = await this.criptografarSenha(dados.senha);
+    const senhaCriptografada = await this.criptografarSenha(
+      dadosNormalizados.senha,
+    );
 
     const novoAluno = new Aluno({
-      ...dados,
+      ...dadosNormalizados,
       cpf: cpfVo,
       telefone: telefoneVo,
       email: emailVo,
       dataNascimento,
       senha: senhaCriptografada,
-      rgm: dados.isAlunoUnipe ? dados.rgm : undefined,
-      cursoUnipe: dados.isAlunoUnipe ? dados.cursoUnipe : undefined,
     });
 
     const aluno = await this.alunoRepository.cadastrar(novoAluno);
@@ -112,6 +124,9 @@ export class AlunoUseCase {
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
 
+    let emailEnviado = true;
+    let erroEnvioEmail: string | undefined;
+
     try {
       await this.emailService.enviar(
         aluno.email,
@@ -122,10 +137,18 @@ export class AlunoUseCase {
          <p>Este link expira em 3 dias.</p>`,
       );
     } catch (error) {
+      emailEnviado = false;
+      erroEnvioEmail =
+        error instanceof Error ? error.message : "Falha ao enviar e-mail.";
       console.error("Falha ao enviar e-mail de ativacao:", error);
     }
 
-    return aluno;
+    return {
+      aluno,
+      linkAtivacao,
+      emailEnviado,
+      ...(erroEnvioEmail ? { erroEnvioEmail } : {}),
+    };
   }
 
   async listar(): Promise<Aluno[]> {
@@ -153,6 +176,7 @@ export class AlunoUseCase {
     return dashboard;
   }
 
+<<<<<<< Updated upstream
   async listarMateriais(alunoId: string): Promise<MaterialAluno[]> {
     return await this.alunoRepository.listarMateriaisVisiveisPorAluno(alunoId);
   }
@@ -257,6 +281,16 @@ export class AlunoUseCase {
     }
 
     return { buffer: pdf, nomeArquivo };
+=======
+  async listarMateriaisVisiveis(
+    alunoId: string,
+  ): Promise<MaterialVisivelAluno[]> {
+    if (!alunoId) {
+      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
+    }
+
+    return await this.alunoRepository.listarMateriaisVisiveis(alunoId);
+>>>>>>> Stashed changes
   }
 
   async atualizar(
@@ -415,6 +449,106 @@ export class AlunoUseCase {
     );
   }
 
+  private normalizarCadastro(
+    dados: CadastrarAlunoInput,
+  ): Omit<CadastrarAlunoInput, "dataNascimento"> & {
+    dataNascimento?: never;
+  } {
+    const isAlunoUnipe = dados.isAlunoUnipe === true;
+    const nome = this.normalizarTextoObrigatorio(dados.nome, "Nome");
+    const treinamento = this.normalizarTextoObrigatorio(
+      dados.treinamento,
+      "Treinamento",
+    );
+    const cpf = this.somenteDigitos(dados.cpf);
+    const telefone = this.somenteDigitos(dados.telefone);
+    const email = this.normalizarTextoObrigatorio(dados.email, "E-mail")
+      .toLowerCase();
+    const senha = dados.senha ?? "";
+
+    if (!cpf) {
+      throw new BadRequestError("CPF e obrigatorio.");
+    }
+
+    if (!telefone) {
+      throw new BadRequestError("Telefone e obrigatorio.");
+    }
+
+    const cursoUnipe = isAlunoUnipe
+      ? this.normalizarTextoObrigatorio(dados.cursoUnipe, "Curso UNIPE")
+      : undefined;
+    const rgm = isAlunoUnipe ? this.normalizarRgm(dados.rgm) : undefined;
+
+    return {
+      nome,
+      cpf,
+      telefone,
+      email,
+      isAlunoUnipe,
+      cursoUnipe,
+      senha,
+      treinamento,
+      rgm,
+    };
+  }
+
+  private normalizarTextoObrigatorio(
+    valor: string | undefined,
+    campo: string,
+  ): string {
+    const normalizado = valor?.trim();
+
+    if (!normalizado) {
+      throw new BadRequestError(`${campo} e obrigatorio.`);
+    }
+
+    return normalizado.replace(/\s+/g, " ");
+  }
+
+  private somenteDigitos(valor: string | undefined): string {
+    return (valor ?? "").replace(/\D/g, "");
+  }
+
+  private normalizarRgm(valor: string | undefined): string {
+    const rgm = this.somenteDigitos(valor);
+
+    if (!/^\d{8}$/.test(rgm)) {
+      throw new BadRequestError("RGM deve conter exatamente 8 digitos.");
+    }
+
+    return rgm;
+  }
+
+  private criarCpf(cpf: string): Cpf {
+    try {
+      return new Cpf(cpf);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "CPF invalido.",
+      );
+    }
+  }
+
+  private criarTelefone(telefone: string): Telefone {
+    try {
+      return new Telefone(telefone);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Telefone invalido.",
+      );
+    }
+  }
+
+  private criarEmail(email: string): Email {
+    try {
+      return new Email(email);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "E-mail invalido.",
+      );
+    }
+  }
+
   private normalizarDataNascimento(data: Date | string): Date {
     const dataNascimento = data instanceof Date ? data : new Date(data);
 
@@ -435,8 +569,14 @@ export class AlunoUseCase {
   }
 
   private async criptografarSenha(senha: string): Promise<string> {
-    if (!senha || senha.trim() === "") {
-      throw new BadRequestError("A senha e obrigatoria.");
+    if (!senha || senha.length < 8) {
+      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
+    }
+
+    if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+      throw new BadRequestError(
+        "A senha deve conter pelo menos uma letra e um numero.",
+      );
     }
 
     return await bcrypt.hash(senha, SALT_ROUNDS);
