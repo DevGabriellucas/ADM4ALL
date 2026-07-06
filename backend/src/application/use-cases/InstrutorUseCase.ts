@@ -321,7 +321,7 @@ export class InstrutorUseCase {
     const data = aulaAtualizada.data || aulaAnterior.data;
     const assunto = `Aula cancelada - ${titulo}`;
     const htmlPorAluno = (aluno: AlunoNotificacaoAula) => `
-      <p>Olá, ${escaparHtml(aluno.nome)}!</p>
+      <p>Ola, ${escaparHtml(aluno.nome)}!</p>
       <p>A aula abaixo foi cancelada:</p>
       <ul>
         <li><strong>Curso:</strong> ${escaparHtml(aulaAnterior.curso)}</li>
@@ -329,7 +329,7 @@ export class InstrutorUseCase {
         <li><strong>Aula:</strong> ${escaparHtml(titulo)}</li>
         <li><strong>Data:</strong> ${formatarDataPtBr(data)}</li>
       </ul>
-      <p>Fique atento ao cronograma da turma para acompanhar novas atualizações.</p>
+      <p>Fique atento ao cronograma da turma para acompanhar novas atualizacoes.</p>
       <p>ADM Para Todos</p>
     `;
 

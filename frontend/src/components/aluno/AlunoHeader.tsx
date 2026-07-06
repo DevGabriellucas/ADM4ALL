@@ -6,7 +6,7 @@ interface AlunoHeaderProps {
 }
 
 export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
-  const matricula = aluno.matricula ?? "Nao informada";
+  const matricula = aluno.matricula ?? "Não informada";
   const iniciais = aluno.nome
     .split(" ")
     .slice(0, 2)
@@ -24,12 +24,12 @@ export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
         {iniciais}
       </div>
 
-      <div className="flex flex-col items-start gap-y-2 text-left">
-        <h1 className="font-medium text-base tracking-[0.35em] sm:text-lg">
+      <div className="flex min-w-0 flex-col items-center gap-y-2 text-center sm:items-start sm:text-left">
+        <h1 className="break-words font-medium text-base tracking-[0.2em] sm:text-lg sm:tracking-[0.35em]">
           {aluno.nome}
         </h1>
-        <p className="text-xs tracking-[0.35em] sm:text-sm">
-          Matricula/RGM: {matricula}
+        <p className="text-xs tracking-[0.2em] sm:text-sm sm:tracking-[0.35em]">
+          Matrícula/RGM: {matricula}
         </p>
       </div>
 

@@ -1,24 +1,28 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   adicionarMaterialAction,
+  atualizarMaterialVisibilidadeAction,
   removerMaterialAction,
 } from "@/app/instrutor/actions";
-import type { MaterialResumo, TipoMaterial } from "@/types/instrutor";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import type { AulaResumo, MaterialResumo, TipoMaterial } from "@/types/instrutor";
 import { formatData, formatTamanho, formatTipoMaterial } from "@/utils/format";
 
 interface MateriaisPanelProps {
   turmaId: string;
   publicadoPorId: string | null;
   materiais: MaterialResumo[];
+  aulas: AulaResumo[];
 }
 
 type Feedback = { tipo: "ok" | "erro"; texto: string } | null;
 
 const TIPOS: { valor: TipoMaterial; label: string }[] = [
   { valor: "pdf", label: "PDF" },
-  { valor: "video", label: "Video" },
+  { valor: "video", label: "Vídeo" },
   { valor: "imagem", label: "Imagem" },
   { valor: "documento", label: "Documento" },
   { valor: "link", label: "Link" },
@@ -59,14 +63,13 @@ const EXTENSOES_POR_TIPO: Record<TipoMaterial, string[]> = {
 };
 
 const TAMANHO_MAXIMO_BYTES = 50 * 1024 * 1024;
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 const extensaoDoArquivo = (nome: string) =>
   nome.split(".").pop()?.toLowerCase() ?? "";
 
-const arquivoCompativel = (arquivo: File, tipoSelecionado: TipoMaterial) => {
-  const extensoesPermitidas = EXTENSOES_POR_TIPO[tipoSelecionado];
-  return extensoesPermitidas.includes(extensaoDoArquivo(arquivo.name));
-};
+const arquivoCompativel = (arquivo: File, tipoSelecionado: TipoMaterial) =>
+  EXTENSOES_POR_TIPO[tipoSelecionado].includes(extensaoDoArquivo(arquivo.name));
 
 const arquivoParaBase64 = (arquivo: File) =>
   new Promise<string>((resolve, reject) => {
@@ -79,21 +82,77 @@ const arquivoParaBase64 = (arquivo: File) =>
     leitor.readAsDataURL(arquivo);
   });
 
+const resolverUrlMaterial = (url: string | null) => {
+  if (!url) return null;
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+};
+
 export const MateriaisPanel = ({
   turmaId,
   publicadoPorId,
   materiais,
+  aulas,
 }: MateriaisPanelProps) => {
+  const router = useRouter();
+  const materiaisSeguros = Array.isArray(materiais) ? materiais : [];
+  const aulasSeguras = Array.isArray(aulas) ? aulas : [];
+  const arquivoInputRef = useRef<HTMLInputElement>(null);
+
   const [aberto, setAberto] = useState(false);
   const [titulo, setTitulo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [aulaId, setAulaId] = useState("");
+  const [visibilidade, setVisibilidade] = useState<"visivel" | "oculto">(
+    "visivel",
+  );
   const [tipo, setTipo] = useState<TipoMaterial>("pdf");
   const [url, setUrl] = useState("");
+  const [filtroAula, setFiltroAula] = useState("todos");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isPending, startTransition] = useTransition();
   const [removendoId, setRemovendoId] = useState<string | null>(null);
   const [isRemovendo, startRemocao] = useTransition();
-  const arquivoInputRef = useRef<HTMLInputElement>(null);
+  const [materialParaRemover, setMaterialParaRemover] =
+    useState<MaterialResumo | null>(null);
+  const [alternandoVisibilidadeId, setAlternandoVisibilidadeId] =
+    useState<string | null>(null);
+  const [isAlternandoVisibilidade, startAlternarVisibilidade] =
+    useTransition();
+
+  const materiaisFiltrados = useMemo(() => {
+    const ordenados = [...materiaisSeguros].sort((a, b) => {
+      const aulaA = a.aulaTitulo ?? "Material geral";
+      const aulaB = b.aulaTitulo ?? "Material geral";
+      const aulaComparacao = aulaA.localeCompare(aulaB);
+      return aulaComparacao !== 0
+        ? aulaComparacao
+        : b.dataPublicacao.localeCompare(a.dataPublicacao);
+    });
+
+    if (filtroAula === "todos") return ordenados;
+    if (filtroAula === "geral") {
+      return ordenados.filter((material) => !material.aulaId);
+    }
+    return ordenados.filter((material) => material.aulaId === filtroAula);
+  }, [filtroAula, materiaisSeguros]);
+
+  const totalVisiveis = materiaisSeguros.filter(
+    (material) => material.visibilidade === "visivel",
+  ).length;
+
+  const limparFormulario = () => {
+    setTitulo("");
+    setDescricao("");
+    setAulaId("");
+    setVisibilidade("visivel");
+    setUrl("");
+    setArquivo(null);
+    setTipo("pdf");
+    if (arquivoInputRef.current) {
+      arquivoInputRef.current.value = "";
+    }
+  };
 
   const enviar = () => {
     if (titulo.trim() === "") {
@@ -103,7 +162,7 @@ export const MateriaisPanel = ({
 
     startTransition(async () => {
       if (arquivo && arquivo.size > TAMANHO_MAXIMO_BYTES) {
-        setFeedback({ tipo: "erro", texto: "O arquivo deve ter ate 50MB." });
+        setFeedback({ tipo: "erro", texto: "O arquivo deve ter até 50 MB." });
         return;
       }
 
@@ -118,37 +177,53 @@ export const MateriaisPanel = ({
       const resultado = await adicionarMaterialAction({
         turmaId,
         titulo: titulo.trim(),
+        descricao: descricao.trim() || null,
         tipo,
         urlArquivo: url.trim() || null,
         publicadoPorId,
+        aulaId: aulaId || null,
+        visibilidade,
         arquivo: arquivoPayload,
       });
 
       if (resultado.ok) {
         setFeedback({ tipo: "ok", texto: resultado.mensagem });
-        setTitulo("");
-        setUrl("");
-        setArquivo(null);
-        if (arquivoInputRef.current) {
-          arquivoInputRef.current.value = "";
-        }
-        setTipo("pdf");
+        limparFormulario();
         setAberto(false);
-      } else {
-        setFeedback({ tipo: "erro", texto: resultado.erro });
+        router.refresh();
+        return;
+      }
+
+      setFeedback({ tipo: "erro", texto: resultado.erro });
+    });
+  };
+
+  const alternarVisibilidade = (material: MaterialResumo) => {
+    const novaVisibilidade =
+      material.visibilidade === "visivel" ? "oculto" : "visivel";
+
+    setAlternandoVisibilidadeId(material.id);
+    startAlternarVisibilidade(async () => {
+      const resultado = await atualizarMaterialVisibilidadeAction(
+        turmaId,
+        material.id,
+        novaVisibilidade,
+      );
+
+      setFeedback(
+        resultado.ok
+          ? { tipo: "ok", texto: resultado.mensagem }
+          : { tipo: "erro", texto: resultado.erro },
+      );
+      setAlternandoVisibilidadeId(null);
+      if (resultado.ok) {
+        router.refresh();
       }
     });
   };
 
   const remover = (material: MaterialResumo) => {
-    const confirmado = window.confirm(
-      `Remover o material "${material.titulo}"? Essa ação não pode ser desfeita.`,
-    );
-
-    if (!confirmado) {
-      return;
-    }
-
+    setMaterialParaRemover(null);
     setRemovendoId(material.id);
     startRemocao(async () => {
       const resultado = await removerMaterialAction(turmaId, material.id);
@@ -159,7 +234,26 @@ export const MateriaisPanel = ({
           : { tipo: "erro", texto: resultado.erro },
       );
       setRemovendoId(null);
+      if (resultado.ok) {
+        router.refresh();
+      }
     });
+  };
+
+  const selecionarTipo = (novoTipo: TipoMaterial) => {
+    setTipo(novoTipo);
+
+    if (arquivo && !arquivoCompativel(arquivo, novoTipo)) {
+      setArquivo(null);
+      if (arquivoInputRef.current) {
+        arquivoInputRef.current.value = "";
+      }
+      setFeedback({
+        tipo: "erro",
+        texto:
+          "O arquivo escolhido não é compatível com o novo tipo. Selecione o arquivo novamente.",
+      });
+    }
   };
 
   return (
@@ -173,7 +267,7 @@ export const MateriaisPanel = ({
           id="materiais-heading"
           className="font-semibold text-base text-slate-900"
         >
-          Material da Turma
+          Material da turma
         </h2>
 
         <button
@@ -184,7 +278,7 @@ export const MateriaisPanel = ({
           }}
           className="rounded-md bg-brand-dark px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium"
         >
-          {aberto ? "Cancelar" : "+ Adicionar Material"}
+          {aberto ? "Cancelar" : "+ Adicionar material"}
         </button>
       </div>
 
@@ -200,26 +294,23 @@ export const MateriaisPanel = ({
             />
           </label>
 
+          <label className="flex flex-col gap-y-1 text-slate-600 text-xs sm:col-span-2">
+            Descrição (opcional)
+            <textarea
+              value={descricao}
+              onChange={(evento) => setDescricao(evento.target.value)}
+              rows={3}
+              className="resize-none rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+            />
+          </label>
+
           <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
             Tipo
             <select
               value={tipo}
-              onChange={(evento) => {
-                const novoTipo = evento.target.value as TipoMaterial;
-                setTipo(novoTipo);
-
-                if (arquivo && !arquivoCompativel(arquivo, novoTipo)) {
-                  setArquivo(null);
-                  if (arquivoInputRef.current) {
-                    arquivoInputRef.current.value = "";
-                  }
-                  setFeedback({
-                    tipo: "erro",
-                    texto:
-                      "O arquivo escolhido nao e compativel com o novo tipo. Selecione o arquivo novamente.",
-                  });
-                }
-              }}
+              onChange={(evento) =>
+                selecionarTipo(evento.target.value as TipoMaterial)
+              }
               className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
             >
               {TIPOS.map((opcao) => (
@@ -227,6 +318,36 @@ export const MateriaisPanel = ({
                   {opcao.label}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+            Aula relacionada (opcional)
+            <select
+              value={aulaId}
+              onChange={(evento) => setAulaId(evento.target.value)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+            >
+              <option value="">Material geral da turma</option>
+              {aulasSeguras.map((aula) => (
+                <option key={aula.id} value={aula.id}>
+                  Aula {aula.numero} - {aula.titulo}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+            Visibilidade
+            <select
+              value={visibilidade}
+              onChange={(evento) =>
+                setVisibilidade(evento.target.value as "visivel" | "oculto")
+              }
+              className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+            >
+              <option value="visivel">Visível para alunos</option>
+              <option value="oculto">Oculto dos alunos</option>
             </select>
           </label>
 
@@ -242,7 +363,7 @@ export const MateriaisPanel = ({
           </label>
 
           <label className="flex flex-col gap-y-1 text-slate-600 text-xs sm:col-span-2">
-            {`Arquivo compativel com o tipo "${
+            {`Arquivo compatível com o tipo "${
               TIPOS.find((opcao) => opcao.valor === tipo)?.label
             }" (opcional)`}
             <input
@@ -257,11 +378,11 @@ export const MateriaisPanel = ({
                   setArquivo(null);
                   setFeedback({
                     tipo: "erro",
-                    texto: `O tipo selecionado e "${
+                    texto: `O tipo selecionado é "${
                       TIPOS.find((opcao) => opcao.valor === tipo)?.label
-                    }", mas o arquivo escolhido e .${extensaoDoArquivo(
+                    }", mas o arquivo escolhido é .${extensaoDoArquivo(
                       novoArquivo.name,
-                    )}. Escolha um arquivo compativel ou troque o tipo.`,
+                    )}. Escolha um arquivo compatível ou troque o tipo.`,
                   });
                   return;
                 }
@@ -301,7 +422,38 @@ export const MateriaisPanel = ({
         </output>
       )}
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+        <label className="flex min-w-[14rem] flex-col gap-y-1 text-slate-600 text-xs">
+          Filtrar por aula
+          <select
+            value={filtroAula}
+            onChange={(evento) => setFiltroAula(evento.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+          >
+            <option value="todos">Todos os materiais</option>
+            <option value="geral">Material geral da turma</option>
+            {aulasSeguras.map((aula) => (
+              <option key={aula.id} value={aula.id}>
+                Aula {aula.numero} - {aula.titulo}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+            Total: {materiaisSeguros.length}
+          </span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
+            Visíveis: {totalVisiveis}
+          </span>
+          <span className="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
+            Ocultos: {materiaisSeguros.length - totalVisiveis}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead>
             <tr className="border-slate-200 border-b text-slate-500 text-xs">
@@ -309,20 +461,28 @@ export const MateriaisPanel = ({
               <th className="py-2 pr-3 font-medium">Tipo</th>
               <th className="py-2 pr-3 text-center font-medium">Data</th>
               <th className="py-2 pr-3 text-center font-medium">Tamanho</th>
-              <th className="py-2 text-center font-medium">Acoes</th>
+              <th className="py-2 pr-3 text-center font-medium">Visibilidade</th>
+              <th className="py-2 text-center font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {materiais.length === 0 ? (
+            {materiaisSeguros.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-4 text-slate-500">
+                <td colSpan={6} className="py-4 text-slate-500">
                   Nenhum material cadastrado.
                 </td>
               </tr>
+            ) : materiaisFiltrados.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-4 text-slate-500">
+                  Nenhum material encontrado para este filtro.
+                </td>
+              </tr>
             ) : (
-              materiais.map((material) => {
+              materiaisFiltrados.map((material) => {
                 const removendoEste =
                   isRemovendo && removendoId === material.id;
+                const urlMaterial = resolverUrlMaterial(material.urlArquivo);
 
                 return (
                   <tr
@@ -330,10 +490,20 @@ export const MateriaisPanel = ({
                     className="border-slate-100 border-b last:border-b-0"
                   >
                     <td className="py-3 pr-3 text-slate-800">
-                      {material.titulo}
+                      <span className="font-medium">{material.titulo}</span>
+                      <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 text-xs">
+                        {material.aulaTitulo ?? "Material geral"}
+                      </span>
+                      {material.descricao && (
+                        <span className="mt-1 block max-w-sm text-slate-500 text-xs">
+                          {material.descricao}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 pr-3 text-slate-600">
-                      {formatTipoMaterial(material.tipo)}
+                      <span className="rounded-full bg-brand-light/50 px-2 py-0.5 font-medium text-slate-700 text-xs">
+                        {formatTipoMaterial(material.tipo)}
+                      </span>
                     </td>
                     <td className="py-3 pr-3 text-center text-slate-600">
                       {formatData(material.dataPublicacao)}
@@ -341,12 +511,27 @@ export const MateriaisPanel = ({
                     <td className="py-3 pr-3 text-center text-slate-600">
                       {formatTamanho(material.tamanhoBytes)}
                     </td>
+                    <td className="py-3 pr-3 text-center text-slate-600">
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-medium text-xs ${
+                          material.visibilidade === "visivel"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {material.visibilidade === "visivel"
+                          ? "Visível"
+                          : "Oculto"}
+                      </span>
+                    </td>
                     <td className="py-3">
                       <div className="flex items-center justify-center gap-x-3">
-                        {material.urlArquivo ? (
+                        {urlMaterial ? (
                           <a
-                            href={material.urlArquivo}
-                            title="Baixa o arquivo"
+                            href={urlMaterial}
+                            title="Baixar o arquivo"
+                            target="_blank"
+                            rel="noreferrer"
                             className="text-slate-900 transition-colors hover:text-brand-dark"
                           >
                             <svg
@@ -358,7 +543,7 @@ export const MateriaisPanel = ({
                               strokeLinejoin="round"
                               strokeWidth="2"
                             >
-                              <title>Baixa o arquivo</title>
+                              <title>Baixar o arquivo</title>
                               <path d="M12 4v12" />
                               <path d="M6 12l6 6 6-6" />
                               <path d="M5 21h14" />
@@ -387,7 +572,32 @@ export const MateriaisPanel = ({
                         )}
                         <button
                           type="button"
-                          onClick={() => remover(material)}
+                          onClick={() => alternarVisibilidade(material)}
+                          disabled={
+                            isAlternandoVisibilidade &&
+                            alternandoVisibilidadeId === material.id
+                          }
+                          title={
+                            material.visibilidade === "visivel"
+                              ? "Ocultar dos alunos"
+                              : "Mostrar para alunos"
+                          }
+                          aria-label={
+                            material.visibilidade === "visivel"
+                              ? "Ocultar dos alunos"
+                              : "Mostrar para alunos"
+                          }
+                          className="text-brand-dark transition-colors hover:text-brand-medium disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <span className="font-semibold text-xs">
+                            {material.visibilidade === "visivel"
+                              ? "Ocultar"
+                              : "Mostrar"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMaterialParaRemover(material)}
                           disabled={removendoEste}
                           title="Remover material"
                           aria-label="Remover material"
@@ -419,6 +629,18 @@ export const MateriaisPanel = ({
           </tbody>
         </table>
       </div>
+
+      {materialParaRemover && (
+        <ConfirmDialog
+          title="Remover material?"
+          description={`O material "${materialParaRemover.titulo}" será removido da turma. Essa ação não pode ser desfeita.`}
+          confirmLabel="Remover material"
+          tone="danger"
+          isLoading={isRemovendo}
+          onCancel={() => setMaterialParaRemover(null)}
+          onConfirm={() => remover(materialParaRemover)}
+        />
+      )}
     </section>
   );
 };

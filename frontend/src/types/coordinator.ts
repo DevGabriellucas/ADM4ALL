@@ -169,6 +169,7 @@ export interface ClassGroup {
 
 export interface Lesson {
   id: string;
+  turmaId?: string;
   numeroAula: number;
   titulo: string;
   curso: string;
@@ -180,11 +181,17 @@ export interface Lesson {
 
 export interface ClassMaterial {
   id: string;
+  turmaId?: string;
   turma: string;
   nome: string;
-  tipo: ClassMaterialType;
+  descricao?: string | null;
+  tipo: ClassMaterialType | string;
   data: string;
   tamanho: string;
+  urlArquivo?: string | null;
+  aulaId?: string | null;
+  aulaTitulo?: string | null;
+  visibilidade?: "visivel" | "oculto";
 }
 
 export interface AttendanceSummary {

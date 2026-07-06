@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import {
   adicionarAula,
   adicionarMaterial,
-  atualizarAvatarInstrutor,
+  atualizarAula,
+  atualizarMaterialVisibilidade,
   getPresencasPorAula,
   registrarPresencas,
   removerAula,
@@ -14,7 +15,7 @@ import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
-  AtualizarAvatarInput,
+  AtualizarAulaInput,
   AulaResumo,
   RegistrarPresencasInput,
 } from "@/types/instrutor";
@@ -27,12 +28,16 @@ export type PresencasActionResult =
   | { ok: true; alunos: AlunoPresenca[] }
   | { ok: false; erro: string };
 
-export type AvatarActionResult =
-  | { ok: true; avatarUrl: string }
-  | { ok: false; erro: string };
-
 const traduzirErro = (error: unknown, fallback: string) => {
   return error instanceof Error ? error.message : fallback;
+};
+
+const revalidarInstrutor = () => {
+  revalidatePath("/instrutor/dashboard");
+  revalidatePath("/instrutor/cronograma");
+  revalidatePath("/instrutor/presenca");
+  revalidatePath("/instrutor/frequencia");
+  revalidatePath("/instrutor/materiais");
 };
 
 export const salvarPresencasAction = async (
@@ -40,7 +45,7 @@ export const salvarPresencasAction = async (
 ): Promise<ActionResult> => {
   try {
     await registrarPresencas(input);
-    revalidatePath("/instrutor/dashboard");
+    revalidarInstrutor();
     return { ok: true, mensagem: "Presenca salva com sucesso!" };
   } catch (error) {
     return {
@@ -55,7 +60,7 @@ export const adicionarMaterialAction = async (
 ): Promise<ActionResult> => {
   try {
     await adicionarMaterial(input);
-    revalidatePath("/instrutor/dashboard");
+    revalidarInstrutor();
     return { ok: true, mensagem: "Material adicionado com sucesso!" };
   } catch (error) {
     return {
@@ -71,7 +76,7 @@ export const removerMaterialAction = async (
 ): Promise<ActionResult> => {
   try {
     await removerMaterial(turmaId, materialId);
-    revalidatePath("/instrutor/dashboard");
+    revalidarInstrutor();
     return { ok: true, mensagem: "Material removido com sucesso!" };
   } catch (error) {
     return {
@@ -81,12 +86,30 @@ export const removerMaterialAction = async (
   }
 };
 
+export const atualizarMaterialVisibilidadeAction = async (
+  turmaId: string,
+  materialId: string,
+  visibilidade: "visivel" | "oculto",
+): Promise<ActionResult> => {
+  try {
+    await atualizarMaterialVisibilidade(turmaId, materialId, visibilidade);
+    revalidarInstrutor();
+    revalidatePath("/coordenador/turmas");
+    return { ok: true, mensagem: "Visibilidade atualizada com sucesso!" };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: traduzirErro(error, "Falha ao atualizar a visibilidade."),
+    };
+  }
+};
+
 export const adicionarAulaAction = async (
   input: AdicionarAulaInput,
 ): Promise<ActionResult & { aula?: AulaResumo }> => {
   try {
     const aula = await adicionarAula(input);
-    revalidatePath("/instrutor/dashboard");
+    revalidarInstrutor();
     return { ok: true, mensagem: "Aula adicionada ao cronograma!", aula };
   } catch (error) {
     return {
@@ -102,12 +125,34 @@ export const removerAulaAction = async (
 ): Promise<ActionResult> => {
   try {
     await removerAula(turmaId, aulaId);
-    revalidatePath("/instrutor/dashboard");
+    revalidarInstrutor();
     return { ok: true, mensagem: "Aula removida com sucesso!" };
   } catch (error) {
     return {
       ok: false,
       erro: traduzirErro(error, "Falha ao remover a aula."),
+    };
+  }
+};
+
+export const atualizarAulaAction = async (
+  input: AtualizarAulaInput,
+): Promise<ActionResult & { aula?: AulaResumo }> => {
+  try {
+    const aula = await atualizarAula(input);
+    revalidarInstrutor();
+    return {
+      ok: true,
+      mensagem:
+        input.status === "cancelada"
+          ? "Aula cancelada com sucesso. Os alunos ativos serao notificados por e-mail."
+          : "Aula atualizada com sucesso.",
+      aula,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: traduzirErro(error, "Falha ao atualizar a aula."),
     };
   }
 };
@@ -123,21 +168,6 @@ export const buscarPresencasPorAulaAction = async (
     return {
       ok: false,
       erro: traduzirErro(error, "Falha ao consultar a presenca da aula."),
-    };
-  }
-};
-
-export const atualizarAvatarAction = async (
-  input: AtualizarAvatarInput,
-): Promise<AvatarActionResult> => {
-  try {
-    const avatarUrl = await atualizarAvatarInstrutor(input);
-    revalidatePath("/instrutor/dashboard");
-    return { ok: true, avatarUrl };
-  } catch (error) {
-    return {
-      ok: false,
-      erro: traduzirErro(error, "Falha ao atualizar a foto."),
     };
   }
 };

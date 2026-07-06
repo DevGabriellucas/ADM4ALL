@@ -1,4 +1,5 @@
 export type StatusPresenca = "presente" | "falta" | "justificada";
+export type StatusAula = "planejada" | "realizada" | "cancelada";
 
 export type TipoMaterial =
   | "pdf"
@@ -30,7 +31,7 @@ export interface AulaResumo {
   numero: number;
   titulo: string;
   data: string; // YYYY-MM-DD
-  status: string;
+  status: StatusAula;
 }
 
 export interface AlunoPresenca {
@@ -38,15 +39,23 @@ export interface AlunoPresenca {
   alunoId: string;
   nome: string;
   statusPresenca: StatusPresenca | null;
+  presencas: number;
+  faltas: number;
+  aulasRegistradas: number;
+  frequencia: number;
 }
 
 export interface MaterialResumo {
   id: string;
   titulo: string;
+  descricao: string | null;
   tipo: string;
   tamanhoBytes: number | null;
   dataPublicacao: string; // YYYY-MM-DD
   urlArquivo: string | null;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  visibilidade: "visivel" | "oculto";
 }
 
 export interface InstrutorDashboard {
@@ -78,10 +87,13 @@ export interface RegistrarPresencasInput {
 export interface AdicionarMaterialInput {
   turmaId: string;
   titulo: string;
+  descricao?: string | null;
   tipo: TipoMaterial;
   urlArquivo?: string | null;
   tamanhoBytes?: number | null;
   publicadoPorId?: string | null;
+  aulaId?: string | null;
+  visibilidade?: "visivel" | "oculto";
   arquivo?: {
     nome: string;
     tipoMime: string;
@@ -97,11 +109,12 @@ export interface AdicionarAulaInput {
   horaFim?: string | null;
 }
 
-export interface AtualizarAvatarInput {
-  instrutorId: string;
-  arquivo: {
-    nome: string;
-    tipoMime: string;
-    conteudoBase64: string;
-  };
+export interface AtualizarAulaInput {
+  turmaId: string;
+  aulaId: string;
+  titulo?: string;
+  data?: string; // YYYY-MM-DD
+  horaInicio?: string | null;
+  horaFim?: string | null;
+  status?: StatusAula;
 }

@@ -13,6 +13,7 @@ import type {
   EditableEnrollmentStatus,
   EnrollmentClassOption,
   UserStatus,
+  Lesson,
 } from "@/types/coordinator";
 
 interface ResultadoAction {
@@ -460,4 +461,83 @@ export async function atualizarPeriodoLetivoAction(
   periodoLetivo: string,
 ): Promise<PeriodoLetivoResponse> {
   return await atualizarPeriodoLetivo(periodoLetivo);
+}
+
+export async function criarAulaCronogramaAction(input: {
+  turmaId: string;
+  titulo: string;
+  data: string;
+  horaInicio?: string | null;
+  horaFim?: string | null;
+}): Promise<ResultadoAction> {
+  try {
+    const aula = await coordinatorService.createLesson(input.turmaId, {
+      titulo: input.titulo,
+      data: input.data,
+      horaInicio: input.horaInicio ?? null,
+      horaFim: input.horaFim ?? null,
+    });
+    revalidatePath("/coordenador/cronograma");
+    revalidatePath(`/coordenador/turmas/${input.turmaId}`);
+    revalidatePath("/instrutor/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Aula ${aula.numeroAula} cadastrada com sucesso.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao cadastrar a aula.",
+    };
+  }
+}
+
+export async function atualizarAulaCronogramaAction(
+  turmaId: string,
+  aulaId: string,
+  input: {
+    titulo?: string;
+    data?: string;
+    status?: Lesson["status"];
+  },
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateLesson(turmaId, aulaId, input);
+    revalidatePath("/coordenador/cronograma");
+    revalidatePath(`/coordenador/turmas/${turmaId}`);
+    revalidatePath("/instrutor/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Aula atualizada com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao atualizar a aula.",
+    };
+  }
+}
+
+export async function removerAulaCronogramaAction(
+  turmaId: string,
+  aulaId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.removeLesson(turmaId, aulaId);
+    revalidatePath("/coordenador/cronograma");
+    revalidatePath(`/coordenador/turmas/${turmaId}`);
+    revalidatePath("/instrutor/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Aula removida com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao remover a aula.",
+    };
+  }
 }

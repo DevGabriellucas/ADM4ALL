@@ -33,9 +33,9 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// Mock temporario: materiais da turma ainda nao possuem backend real
-// no fluxo do coordenador. Dashboard, cursos, instrutores, alunos,
-// turmas, frequencia, certificados e relatorios consultam a API real.
+// Mock temporario: materiais da turma ainda nao possuem backend real.
+// Dashboard, cursos, instrutores, alunos, turmas, frequencia,
+// certificados, relatorios e cronograma consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -118,6 +118,27 @@ interface TurmaDetalheApi {
   }[];
 }
 
+interface AulaInstrutorApi {
+  id: string;
+  numero: number;
+  titulo: string;
+  data: string;
+  status: Lesson["status"];
+}
+
+interface MaterialApi {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  tipo: string;
+  tamanhoBytes: number | null;
+  dataPublicacao: string;
+  urlArquivo: string | null;
+  aulaId: string | null;
+  aulaTitulo: string | null;
+  visibilidade: "visivel" | "oculto";
+}
+
 const mapearCurso = (curso: CursoApi): Course => ({
   id: curso.id,
   nome: curso.nome,
@@ -165,6 +186,67 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   dataTermino: turma.dataTermino ?? "",
   status: normalizeClassStatus(turma.status),
   frequenciaMedia: turma.frequenciaMedia,
+});
+
+const formatarTamanhoMaterial = (bytes: number | null): string => {
+  if (!bytes || bytes <= 0) {
+    return "-";
+  }
+
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) {
+    return `${mb.toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+const mapearAulaDaTurma = (
+  aula: TurmaDetalheApi["cronograma"][number],
+  detalhe: TurmaDetalheApi,
+): Lesson => ({
+  id: aula.id,
+  turmaId: detalhe.turma.id,
+  numeroAula: aula.numeroAula,
+  titulo: aula.titulo,
+  curso: detalhe.turma.curso,
+  turma: detalhe.turma.nome,
+  instrutor: detalhe.turma.instrutor ?? "",
+  data: aula.data,
+  status: aula.status as Lesson["status"],
+});
+
+const mapearAulaInstrutor = (
+  aula: AulaInstrutorApi,
+  turma: ClassGroup,
+): Lesson => ({
+  id: aula.id,
+  turmaId: turma.id,
+  numeroAula: aula.numero,
+  titulo: aula.titulo,
+  curso: turma.curso,
+  turma: turma.nome,
+  instrutor: turma.instrutor,
+  data: aula.data,
+  status: aula.status,
+});
+
+const mapearMaterial = (
+  material: MaterialApi,
+  turma: ClassGroup,
+): ClassMaterial => ({
+  id: material.id,
+  turmaId: turma.id,
+  turma: turma.nome,
+  nome: material.titulo,
+  descricao: material.descricao,
+  tipo: material.tipo.toUpperCase(),
+  data: material.dataPublicacao,
+  tamanho: formatarTamanhoMaterial(material.tamanhoBytes),
+  urlArquivo: material.urlArquivo,
+  aulaId: material.aulaId,
+  aulaTitulo: material.aulaTitulo,
+  visibilidade: material.visibilidade,
 });
 
 export const getDashboardSummary =
@@ -339,14 +421,7 @@ export const getClassStudentsAndLessons = async (
   });
 
   const lessons: Lesson[] = detalhe.cronograma.map((aula) => ({
-    id: aula.id,
-    numeroAula: aula.numeroAula,
-    titulo: aula.titulo,
-    curso: detalhe.turma.curso,
-    turma: detalhe.turma.nome,
-    instrutor: detalhe.turma.instrutor ?? "",
-    data: aula.data,
-    status: aula.status as Lesson["status"],
+    ...mapearAulaDaTurma(aula, detalhe),
   }));
 
   return { students, lessons };
@@ -503,11 +578,23 @@ export const updateMatriculaStatus = async (
 };
 
 export const getClassMaterials = async (
-  className: string,
+  classId: string,
+  classGroup?: ClassGroup,
 ): Promise<ClassMaterial[]> => {
-  return coordinatorClassMaterialsMock.filter(
-    (material) => material.turma === className,
+  const turma = classGroup ?? (await getClassById(classId));
+  if (!turma) {
+    return [];
+  }
+
+  const resposta = await authenticatedRequest<{ materiais: MaterialApi[] }>(
+    `/turmas/${classId}/materiais`,
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os materiais da turma.",
+    },
   );
+
+  return resposta.materiais.map((material) => mapearMaterial(material, turma));
 };
 
 export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
@@ -535,6 +622,89 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
 
     return { ...record, situacao };
   });
+};
+
+export const getLessons = async (): Promise<Lesson[]> => {
+  const classes = await getClasses();
+  const detalhes = await Promise.all(
+    classes.map(async (classGroup) => ({
+      classGroup,
+      detalhe: await buscarTurmaDetalheApi(classGroup.id),
+    })),
+  );
+
+  return detalhes.flatMap(({ detalhe }) =>
+    detalhe
+      ? detalhe.cronograma.map((aula) => mapearAulaDaTurma(aula, detalhe))
+      : [],
+  );
+};
+
+export const createLesson = async (
+  turmaId: string,
+  input: {
+    titulo: string;
+    data: string;
+    horaInicio?: string | null;
+    horaFim?: string | null;
+  },
+): Promise<Lesson> => {
+  const turma = await getClassById(turmaId);
+  if (!turma) {
+    throw new Error("Turma nao encontrada.");
+  }
+
+  const aula = await authenticatedRequest<AulaInstrutorApi>(
+    `/turmas/${turmaId}/aulas`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao cadastrar a aula.",
+    },
+  );
+
+  return mapearAulaInstrutor(aula, turma);
+};
+
+export const updateLesson = async (
+  turmaId: string,
+  aulaId: string,
+  input: {
+    titulo?: string;
+    data?: string;
+    horaInicio?: string | null;
+    horaFim?: string | null;
+    status?: Lesson["status"];
+  },
+): Promise<Lesson> => {
+  const turma = await getClassById(turmaId);
+  if (!turma) {
+    throw new Error("Turma nao encontrada.");
+  }
+
+  const aula = await authenticatedRequest<AulaInstrutorApi>(
+    `/turmas/${turmaId}/aulas/${aulaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao atualizar a aula.",
+    },
+  );
+
+  return mapearAulaInstrutor(aula, turma);
+};
+
+export const removeLesson = async (
+  turmaId: string,
+  aulaId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/turmas/${turmaId}/aulas/${aulaId}`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao remover a aula.",
+    },
+  );
 };
 
 export const getCertificates = async (): Promise<CertificateRecord[]> => {

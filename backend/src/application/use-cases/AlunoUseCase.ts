@@ -173,6 +173,16 @@ export class AlunoUseCase {
     return dashboard;
   }
 
+  async listarMateriaisVisiveis(
+    alunoId: string,
+  ): Promise<MaterialVisivelAluno[]> {
+    if (!alunoId) {
+      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
+    }
+
+    return await this.alunoRepository.listarMateriaisVisiveis(alunoId);
+  }
+
   async listarMateriais(alunoId: string): Promise<MaterialAluno[]> {
     return await this.alunoRepository.listarMateriaisVisiveisPorAluno(alunoId);
   }
@@ -277,16 +287,6 @@ export class AlunoUseCase {
     }
 
     return { buffer: pdf, nomeArquivo };
-  }
-
-  async listarMateriaisVisiveis(
-    alunoId: string,
-  ): Promise<MaterialVisivelAluno[]> {
-    if (!alunoId) {
-      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
-    }
-
-    return await this.alunoRepository.listarMateriaisVisiveis(alunoId);
   }
 
   async atualizar(

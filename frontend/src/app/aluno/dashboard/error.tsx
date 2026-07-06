@@ -1,10 +1,12 @@
 "use client";
 
 interface AlunoDashboardErrorProps {
+  error: Error;
   reset: () => void;
 }
 
 export default function AlunoDashboardError({
+  error,
   reset,
 }: AlunoDashboardErrorProps) {
   return (
@@ -14,10 +16,10 @@ export default function AlunoDashboardError({
         className="w-full max-w-lg rounded-lg border border-red-200 bg-red-50 p-6 text-center"
       >
         <h1 className="font-semibold text-red-900 text-xl">
-          Não foi possível carregar o painel
+          Nao foi possivel carregar o painel
         </h1>
         <p className="mt-3 text-red-800 text-sm">
-          Verifique sua conexão ou entre novamente.
+          {error.message || "Verifique sua conexao ou entre novamente."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
@@ -28,7 +30,7 @@ export default function AlunoDashboardError({
             Tentar novamente
           </button>
           <a
-            href="/"
+            href="/logout"
             className="rounded-md border border-red-300 px-4 py-2 font-semibold text-red-900 text-sm"
           >
             Voltar ao login

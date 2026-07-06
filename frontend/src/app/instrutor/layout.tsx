@@ -26,7 +26,7 @@ export default async function InstrutorRouteLayout({
     redirect(`/?redirectTo=${encodeURIComponent(pathname)}`);
   }
 
-  if (session.perfil !== "instrutor") {
+  if (session.perfil !== "instrutor" && session.perfil !== "admin") {
     redirect(DASHBOARD_POR_PERFIL[session.perfil]);
   }
 
