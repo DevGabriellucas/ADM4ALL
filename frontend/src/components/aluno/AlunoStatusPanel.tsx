@@ -17,7 +17,7 @@ const getFaltasHelperText = (status: AlunoDashboard["status"]) => {
     return undefined;
   }
 
-  return "Limite máximo permitido: 2 faltas";
+  return "O certificado exige menos de 3 faltas.";
 };
 
 export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {
