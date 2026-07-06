@@ -1,14 +1,13 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
-import { instrutorDashboardMock } from "@/mocks/instrutorDashboardMock";
 import { ApiError, authenticatedRequest } from "@/services/apiClient";
 import { getServerSession } from "@/services/serverSessionService";
 import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
-  AtualizarAvatarInput,
+  AtualizarAulaInput,
   AulaResumo,
   InstrutorDashboard,
   MaterialResumo,
@@ -27,10 +26,8 @@ export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
   const instrutorId =
     session?.instrutorId ?? process.env.INSTRUTOR_ID ?? INSTRUTOR_ID_DEMO;
 
-  // Sem sessao configurada caimos no mock, assim a tela renderiza em
-  // desenvolvimento mesmo sem o backend no ar (igual a tela do aluno).
   if (!session?.token || !instrutorId) {
-    return instrutorDashboardMock;
+    throw new ApiError("Sessao de instrutor nao encontrada.", 401);
   }
 
   try {
@@ -42,17 +39,11 @@ export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
       },
     );
   } catch (error) {
-    // Sessao invalida/expirada ou sem permissao nunca cai em mock: propaga
-    // o erro para o layout/page tratar (redirect para login ou erro real).
     if (isErroAutenticacao(error)) {
       throw error;
     }
 
-    console.warn(
-      "[instrutorService] usando dados mockados; falha ao consultar a API:",
-      error,
-    );
-    return instrutorDashboardMock;
+    throw error;
   }
 };
 
@@ -79,12 +70,30 @@ export const adicionarMaterial = async (
       body: JSON.stringify({
         titulo: input.titulo,
         tipo: input.tipo,
+        descricao: input.descricao ?? null,
         urlArquivo: input.urlArquivo ?? null,
         tamanhoBytes: input.tamanhoBytes ?? null,
         publicadoPorId: input.publicadoPorId ?? null,
+        aulaId: input.aulaId ?? null,
+        visibilidade: input.visibilidade ?? "visivel",
         arquivo: input.arquivo ?? null,
       }),
       fallbackError: "Falha ao adicionar o material.",
+    },
+  );
+};
+
+export const atualizarMaterialVisibilidade = async (
+  turmaId: string,
+  materialId: string,
+  visibilidade: "visivel" | "oculto",
+): Promise<MaterialResumo> => {
+  return await authenticatedRequest<MaterialResumo>(
+    `/turmas/${turmaId}/materiais/${materialId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ visibilidade }),
+      fallbackError: "Falha ao atualizar a visibilidade do material.",
     },
   );
 };
@@ -130,6 +139,21 @@ export const removerAula = async (
   });
 };
 
+export const atualizarAula = async (
+  turmaId: string,
+  aulaId: string,
+  input: AtualizarAulaInput,
+): Promise<AulaResumo> => {
+  return await authenticatedRequest<AulaResumo>(
+    `/turmas/${turmaId}/aulas/${aulaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao atualizar a aula.",
+    },
+  );
+};
+
 export const getPresencasPorAula = async (
   turmaId: string,
   aulaId: string,
@@ -145,17 +169,3 @@ export const getPresencasPorAula = async (
   return data.alunos;
 };
 
-export const atualizarAvatarInstrutor = async (
-  input: AtualizarAvatarInput,
-): Promise<string> => {
-  const data = await authenticatedRequest<{ avatarUrl: string }>(
-    `/instrutores/${input.instrutorId}/avatar`,
-    {
-      method: "POST",
-      body: JSON.stringify({ arquivo: input.arquivo }),
-      fallbackError: "Falha ao atualizar a foto.",
-    },
-  );
-
-  return data.avatarUrl;
-};

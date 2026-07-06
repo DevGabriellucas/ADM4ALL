@@ -1,5 +1,10 @@
 import { authenticatedRequest } from "@/services/apiClient";
-import type { AlunoDashboard, AlunoDashboardResponse } from "@/types/aluno";
+import type {
+  AlunoDashboard,
+  AlunoDashboardResponse,
+  MateriaisVisiveisAlunoResponse,
+  MaterialVisivelAluno,
+} from "@/types/aluno";
 
 export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
   const resposta = await authenticatedRequest<AlunoDashboardResponse>(
@@ -22,4 +27,18 @@ export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
     certificadoDisponivel: resposta.certificadoDisponivel,
     certificadoUrl: resposta.certificadoUrl,
   };
+};
+
+export const getMateriaisVisiveisAluno = async (): Promise<
+  MaterialVisivelAluno[]
+> => {
+  const resposta = await authenticatedRequest<MateriaisVisiveisAlunoResponse>(
+    "/alunos/me/materiais",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os materiais da turma.",
+    },
+  );
+
+  return Array.isArray(resposta.materiais) ? resposta.materiais : [];
 };

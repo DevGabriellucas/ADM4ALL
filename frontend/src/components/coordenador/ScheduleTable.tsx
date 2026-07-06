@@ -1,17 +1,24 @@
+"use client";
+
+import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { Lesson, LessonScheduleStatus } from "@/types/coordinator";
 import { getLessonScheduleStatus } from "@/utils/getLessonScheduleStatus";
 
 interface ScheduleTableProps {
   lessons: Lesson[];
+  isPending?: boolean;
+  onEditLesson?: (lesson: Lesson) => void;
+  onSetStatus?: (lesson: Lesson, status: Lesson["status"]) => void;
+  onRemoveLesson?: (lesson: Lesson) => void;
 }
 
 const getStatusInfo = (status: LessonScheduleStatus) => {
   if (status === "concluida") {
-    return { label: "Concluída", tone: "green" as const };
+    return { label: "Concluida", tone: "green" as const };
   }
   if (status === "proxima") {
-    return { label: "Próxima", tone: "blue" as const };
+    return { label: "Proxima", tone: "blue" as const };
   }
   if (status === "pendente") {
     return { label: "Pendente", tone: "amber" as const };
@@ -28,7 +35,13 @@ const formatDate = (date: string) => {
   }).format(new Date(date));
 };
 
-export const ScheduleTable = ({ lessons }: ScheduleTableProps) => {
+export const ScheduleTable = ({
+  lessons,
+  isPending = false,
+  onEditLesson,
+  onSetStatus,
+  onRemoveLesson,
+}: ScheduleTableProps) => {
   return (
     <section
       aria-labelledby="schedule-table-heading"
@@ -42,7 +55,7 @@ export const ScheduleTable = ({ lessons }: ScheduleTableProps) => {
           Planejamento das aulas
         </h2>
         <p className="mt-1 text-slate-500 text-xs">
-          Aulas organizadas por data e situação atual.
+          Aulas organizadas por data e situacao atual.
         </p>
       </div>
 
@@ -72,7 +85,7 @@ export const ScheduleTable = ({ lessons }: ScheduleTableProps) => {
                 Status
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Ações
+                Acoes
               </th>
             </tr>
           </thead>
@@ -114,34 +127,56 @@ export const ScheduleTable = ({ lessons }: ScheduleTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
-                      <button
-                        type="button"
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                      >
-                        Visualizar
-                      </button>
+                      {lesson.turmaId ? (
+                        <Link
+                          href={`/coordenador/turmas/${lesson.turmaId}`}
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        >
+                          Visualizar
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-slate-400 text-xs">
+                          Visualizar
+                        </span>
+                      )}
+
                       {canUpdate && (
                         <>
                           <button
                             type="button"
-                            className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                            onClick={() => onEditLesson?.(lesson)}
+                            disabled={isPending}
+                            className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Editar data
                           </button>
                           <button
                             type="button"
-                            className="font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900"
+                            onClick={() => onSetStatus?.(lesson, "realizada")}
+                            disabled={isPending}
+                            className="font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Marcar como concluída
+                            Marcar como concluida
                           </button>
                           <button
                             type="button"
-                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                            onClick={() => onSetStatus?.(lesson, "cancelada")}
+                            disabled={isPending}
+                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Cancelar aula
                           </button>
                         </>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => onRemoveLesson?.(lesson)}
+                        disabled={isPending}
+                        className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Remover
+                      </button>
                     </div>
                   </td>
                 </tr>

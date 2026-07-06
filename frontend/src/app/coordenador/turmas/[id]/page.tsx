@@ -26,7 +26,7 @@ export default async function CoordinatorClassDetailsPage({
     await Promise.all([
       getClassStudentsAndLessons(id),
       getAttendanceSummary(),
-      getClassMaterials(classGroup.nome),
+      getClassMaterials(id, classGroup),
       getCertificates(),
     ]);
 

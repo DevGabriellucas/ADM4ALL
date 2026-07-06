@@ -1,169 +1,454 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { Select } from "@/components/Select";
-
+import {
+  cadastrarAluno,
+  listarTreinamentosPublicos,
+  type TreinamentoPublico,
+} from "@/services/cadastroService";
 import {
   type CadastroFormData,
   cadastroFormDataSchema,
 } from "@/schemas/cadastroSchema";
 
+type Feedback = { tipo: "ok" | "erro"; texto: string; link?: string } | null;
+
+const inputClass =
+  "h-12 w-full rounded-lg border-0 bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 text-sm text-slate-950 opacity-70 outline-none transition placeholder:text-slate-700 focus:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+const selectClass = `${inputClass} cursor-pointer`;
+const passwordInputClass = `${inputClass} pr-12`;
+
+const somenteDigitos = (valor: string, limite: number) =>
+  valor.replace(/\D/g, "").slice(0, limite);
+
+const formatarCpf = (valor: string) =>
+  somenteDigitos(valor, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+const formatarTelefone = (valor: string) => {
+  const digitos = somenteDigitos(valor, 11);
+
+  if (digitos.length <= 10) {
+    return digitos
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+
+  return digitos
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+};
+
 export default function Cadastro() {
-  const [checkbox, setCheckbox] = useState(true);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [treinamentos, setTreinamentos] = useState<TreinamentoPublico[]>([]);
+  const [carregandoTreinamentos, setCarregandoTreinamentos] = useState(true);
+  const [erroTreinamentos, setErroTreinamentos] = useState<string | null>(null);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
   } = useForm<CadastroFormData>({
     resolver: zodResolver(cadastroFormDataSchema),
+    defaultValues: {
+      nome: "",
+      cpf: "",
+      telefone: "",
+      email: "",
+      dataNascimento: "",
+      isAlunoUnipe: false,
+      cursoUnipe: "",
+      senha: "",
+      confirmarSenha: "",
+      treinamento: "",
+      rgm: "",
+    },
   });
 
-  const cadastroSubmit = async (data: CadastroFormData) => {
-    try {
-      const response = await fetch("http://localhost:8000/alunos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+  const isAlunoUnipe = watch("isAlunoUnipe");
+  const treinamentoSelecionado = watch("treinamento");
+
+  const treinamentoAtual = useMemo(
+    () =>
+      treinamentos.find(
+        (treinamento) => treinamento.nome === treinamentoSelecionado,
+      ) ?? null,
+    [treinamentoSelecionado, treinamentos],
+  );
+
+  useEffect(() => {
+    let ativo = true;
+
+    listarTreinamentosPublicos()
+      .then((lista) => {
+        if (!ativo) {
+          return;
+        }
+
+        setTreinamentos(lista);
+        setErroTreinamentos(null);
+      })
+      .catch((error: unknown) => {
+        if (!ativo) {
+          return;
+        }
+
+        setErroTreinamentos(
+          error instanceof Error
+            ? error.message
+            : "Nao foi possivel carregar os treinamentos.",
+        );
+      })
+      .finally(() => {
+        if (ativo) {
+          setCarregandoTreinamentos(false);
+        }
       });
 
-      const result = await response.json();
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
-      if (!response.ok) {
-        throw new Error(result.erro || "Erro ao realizar o cadastro.");
-      }
+  useEffect(() => {
+    if (!isAlunoUnipe) {
+      setValue("cursoUnipe", "");
+      setValue("rgm", "");
+    }
+  }, [isAlunoUnipe, setValue]);
 
-      alert(`🎉 Sucesso: ${result.mensagem}`);
+  const cpfField = register("cpf");
+  const telefoneField = register("telefone");
+  const rgmField = register("rgm");
+
+  const passwordToggle = (
+    ativo: boolean,
+    alternar: () => void,
+    label: string,
+  ) => (
+    <button
+      type="button"
+      onClick={alternar}
+      aria-label={label}
+      title={label}
+      className="-translate-y-1/2 absolute top-1/2 right-3 text-slate-800 transition-colors hover:text-brand-dark"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="size-5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      >
+        <title>{label}</title>
+        {ativo ? (
+          <>
+            <path d="M3 3l18 18" />
+            <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+            <path d="M9.9 4.2A10.6 10.6 0 0 1 12 4c5 0 9 4 10 8a11.8 11.8 0 0 1-3.2 5.1" />
+            <path d="M6.1 6.1A11.8 11.8 0 0 0 2 12c1 4 5 8 10 8a10.6 10.6 0 0 0 4.1-.8" />
+          </>
+        ) : (
+          <>
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+            <circle cx="12" cy="12" r="3" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+
+  const cadastroSubmit = async (data: CadastroFormData) => {
+    setFeedback(null);
+
+    try {
+      const result = await cadastrarAluno(data);
+      setFeedback({
+        tipo: "ok",
+        texto: result.mensagem,
+        link: result.linkAtivacao,
+      });
       reset();
-    } catch (error: any) {
-      alert(`❌ Falha no Cadastro: ${error.message}`);
+    } catch (error: unknown) {
+      setFeedback({
+        tipo: "erro",
+        texto:
+          error instanceof Error
+            ? error.message
+            : "Nao foi possivel realizar o cadastro.",
+      });
     }
   };
 
+  const errorText = (message?: string) =>
+    message ? (
+      <span className="text-red-700 text-xs" role="alert">
+        {message}
+      </span>
+    ) : null;
+
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-16 bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 font-poppins">
-      <h1 className="font-medium text-3xl tracking-[10%] xl:text-4xl">
-        Cadastro
-      </h1>
-
-      <form
-        onSubmit={handleSubmit(cadastroSubmit)}
-        className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-[#9FA3C7E5]/60 px-6 py-9"
-      >
-        <Input
-          type="text"
-          className="rounded-lg p-2"
-          placeholder="Nome"
-          {...register("nome")}
-          error={errors.nome?.message}
-        />
-        <Input
-          type="text"
-          className="rounded-lg p-2"
-          placeholder="CPF"
-          {...register("cpf")}
-          error={errors.cpf?.message}
-        />
-        <Input
-          type="tel"
-          className="rounded-lg p-2"
-          placeholder="Telefone"
-          {...register("telefone")}
-          error={errors.telefone?.message}
-        />
-        <Input
-          type="date"
-          className="rounded-lg p-2"
-          max={new Date().toISOString().slice(0, 10)}
-          {...register("dataNascimento")}
-          error={errors.dataNascimento?.message}
-        />
-        <Input
-          type="email"
-          className="rounded-lg p-2 autofill:shadow-[inset_0_0_01000px#B6AEAE]"
-          placeholder="email"
-          {...register("email")}
-          error={errors.email?.message}
-        />
-        <Input
-          type="password"
-          className="rounded-lg p-2"
-          placeholder="Senha"
-          {...register("senha")}
-          error={errors.senha?.message}
-        />
-        <Input
-          type="password"
-          className="rounded-lg p-2"
-          placeholder="Confirmar Senha"
-          {...register("confirmarSenha")}
-          error={errors.confirmarSenha?.message}
-        />
-
-        <div className="flex items-center gap-3">
-          <Input
-            type="checkbox"
-            checked={checkbox}
-            {...register("isAlunoUnipe")}
-            onChange={() => setCheckbox(!checkbox)}
+    <main className="flex min-h-screen w-full flex-col items-center justify-start gap-y-8 overflow-y-auto bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 py-6 font-poppins text-slate-950 sm:justify-center xl:flex-row xl:gap-x-20 xl:gap-y-0">
+      <section className="flex flex-col items-center justify-center gap-y-8 text-center xl:gap-y-8 xl:text-left">
+        <h1 className="font-medium text-3xl tracking-[0.1em] xl:text-4xl">
+          Cadastro
+        </h1>
+        <div className="relative h-[10rem] w-full max-w-[37.5rem] sm:h-[20.5rem] sm:w-[37.5rem]">
+          <Image
+            src="/login-page-illustration.png"
+            alt="Ilustracao conceitual de planejamento estrategico e analise de dados"
+            fill
+            priority
+            sizes="(min-width: 1280px) 601px, 100vw"
+            className="object-contain object-center"
           />
-          <label>Aluno da UNIPÊ</label>
         </div>
+      </section>
 
-        {checkbox && (
-          <div className="flex flex-col gap-4">
-            <Input
-              type="number"
-              className="rounded-lg p-2"
-              placeholder="RGM"
-              {...register("rgm")}
-              error={errors.rgm?.message}
-            />
+      <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-y-auto rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:px-6 sm:py-7 xl:min-h-152 xl:min-w-139">
+        <form onSubmit={handleSubmit(cadastroSubmit)} className="flex flex-1 flex-col">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs sm:col-span-2">
+              Nome completo
+              <input
+                type="text"
+                autoComplete="name"
+                className={inputClass}
+                placeholder="Ex.: Ana Clara Silva"
+                {...register("nome")}
+              />
+              {errorText(errors.nome?.message)}
+            </label>
 
-            <Select
-              className="w-full max-w-full rounded-lg p-2"
-              {...register("cursoUnipe")}
-            >
-              <option value="ADM">ADM</option>
-              <option value="ADS">ADS</option>
-              <option value="CC">Ciência da Computação</option>
-            </Select>
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              CPF
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                className={inputClass}
+                placeholder="000.000.000-00"
+                {...cpfField}
+                onChange={(evento) => {
+                  evento.target.value = formatarCpf(evento.target.value);
+                  cpfField.onChange(evento);
+                }}
+              />
+              {errorText(errors.cpf?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              Telefone
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className={inputClass}
+                placeholder="(83) 99999-9999"
+                {...telefoneField}
+                onChange={(evento) => {
+                  evento.target.value = formatarTelefone(evento.target.value);
+                  telefoneField.onChange(evento);
+                }}
+              />
+              {errorText(errors.telefone?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              Data de nascimento
+              <input
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                className={inputClass}
+                {...register("dataNascimento")}
+              />
+              {errorText(errors.dataNascimento?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              E-mail
+              <input
+                type="email"
+                autoComplete="email"
+                className={inputClass}
+                placeholder="nome@email.com"
+                {...register("email")}
+              />
+              {errorText(errors.email?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              Senha de acesso
+              <div className="relative">
+                <input
+                  type={mostrarSenha ? "text" : "password"}
+                  autoComplete="new-password"
+                  className={passwordInputClass}
+                  placeholder="Crie sua senha do sistema"
+                  {...register("senha")}
+                />
+                {passwordToggle(
+                  mostrarSenha,
+                  () => setMostrarSenha((atual) => !atual),
+                  mostrarSenha ? "Ocultar senha" : "Mostrar senha",
+                )}
+              </div>
+              {errorText(errors.senha?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+              Confirmar senha de acesso
+              <div className="relative">
+                <input
+                  type={mostrarConfirmarSenha ? "text" : "password"}
+                  autoComplete="new-password"
+                  className={passwordInputClass}
+                  placeholder="Repita sua senha"
+                  {...register("confirmarSenha")}
+                />
+                {passwordToggle(
+                  mostrarConfirmarSenha,
+                  () => setMostrarConfirmarSenha((atual) => !atual),
+                  mostrarConfirmarSenha
+                    ? "Ocultar confirmacao de senha"
+                    : "Mostrar confirmacao de senha",
+                )}
+              </div>
+              {errorText(errors.confirmarSenha?.message)}
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-slate-600 text-xs sm:col-span-2">
+              Treinamento
+              <select
+                className={selectClass}
+                disabled={carregandoTreinamentos || !!erroTreinamentos}
+                {...register("treinamento")}
+              >
+                <option value="">
+                  {carregandoTreinamentos
+                    ? "Carregando treinamentos..."
+                    : "Selecione um treinamento"}
+                </option>
+                {treinamentos.map((treinamento) => (
+                  <option key={treinamento.id} value={treinamento.nome}>
+                    {treinamento.nome}
+                  </option>
+                ))}
+              </select>
+              {treinamentoAtual && (
+                <span className="text-slate-500">
+                  {treinamentoAtual.cargaHoraria}h
+                  {treinamentoAtual.descricao
+                    ? ` - ${treinamentoAtual.descricao}`
+                    : ""}
+                </span>
+              )}
+              {erroTreinamentos && (
+                <span className="text-red-700 text-xs" role="alert">
+                  {erroTreinamentos}
+                </span>
+              )}
+              {errorText(errors.treinamento?.message)}
+            </label>
+
+            <div className="flex items-start gap-3 rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] p-3 opacity-70 sm:col-span-2">
+              <input
+                id="isAlunoUnipe"
+                type="checkbox"
+                className="mt-0.5 size-4 rounded border-slate-300 text-brand-dark"
+                {...register("isAlunoUnipe")}
+              />
+              <label htmlFor="isAlunoUnipe" className="text-slate-700 text-sm">
+                Sou aluno da UNIPE
+              </label>
+            </div>
+
+            {isAlunoUnipe && (
+              <>
+                <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+                  RGM
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={inputClass}
+                    placeholder="8 digitos"
+                    {...rgmField}
+                    onChange={(evento) => {
+                      evento.target.value = somenteDigitos(
+                        evento.target.value,
+                        8,
+                      );
+                      rgmField.onChange(evento);
+                    }}
+                  />
+                  {errorText(errors.rgm?.message)}
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-slate-600 text-xs">
+                  Curso UNIPE
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder="Digite seu curso"
+                    {...register("cursoUnipe")}
+                  />
+                  {errorText(errors.cursoUnipe?.message)}
+                </label>
+              </>
+            )}
           </div>
-        )}
 
-        <label htmlFor="treinamento">Selecione o treinamento:</label>
-        <Select
-          id="treinamento"
-          className="w-full max-w-full rounded-lg p-2"
-          {...register("treinamento")}
-        >
-          <option value="RH">Gestão de RH</option>
-          <option value="Emp">Empreendedorismo</option>
-        </Select>
+          {feedback && (
+            <div
+              className={`mt-4 block rounded-md px-4 py-3 text-sm ${
+                feedback.tipo === "ok"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-700"
+              }`}
+            >
+              <p>{feedback.texto}</p>
+              {feedback.link && (
+                <Link
+                  href={feedback.link}
+                  className="mt-2 inline-flex font-semibold underline underline-offset-2"
+                >
+                  Ativar conta agora
+                </Link>
+              )}
+            </div>
+          )}
 
-        <Button
-          type="submit"
-          className="bg-brand-dark p-2 rounded-lg hover:brightness-110"
-        >
-          Cadastrar
-        </Button>
-
-        <p className="mt-auto pt-6 text-center text-base text-slate-800">
-          Deseja voltar?{" "}
-          <Link
-            href="/"
-            className="font-bold text-[#524ABF] underline underline-offset-2 transition-colors duration-200 hover:brightness-125"
-          >
-            Voltar
-          </Link>
-        </p>
-      </form>
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-6">
+            <Link
+              href="/"
+              className="font-medium text-slate-800 text-sm underline-offset-2 hover:underline"
+            >
+              Ja tenho acesso
+            </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting || carregandoTreinamentos}
+              className="rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-8 py-3 font-semibold text-sm text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Enviando..." : "Cadastrar"}
+            </button>
+          </div>
+        </form>
+      </section>
     </main>
   );
 }

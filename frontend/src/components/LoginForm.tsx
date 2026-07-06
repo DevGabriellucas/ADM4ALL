@@ -114,7 +114,7 @@ export const LoginForm = ({
       <Input
         id="identifier"
         label="E-mail ou CPF"
-        className="h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl"
+        className="h-12 w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 py-3 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-base sm:h-[5.22rem] sm:px-10 sm:py-4 sm:text-xl sm:placeholder:text-xl"
         placeholder="E-mail ou CPF"
         type="text"
         autoCapitalize="none"
@@ -127,16 +127,16 @@ export const LoginForm = ({
       <div className="relative">
         <Input
           id="password"
-          label="Senha"
-          className="mt-4 h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 pr-20 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl"
-          placeholder="Senha"
+          label="Senha de acesso"
+          className="mt-4 h-12 w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 py-3 pr-14 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-base sm:h-[5.22rem] sm:px-10 sm:py-4 sm:pr-20 sm:text-xl sm:placeholder:text-xl"
+          placeholder="Senha de acesso"
           type={isPasswordVisible ? "text" : "password"}
           {...register("password")}
           error={errors.password?.message}
         />
         <button
           type="button"
-          className="-translate-y-1/2 absolute top-[3.61rem] right-6 flex size-10 cursor-pointer items-center justify-center rounded text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium"
+          className="-translate-y-1/2 absolute top-[2.5rem] right-3 flex size-9 cursor-pointer items-center justify-center rounded text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium sm:top-[3.61rem] sm:right-6 sm:size-10"
           aria-controls="password"
           aria-label={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
           aria-pressed={isPasswordVisible}
@@ -195,7 +195,7 @@ export const LoginForm = ({
       )}
 
       <Button
-        className="h-[5.22rem] w-full cursor-pointer rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-10 py-4 font-semibold text-2xl hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50"
+        className="h-12 w-full cursor-pointer rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-4 py-3 font-semibold text-base hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:h-[5.22rem] sm:px-10 sm:py-4 sm:text-2xl"
         disabled={isSubmitting}
         type="submit"
       >
