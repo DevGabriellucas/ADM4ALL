@@ -1,4 +1,5 @@
 import { CertificatesPageContent } from "@/components/coordenador/CertificatesPageContent";
+import { BackButton } from "@/components/shared/BackButton";
 import {
   getCertificates,
   getClasses,
@@ -13,10 +14,13 @@ export default async function CoordinatorCertificatesPage() {
   ]);
 
   return (
-    <CertificatesPageContent
-      certificates={certificates}
-      courses={courses}
-      classes={classes}
-    />
+    <>
+      <BackButton className="mb-4" />
+      <CertificatesPageContent
+        certificates={certificates}
+        courses={courses}
+        classes={classes}
+      />
+    </>
   );
 }

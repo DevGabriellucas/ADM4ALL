@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ClassDetailsContent } from "@/components/coordenador/ClassDetailsContent";
+import { BackButton } from "@/components/shared/BackButton";
 import {
   getAttendanceSummary,
   getCertificates,
@@ -31,17 +32,20 @@ export default async function CoordinatorClassDetailsPage({
     ]);
 
   return (
-    <ClassDetailsContent
-      classGroup={classGroup}
-      students={students}
-      lessons={lessons}
-      attendance={attendance.filter(
-        (record) => record.turma === classGroup.nome,
-      )}
-      materials={materials}
-      certificates={certificates.filter(
-        (certificate) => certificate.turma === classGroup.nome,
-      )}
-    />
+    <>
+      <BackButton className="mb-4" />
+      <ClassDetailsContent
+        classGroup={classGroup}
+        students={students}
+        lessons={lessons}
+        attendance={attendance.filter(
+          (record) => record.turma === classGroup.nome,
+        )}
+        materials={materials}
+        certificates={certificates.filter(
+          (certificate) => certificate.turma === classGroup.nome,
+        )}
+      />
+    </>
   );
 }

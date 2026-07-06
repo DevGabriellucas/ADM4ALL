@@ -1,4 +1,5 @@
 import { AttendancePageContent } from "@/components/coordenador/AttendancePageContent";
+import { BackButton } from "@/components/shared/BackButton";
 import {
   getAttendanceSummary,
   getClasses,
@@ -15,11 +16,14 @@ export default async function CoordinatorAttendancePage() {
   ]);
 
   return (
-    <AttendancePageContent
-      attendance={attendance}
-      courses={courses}
-      classes={classes}
-      students={students}
-    />
+    <>
+      <BackButton className="mb-4" />
+      <AttendancePageContent
+        attendance={attendance}
+        courses={courses}
+        classes={classes}
+        students={students}
+      />
+    </>
   );
 }

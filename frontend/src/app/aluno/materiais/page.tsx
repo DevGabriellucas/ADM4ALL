@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
 import { AlunoMateriaisList } from "@/components/aluno/AlunoMateriaisList";
+import { BackButton } from "@/components/shared/BackButton";
 import { getAlunoDashboard, getMateriaisAluno } from "@/services/alunoService";
 import { getAlunoSession } from "@/services/serverSessionService";
 
@@ -25,12 +26,15 @@ export default async function AlunoMateriaisPage() {
           aria-labelledby="materiais-heading"
           className="flex flex-col gap-y-6"
         >
-          <h2
-            id="materiais-heading"
-            className="font-semibold text-sm tracking-[0.45em]"
-          >
-            Meus materiais
-          </h2>
+          <div className="flex flex-col gap-y-4">
+            <BackButton />
+            <h2
+              id="materiais-heading"
+              className="font-semibold text-sm tracking-[0.45em]"
+            >
+              Meus materiais
+            </h2>
+          </div>
 
           <AlunoMateriaisList materiais={materiaisResponse.materiais} />
         </section>
