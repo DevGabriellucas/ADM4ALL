@@ -30,7 +30,7 @@ Variaveis usadas pelo backend:
 | `DATABASE_URL` | String de conexao do PostgreSQL |
 | `FRONTEND_URL` | Origem liberada no CORS e base do link de recuperacao de senha |
 | `JWT_SECRET` | Segredo usado para assinar tokens de login |
-| `ADMIN_API_KEY` | Chave simples para proteger rotas administrativas |
+| `ADMIN_API_KEY` | Chave simples para proteger rotas administrativas legadas |
 
 ## Autorizacao
 
@@ -47,6 +47,8 @@ As rotas administrativas antigas de alunos ainda aceitam provisoriamente:
 x-api-key: valor_do_ADMIN_API_KEY
 ```
 
+> A transicao de `x-api-key` para JWT por perfil esta pendente para pos-MVP.
+
 ## Contrato da API
 
 | Metodo | Endpoint | Protecao | Descricao |
@@ -59,6 +61,10 @@ x-api-key: valor_do_ADMIN_API_KEY
 | GET | `/alunos/:id` | `x-api-key` | Busca aluno por ID |
 | PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
 | DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
+| GET | `/alunos/me/dashboard` | `Bearer` aluno | Dashboard do aluno |
+| GET | `/alunos/me/materiais` | `Bearer` aluno | Lista materiais visiveis do aluno |
+| GET | `/alunos/me/materiais/:materialId/download` | `Bearer` aluno | Download autenticado de material |
+| GET | `/alunos/me/certificado/pdf` | `Bearer` aluno | Download autenticado do certificado (PDF) |
 | GET | `/instrutores/:id/dashboard` | `Bearer` instrutor/coordenador/admin | Dashboard do instrutor |
 | POST | `/instrutores/:id/avatar` | `Bearer` instrutor/coordenador/admin | Atualiza a foto de perfil do instrutor |
 | POST | `/turmas/:turmaId/presencas` | `Bearer` instrutor/coordenador/admin | Registra presencas da turma |
@@ -67,6 +73,31 @@ x-api-key: valor_do_ADMIN_API_KEY
 | DELETE | `/turmas/:turmaId/materiais/:materialId` | `Bearer` instrutor/coordenador/admin | Arquiva (remove da listagem) um material |
 | POST | `/turmas/:turmaId/aulas` | `Bearer` instrutor/coordenador/admin | Cadastra uma aula no cronograma da turma |
 | DELETE | `/turmas/:turmaId/aulas/:aulaId` | `Bearer` instrutor/coordenador/admin | Remove uma aula sem presenca registrada |
+| GET | `/coordenador/dashboard` | `Bearer` coordenador/admin | Dashboard do coordenador |
+| GET | `/coordenador/periodo-letivo` | `Bearer` todos os perfis | Consulta o periodo letivo atual |
+| PATCH | `/coordenador/periodo-letivo` | `Bearer` coordenador/admin | Atualiza o periodo letivo |
+| GET | `/coordenador/certificados` | `Bearer` coordenador/admin | Lista certificados |
+| GET | `/coordenador/certificados/:tipo/:referenciaId/pdf` | `Bearer` coordenador/admin | Gera/download PDF do certificado |
+| POST | `/coordenador/certificados/alunos` | `Bearer` coordenador/admin | Emite certificado para aluno |
+| PATCH | `/coordenador/certificados/:tipo/:id/cancelar` | `Bearer` coordenador/admin | Cancela certificado |
+| GET | `/coordenador/relatorios` | `Bearer` coordenador/admin | Lista relatorios disponiveis |
+| GET | `/coordenador/relatorios/:tipo/pdf` | `Bearer` coordenador/admin | Exporta relatorio em PDF |
+| GET | `/coordenador/relatorios/:tipo/csv` | `Bearer` coordenador/admin | Exporta relatorio em CSV |
+| GET | `/coordenador/frequencias` | `Bearer` coordenador/admin | Consolidado de frequencia |
+| GET | `/cursos` | `Bearer` coordenador/admin | Lista cursos |
+| POST | `/cursos` | `Bearer` coordenador/admin | Cria curso |
+| GET | `/instrutores` | `Bearer` coordenador/admin | Lista instrutores |
+| POST | `/instrutores` | `Bearer` coordenador/admin | Convida instrutor |
+| GET | `/turmas` | `Bearer` coordenador/admin | Lista turmas |
+| POST | `/turmas` | `Bearer` coordenador/admin | Cria turma |
+| GET | `/turmas/:id` | `Bearer` coordenador/admin | Detalhe da turma |
+| GET | `/coordenador/alunos` | `Bearer` coordenador/admin | Lista alunos (visao coordenador) |
+| GET | `/coordenador/alunos/:id` | `Bearer` coordenador/admin | Detalhe do aluno |
+| PATCH | `/coordenador/alunos/:id` | `Bearer` coordenador/admin | Atualiza aluno via coordenador |
+| PATCH | `/coordenador/matriculas/:id` | `Bearer` coordenador/admin | Atualiza status da matricula |
+| POST | `/turmas/:turmaId/matriculas` | `Bearer` coordenador/admin | Matricula aluno em turma |
+| DELETE | `/turmas/:turmaId/matriculas/:matriculaId` | `Bearer` coordenador/admin | Cancela matricula |
+| POST | `/alunos/convites` | `Bearer` coordenador/admin | Convida novo aluno |
 
 ## Recuperacao de senha
 

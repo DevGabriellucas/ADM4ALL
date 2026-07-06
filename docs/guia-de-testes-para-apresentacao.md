@@ -2,7 +2,7 @@
 
 > Escopo: principais funcionalidades implementadas, incluindo a rota de relatórios do coordenador.
 >
-> Atualizado em: 03/07/2026.
+> Atualizado em: 06/07/2026.
 
 ## 1. Visão rápida do que está pronto
 
@@ -13,14 +13,19 @@ O projeto possui frontend em Next.js, API em Node.js/Express, autenticação JWT
 - recuperação e redefinição de senha;
 - dashboard do aluno com diferentes situações de matrícula;
 - dashboard do instrutor com presença, cronograma, materiais e avatar;
-- dashboard do coordenador;
+- dashboard do coordenador com indicadores reais (sem dados mockados);
+- período letivo dinâmico/editável;
 - gestão de cursos, turmas, alunos, matrículas e instrutores;
 - consulta consolidada de frequência;
 - emissão, visualização, download e cancelamento de certificados;
+- download autenticado de certificado pelo aluno (storage privado);
+- materiais visíveis ao aluno com download autenticado;
 - relatórios acadêmicos com filtros, prévia gráfica e exportação em PDF e CSV;
 - controle de acesso por perfil e encerramento da sessão.
 
-As telas de processos, usuários, configurações, cronograma geral do coordenador e materiais exibidos no detalhe da turma ainda usam dados locais. Elas podem ser mostradas como protótipo visual, mas não devem ser apresentadas como persistência concluída.
+As áreas de Cronograma, Processos, Usuários e Configurações estão visíveis na
+sidebar do coordenador com badge "Dev" e exibem mensagem honesta de
+funcionalidade em desenvolvimento, sem dados mockados.
 
 ## 2. Preparação antes da demonstração
 
@@ -143,8 +148,9 @@ Faça três logins para mostrar que o painel vem do banco e muda conforme a matr
 2. Confira o status de aprovação e 100% de progresso.
 3. Mostre a mensagem de conclusão.
 4. Mostre que o painel identifica o certificado como disponível.
-
-Não clique em **Acessar certificado** nessa tela durante a demo. O dashboard retorna hoje o caminho legado `/certificados/cert-adm-2026-0001.pdf`, mas esse arquivo não é servido pelo frontend nem por uma rota pública da API. A pré-visualização e o download que funcionam estão na área de certificados do coordenador.
+5. Clique em **Acessar certificado** e mostre que o PDF é baixado via
+   endpoint autenticado (`GET /alunos/me/certificado/pdf`), sem expor URL
+   pública.
 
 #### Cenário C: reprovação por falta
 
@@ -200,10 +206,11 @@ Observação: o dashboard do instrutor possui fallback para mock quando não há
 ### Etapa 4 — Dashboard do coordenador
 
 1. Entre como `amanda.souza@example.com`.
-2. Mostre os totais consolidados.
-3. Mostre os alunos que exigem atenção.
-4. Mostre as próximas aulas.
-5. Explique que os cards são agregações da API sobre o PostgreSQL.
+2. Mostre os totais consolidados (alunos, turmas ativas, frequência, certificados).
+3. Mostre os alunos que exigem atenção (badges coloridas).
+4. Mostre o período letivo dinâmico e o botão de edição (lápis).
+5. Destaque que a sidebar tem áreas em desenvolvimento com badge "Dev".
+6. Explique que os cards são agregações da API sobre o PostgreSQL, sem dados mockados.
 
 ### Etapa 5 — Cursos
 
@@ -431,51 +438,46 @@ Observações:
 | Cadastro/ativação | Integrado, dependente de SMTP | Validações, conta pendente e ativação |
 | Recuperação de senha | Integrado, dependente de SMTP | Solicitação, redefinição e token de uso único |
 | Dashboard do aluno | Integrado | Em andamento, aprovado e reprovado |
-| Dashboard do instrutor | Integrado com fallback de mock | Presença, aula, material e avatar |
-| Dashboard do coordenador | Integrado | Indicadores, atenção e próximas aulas |
+| Certificado do aluno | Integrado | Download autenticado via endpoint |
+| Materiais do aluno | Integrado | Listagem e download autenticado |
+| Dashboard do instrutor | Integrado | Presença, cronograma, material e avatar |
+| Dashboard do coordenador | Integrado | Indicadores reais, período letivo, sem mock |
+| Período letivo | Integrado | Automático + editável pelo coordenador |
 | Cursos | Parcialmente integrado | Listar e criar |
 | Turmas | Parcialmente integrado | Listar, criar e abrir detalhe |
-| Alunos/matrículas | Integrado nas ações principais | Convidar, editar, vincular, alterar status e cancelar matrícula |
+| Alunos/matrículas | Integrado | Convidar, editar, vincular, alterar status |
 | Instrutores | Parcialmente integrado | Listar e convidar |
-| Frequência do coordenador | Integrado para consulta | Consolidado e filtros |
+| Frequência do coordenador | Integrado | Consolidado com badges coloridas |
 | Certificados | Integrado | Elegibilidade, emissão, preview, PDF e cancelamento |
-| Relatórios do coordenador | Integrado | Seis relatórios, filtros, gráfico, tabela, PDF e CSV |
-| Cronograma geral do coordenador | Mock | Apenas protótipo visual |
-| Materiais no detalhe da turma | Mock | Apenas protótipo visual |
-| Processos | Mock/local | Apenas protótipo visual |
-| Usuários | Mock | Apenas protótipo visual |
-| Configurações | Mock | Apenas protótipo visual |
+| Relatórios do coordenador | Integrado | Seis relatórios, filtros, gráfico, PDF e CSV |
+| Cronograma, Processos, Usuários, Configurações | Em desenvolvimento | Páginas honestas com badge "Dev", sem mock |
 
 ## 7. O que falta explicar ao tech lead
 
 ### Funcionalidades ainda incompletas
 
-- integrar processos, usuários e configurações ao backend;
-- trocar o cronograma geral do coordenador e os materiais do detalhe da turma por dados reais;
-- ligar o link de certificado do dashboard do aluno ao endpoint de PDF correto, com uma regra segura de autorização;
-- implementar edição/exclusão e outras ações que aparecem desabilitadas em cursos, turmas, instrutores, alunos e frequência;
-- remover o fallback silencioso para mock do dashboard do instrutor ou sinalizá-lo claramente;
-- criar uma guarda de rota uniforme no frontend para aluno, instrutor, coordenador e administrador;
-- mover o JWT para uma sessão/cookie `HttpOnly`; no MVP o cookie é criado pelo JavaScript do navegador;
+- implementar Processos, Usuários, Configurações e Cronograma geral com
+  endpoints reais (hoje são páginas "Em desenvolvimento" sem mock);
+- concluir edição/exclusão de cursos, turmas, instrutores;
+- remover `x-api-key` das rotas administrativas legadas de alunos;
+- mover o JWT para cookie `HttpOnly`;
+- definir armazenamento definitivo para uploads (hoje em volume local);
+- acrescentar à massa de teste alunos com cenários de atenção (75-79%) e
+  risco de reprovação (<75%);
+- adicionar testes de frontend e testes E2E;
 - revisar o comportamento de falha SMTP na recuperação de senha;
-- definir armazenamento definitivo para uploads; hoje os arquivos ficam no volume local do backend;
-- acrescentar à massa de teste um candidato elegível e ainda sem certificado para demonstrar a emissão sem alterar o registro de Diego;
-- concluir a estratégia de permissões: ainda existem rotas administrativas antigas de alunos protegidas por `x-api-key`, enquanto as novas usam JWT por perfil;
-- adicionar testes de integração e testes ponta a ponta para os fluxos principais;
-- documentar implantação, variáveis de ambiente e rotina de backup.
+- implementar CI/CD.
 
-### Pendências técnicas verificadas em 03/07/2026
+### Pendências técnicas verificadas em 06/07/2026
 
-- frontend: `npm run build` passou e gerou 25 rotas;
-- API local: login e dashboard de aluno, instrutor e coordenador responderam `200`; credencial inválida respondeu `401`;
+- frontend: `npm run build` passou;
+- API local: login e dashboards de aluno, instrutor e coordenador responderam `200`;
 - relatórios: listagem dos seis tipos, PDF filtrado e CSV responderam `200`;
-- backend: 19 de 20 testes Jest passaram;
-- teste com falha: `AlunoUseCase.spec.ts` não foi atualizado após a inclusão de novos métodos no repositório e da dependência de ativação;
-- backend: `npm run build` falha porque o `tsconfig` inclui o teste desatualizado;
-- frontend: `npm run lint` acusa 140 erros e 5 avisos, em grande parte por formatação/fim de linha CRLF em relação ao Biome;
+- backend: 26 testes Jest passando;
+- certificado do aluno: download autenticado via `GET /alunos/me/certificado/pdf`
+  com storage privado em `storage/certificados/`;
+- período letivo: endpoint `GET /coordenador/periodo-letivo` funcional;
 - não há suíte automatizada de frontend nem teste E2E configurado.
-
-Apresente essas pendências como dívida técnica conhecida, não como falha dos fluxos já demonstrados.
 
 ## 8. Checklist de cinco minutos antes da reunião
 
@@ -496,4 +498,9 @@ Apresente essas pendências como dívida técnica conhecida, não como falha dos
 
 ## 9. Frase de fechamento sugerida
 
-“O MVP já fecha os ciclos centrais de autenticação, acompanhamento acadêmico e geração de relatórios para aluno, instrutor e coordenador, com persistência real no PostgreSQL e exportação em PDF e CSV. As próximas entregas são substituir os mocks das áreas secundárias, completar as ações administrativas, fortalecer os testes automatizados e preparar a infraestrutura de produção.”
+“O MVP já fecha os ciclos centrais de autenticação, acompanhamento acadêmico,
+emissão de certificados e geração de relatórios para aluno, instrutor e
+coordenador, com persistência real no PostgreSQL. As áreas em desenvolvimento
+estão sinalizadas com badge Dev e sem dados falsos. As próximas entregas são
+completar as áreas secundárias, automatizar o certificado e preparar a
+infraestrutura de produção.”
