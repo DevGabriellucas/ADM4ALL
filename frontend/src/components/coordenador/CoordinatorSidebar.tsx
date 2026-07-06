@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { clearSession, SESSION_COOKIE_NAMES } from "@/services/sessionService";
 
 interface NavItem {
@@ -92,13 +94,14 @@ const PERFIL_LABEL: Record<string, string> = {
 export const CoordinatorSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const usuario = getNomeFromToken();
   const nomeUsuario = usuario?.nome ?? "";
   const perfilUsuario = usuario?.perfil ?? "";
   const cargo = PERFIL_LABEL[perfilUsuario] ?? "Coordenador";
 
-  const logout = () => {
+  const confirmarSaida = () => {
     clearSession();
     router.replace("/");
   };
@@ -153,7 +156,7 @@ export const CoordinatorSidebar = () => {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={() => setConfirmandoSaida(true)}
           className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 lg:mt-2"
         >
           <svg
@@ -174,6 +177,17 @@ export const CoordinatorSidebar = () => {
           <span>Sair</span>
         </button>
       </nav>
+
+      {confirmandoSaida && (
+        <ConfirmDialog
+          title="Deseja sair?"
+          description="Voce sera desconectado da area do coordenador."
+          confirmLabel="Sair"
+          tone="danger"
+          onCancel={() => setConfirmandoSaida(false)}
+          onConfirm={confirmarSaida}
+        />
+      )}
     </aside>
   );
 };
