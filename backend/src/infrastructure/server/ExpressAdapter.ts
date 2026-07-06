@@ -343,6 +343,113 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/alunos/me/materiais",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const materiais = await this.alunoUseCase.listarMateriais(
+          usuario.alunoId,
+        );
+        res.json({ materiais });
+      }),
+    );
+
+    this.app.get(
+      "/alunos/me/materiais/:materialId/download",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { materialId } = req.params as { materialId: string };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const material = await this.alunoUseCase.buscarMaterialParaDownload(
+          usuario.alunoId,
+          materialId,
+        );
+
+        if (!material) {
+          res.status(404).json({ erro: "Material nao encontrado." });
+          return;
+        }
+
+        if (!material.urlArquivo) {
+          res
+            .status(404)
+            .json({ erro: "Material nao possui arquivo para download." });
+          return;
+        }
+
+        if (
+          material.urlArquivo.startsWith("http://") ||
+          material.urlArquivo.startsWith("https://")
+        ) {
+          res.redirect(material.urlArquivo);
+          return;
+        }
+
+        const uploadsBase = path.resolve(process.cwd(), "uploads", "materiais");
+        const caminhoRelativo = material.urlArquivo.replace(
+          /^\/uploads\/materiais\//,
+          "",
+        );
+        const caminhoAbsoluto = path.resolve(uploadsBase, caminhoRelativo);
+
+        if (!caminhoAbsoluto.startsWith(uploadsBase + path.sep)) {
+          res.status(404).json({ erro: "Material nao encontrado." });
+          return;
+        }
+
+        try {
+          await fs.access(caminhoAbsoluto);
+        } catch {
+          res.status(404).json({ erro: "Arquivo do material nao encontrado." });
+          return;
+        }
+
+        const extensao = path.extname(caminhoAbsoluto).toLowerCase();
+        const nomeArquivo = `${material.titulo.replace(/[^a-zA-Z0-9_-]/g, "_")}${extensao}`;
+
+        res.download(caminhoAbsoluto, nomeArquivo);
+      }),
+    );
+
+    this.app.get(
+      "/alunos/me/certificado/pdf",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const { buffer, nomeArquivo } =
+          await this.alunoUseCase.baixarCertificado(usuario.alunoId);
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${nomeArquivo}"`,
+        );
+        res.status(200).send(buffer);
+      }),
+    );
+
+    this.app.get(
       "/alunos",
       this.exigirApiKey,
       asyncHandler(async (_req: Request, res: Response) => {

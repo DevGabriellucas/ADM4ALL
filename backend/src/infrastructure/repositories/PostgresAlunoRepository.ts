@@ -3,6 +3,9 @@ import { Aluno } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
+  CertificadoEmitidoDoAluno,
+  MaterialAluno,
+  MaterialAlunoDownload,
   RecuperacaoSenhaValida,
   RegistrarRecuperacaoSenhaInput,
   UsuarioRecuperacaoSenha,
@@ -405,6 +408,150 @@ export class PostgresAlunoRepository implements AlunoRepository {
     } finally {
       client.release();
     }
+  }
+
+  async listarMateriaisVisiveisPorAluno(
+    alunoId: string,
+  ): Promise<MaterialAluno[]> {
+    const query = `
+      SELECT
+        m.id,
+        m.titulo,
+        m.tipo,
+        m.url_arquivo,
+        m.data_publicacao,
+        t.id AS turma_id,
+        t.nome AS turma_nome
+      FROM materiais m
+      JOIN turmas t ON t.id = m.turma_id
+      WHERE m.status = 'ativo'
+        AND m.visivel_aluno = TRUE
+        AND m.turma_id IN (
+          SELECT mat.turma_id
+          FROM matriculas mat
+          WHERE mat.aluno_id = $1
+            AND mat.turma_id IS NOT NULL
+            AND mat.status <> 'cancelado'
+        )
+      ORDER BY m.data_publicacao DESC
+    `;
+
+    const resultado = await this.db.query(query, [alunoId]);
+
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      titulo: linha.titulo,
+      tipo: linha.tipo,
+      urlArquivo: linha.url_arquivo ?? null,
+      turmaId: linha.turma_id,
+      turmaNome: linha.turma_nome,
+      criadoEm: linha.data_publicacao,
+    }));
+  }
+
+  async buscarMaterialVisivelParaDownload(
+    alunoId: string,
+    materialId: string,
+  ): Promise<MaterialAlunoDownload | null> {
+    const query = `
+      SELECT
+        m.id,
+        m.titulo,
+        m.tipo,
+        m.url_arquivo,
+        t.id AS turma_id,
+        t.nome AS turma_nome
+      FROM materiais m
+      JOIN turmas t ON t.id = m.turma_id
+      JOIN matriculas mat ON mat.turma_id = m.turma_id
+      WHERE m.id = $1
+        AND mat.aluno_id = $2
+        AND mat.turma_id IS NOT NULL
+        AND mat.status <> 'cancelado'
+        AND m.status = 'ativo'
+        AND m.visivel_aluno = TRUE
+      LIMIT 1
+    `;
+
+    const resultado = await this.db.query(query, [materialId, alunoId]);
+    const linha = resultado.rows[0];
+
+    if (!linha) return null;
+
+    return {
+      id: linha.id,
+      titulo: linha.titulo,
+      tipo: linha.tipo,
+      urlArquivo: linha.url_arquivo ?? null,
+      turmaId: linha.turma_id,
+      turmaNome: linha.turma_nome,
+    };
+  }
+
+  async buscarCertificadoEmitidoPorAlunoId(
+    alunoId: string,
+  ): Promise<CertificadoEmitidoDoAluno | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        c.id AS certificado_id,
+        c.codigo,
+        c.url_arquivo,
+        u.nome AS nome_aluno,
+        u.cpf AS cpf_aluno,
+        tr.nome AS nome_curso,
+        tr.carga_horaria,
+        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        to_char(
+          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_fim,
+        to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
+        COALESCE(emissor.nome, 'Coordenacao do Projeto') AS nome_coordenadora
+      FROM certificados c
+      JOIN matriculas m ON m.id = c.matricula_id
+      JOIN alunos a ON a.id = m.aluno_id
+      JOIN usuarios u ON u.id = a.usuario_id
+      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      LEFT JOIN turmas tu ON tu.id = m.turma_id
+      LEFT JOIN usuarios emissor ON emissor.id = c.emitido_por_id
+      WHERE c.status = 'emitido'
+        AND a.id = $1
+      ORDER BY c.data_emissao DESC
+      LIMIT 1
+      `,
+      [alunoId],
+    );
+    const linha = resultado.rows[0];
+    if (!linha) return null;
+
+    return {
+      certificadoId: linha.certificado_id,
+      codigo: linha.codigo ?? null,
+      urlArquivo: linha.url_arquivo ?? null,
+      nomeAluno: linha.nome_aluno,
+      cpfAluno: linha.cpf_aluno,
+      nomeCurso: linha.nome_curso,
+      cargaHoraria: Number(linha.carga_horaria),
+      dataInicio: linha.data_inicio,
+      dataFim: linha.data_fim,
+      dataEmissao: linha.data_emissao ?? null,
+      cidade: "Joao Pessoa - PB",
+      nomeCoordenadora: linha.nome_coordenadora,
+      nomeProjeto: "Projeto de Extensao Administracao para Todos",
+      textoDescritivo:
+        "concluiu o curso de extensao, desenvolvendo conhecimentos e habilidades para atuacao em rotinas administrativas e no ambiente profissional.",
+    };
+  }
+
+  async atualizarUrlArquivoCertificado(
+    certificadoId: string,
+    urlArquivo: string,
+  ): Promise<void> {
+    await this.db.query(
+      `UPDATE certificados SET url_arquivo = $1 WHERE id = $2`,
+      [urlArquivo, certificadoId],
+    );
   }
 
   async deletar(id: string): Promise<void> {

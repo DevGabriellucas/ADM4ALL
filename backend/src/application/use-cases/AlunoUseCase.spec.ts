@@ -2,7 +2,10 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { AlunoUseCase } from "./AlunoUseCase";
 import { ActivationUseCase } from "./ActivationUseCase";
-import { AlunoRepository } from "../../domain/repositories/AlunoRepository";
+import {
+  AlunoRepository,
+  MaterialAluno,
+} from "../../domain/repositories/AlunoRepository";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { Aluno } from "../../domain/entities/Aluno";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
@@ -34,6 +37,10 @@ describe("AlunoUseCase", () => {
       redefinirSenhaUsuario: jest.fn(),
       buscarUsuarioIdPorAlunoId: jest.fn(),
       buscarDashboardPorAlunoId: jest.fn(),
+      listarMateriaisVisiveisPorAluno: jest.fn(),
+      buscarMaterialVisivelParaDownload: jest.fn(),
+      buscarCertificadoEmitidoPorAlunoId: jest.fn(),
+      atualizarUrlArquivoCertificado: jest.fn(),
     };
     mockEmailService = {
       enviar: jest.fn(),
@@ -125,6 +132,75 @@ describe("AlunoUseCase", () => {
         mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash.mockResolvedValue(null);
 
         await expect(alunoUseCase.redefinirSenha("token", "novaSenha123")).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe("listarMateriais", () => {
+    const materiaisMock: MaterialAluno[] = [
+      {
+        id: "material-1",
+        titulo: "Aula 1 - Introducao",
+        tipo: "pdf",
+        urlArquivo: "/uploads/materiais/aula1.pdf",
+        turmaId: "turma-a",
+        turmaNome: "Turma A",
+        criadoEm: new Date("2025-01-15"),
+      },
+      {
+        id: "material-2",
+        titulo: "Aula 2 - Avancado",
+        tipo: "video",
+        urlArquivo: "/uploads/materiais/aula2.mp4",
+        turmaId: "turma-a",
+        turmaNome: "Turma A",
+        criadoEm: new Date("2025-02-20"),
+      },
+    ];
+
+    it("deve retornar materiais viaveis para o aluno", async () => {
+      mockAlunoRepository.listarMateriaisVisiveisPorAluno.mockResolvedValue(
+        materiaisMock,
+      );
+
+      const resultado = await alunoUseCase.listarMateriais("aluno-1");
+
+      expect(resultado).toHaveLength(2);
+      expect(resultado[0].titulo).toBe("Aula 1 - Introducao");
+      expect(
+        mockAlunoRepository.listarMateriaisVisiveisPorAluno,
+      ).toHaveBeenCalledWith("aluno-1");
+    });
+
+    it("deve retornar lista vazia quando aluno nao possui materiais", async () => {
+      mockAlunoRepository.listarMateriaisVisiveisPorAluno.mockResolvedValue(
+        [],
+      );
+
+      const resultado = await alunoUseCase.listarMateriais("aluno-sem-material");
+
+      expect(resultado).toHaveLength(0);
+    });
+
+    it("deve retornar lista vazia quando aluno nao possui matricula", async () => {
+      mockAlunoRepository.listarMateriaisVisiveisPorAluno.mockResolvedValue(
+        [],
+      );
+
+      const resultado = await alunoUseCase.listarMateriais(
+        "aluno-sem-matricula",
+      );
+
+      expect(resultado).toHaveLength(0);
+    });
+
+    it("nao deve lancar erro para aluno sem matricula", async () => {
+      mockAlunoRepository.listarMateriaisVisiveisPorAluno.mockResolvedValue(
+        [],
+      );
+
+      await expect(
+        alunoUseCase.listarMateriais("aluno-sem-matricula"),
+      ).resolves.toEqual([]);
     });
   });
 });

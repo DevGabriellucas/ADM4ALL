@@ -29,3 +29,17 @@ export interface AlunoDashboard {
   certificadoDisponivel: boolean;
   certificadoUrl: string | null;
 }
+
+export interface MaterialAluno {
+  id: string;
+  titulo: string;
+  tipo: string;
+  urlArquivo: string | null;
+  turmaId: string;
+  turmaNome: string;
+  criadoEm: string;
+}
+
+export interface MateriaisAlunoResponse {
+  materiais: MaterialAluno[];
+}
