@@ -64,7 +64,7 @@ export const CertificateCancelModal = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 text-sm hover:bg-slate-50 disabled:opacity-60"
+            className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Voltar
           </button>
@@ -72,7 +72,7 @@ export const CertificateCancelModal = ({
             type="button"
             onClick={handleCancel}
             disabled={loading}
-            className="rounded-lg bg-red-700 px-4 py-2 font-semibold text-sm text-white hover:bg-red-800 disabled:opacity-60"
+            className="cursor-pointer rounded-lg bg-red-700 px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Cancelando..." : "Cancelar certificado"}
           </button>

@@ -56,7 +56,7 @@ export const AlunoCompletionMessage = ({
             type="button"
             onClick={handleDownload}
             disabled={loading}
-            className="mt-3 inline-block font-semibold text-brand-dark underline transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 inline-block cursor-pointer font-semibold text-brand-dark underline transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Baixando..." : "Acessar certificado"}
           </button>

@@ -223,7 +223,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                           <button
                             type="button"
                             onClick={() => setIssueTarget(certificate)}
-                            className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                            className="cursor-pointer font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
                           >
                             Emitir
                           </button>
@@ -234,7 +234,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                               type="button"
                               onClick={() => openPreview(certificate)}
                               disabled={isLoading}
-                              className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:opacity-60"
+                              className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {isLoading ? "Carregando..." : "Visualizar"}
                             </button>
@@ -242,7 +242,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                               type="button"
                               onClick={() => baixarPdf(certificate)}
                               disabled={isDownloading}
-                              className="font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900 disabled:opacity-60"
+                              className="cursor-pointer font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {isDownloading ? "Baixando..." : "Baixar PDF"}
                             </button>
@@ -254,7 +254,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                             <button
                               type="button"
                               onClick={() => setCancelTarget(certificate)}
-                              className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                              className="cursor-pointer font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
                             >
                               Cancelar
                             </button>

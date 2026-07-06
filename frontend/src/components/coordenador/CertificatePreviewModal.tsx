@@ -65,14 +65,14 @@ export const CertificatePreviewModal = ({
             <button
               type="button"
               onClick={handleDownload}
-              className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-emerald-700"
+              className="cursor-pointer rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-emerald-700"
             >
               Baixar PDF
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-3 py-2 font-semibold text-slate-600 text-sm transition-colors hover:bg-slate-100"
+              className="cursor-pointer rounded-lg px-3 py-2 font-semibold text-slate-600 text-sm transition-colors hover:bg-slate-100"
             >
               Fechar
             </button>
