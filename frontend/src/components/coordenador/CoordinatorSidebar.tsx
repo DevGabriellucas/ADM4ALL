@@ -4,19 +4,41 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clearSession } from "@/services/sessionService";
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string;
+  href: string;
+  development?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/coordenador/dashboard" },
   { label: "Cursos", href: "/coordenador/cursos" },
   { label: "Turmas", href: "/coordenador/turmas" },
   { label: "Alunos", href: "/coordenador/alunos" },
   { label: "Instrutores", href: "/coordenador/instrutores" },
   { label: "Frequência", href: "/coordenador/frequencia" },
-  { label: "Cronograma", href: "/coordenador/cronograma" },
   { label: "Certificados", href: "/coordenador/certificados" },
   { label: "Relatórios", href: "/coordenador/relatorios" },
-  { label: "Processos", href: "/coordenador/processos" },
-  { label: "Usuários", href: "/coordenador/usuarios" },
-  { label: "Configurações", href: "/coordenador/configuracoes" },
+  {
+    label: "Cronograma",
+    href: "/coordenador/cronograma",
+    development: true,
+  },
+  {
+    label: "Processos",
+    href: "/coordenador/processos",
+    development: true,
+  },
+  {
+    label: "Usuários",
+    href: "/coordenador/usuarios",
+    development: true,
+  },
+  {
+    label: "Configurações",
+    href: "/coordenador/configuracoes",
+    development: true,
+  },
 ];
 
 export const CoordinatorSidebar = () => {
@@ -54,11 +76,22 @@ export const CoordinatorSidebar = () => {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`min-w-max rounded-md px-3 py-2 text-sm tracking-[0.15em] transition-colors hover:bg-white/20 ${
-                isActive ? "bg-white/25 font-semibold" : "font-medium"
+              className={`flex min-w-max items-center justify-between gap-2 rounded-md px-3 py-2 text-sm tracking-[0.15em] transition-colors hover:bg-white/20 lg:min-w-0 ${
+                item.development ? "text-slate-600" : ""
+              } ${
+                isActive && item.development
+                  ? "bg-white/15 font-semibold text-slate-950"
+                  : isActive
+                    ? "bg-white/25 font-semibold"
+                    : "font-medium"
               }`}
             >
-              {item.label}
+              <span className="min-w-0 truncate">{item.label}</span>
+              {item.development && (
+                <span className="shrink-0 rounded-full bg-slate-400/40 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+                  Dev
+                </span>
+              )}
             </Link>
           );
         })}
