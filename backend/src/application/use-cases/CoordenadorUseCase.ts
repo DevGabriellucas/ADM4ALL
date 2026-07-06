@@ -24,6 +24,7 @@ import {
   InstrutorListagem,
   MatriculaCriada,
   MatriculaStatusAtualizado,
+  PeriodoLetivoResponse,
   RelatorioCoordenador,
   StatusMatriculaEditavel,
   TipoCertificado,
@@ -36,6 +37,10 @@ import { Telefone } from "../../domain/value-objects/Telefone";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
+import {
+  MENSAGEM_PERIODO_INVALIDO,
+  PERIODO_REGEX,
+} from "../../application/utils/calcularPeriodoLetivo";
 import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CriarCursoEntrada {
@@ -914,4 +919,26 @@ export class CoordenadorUseCase {
     }
   }
 
+  async obterPeriodoLetivo(): Promise<PeriodoLetivoResponse> {
+    return await this.coordenadorRepository.buscarPeriodoLetivo();
+  }
+
+  async atualizarPeriodoLetivo(
+    periodoLetivo: string,
+    usuarioId: string,
+  ): Promise<PeriodoLetivoResponse> {
+    if (!PERIODO_REGEX.test(periodoLetivo)) {
+      throw new BadRequestError(MENSAGEM_PERIODO_INVALIDO);
+    }
+
+    return await this.coordenadorRepository.salvarPeriodoLetivo(
+      periodoLetivo,
+      usuarioId,
+    );
+  }
+
+  async voltarPeriodoAutomatico(): Promise<void> {
+    await this.coordenadorRepository.excluirPeriodoLetivoManual();
+  }
 }
+
