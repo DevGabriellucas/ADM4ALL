@@ -9,7 +9,7 @@ export const AlunoLogoutButton = () => {
   const router = useRouter();
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
-  const handleLogout = () => {
+  const confirmarSaida = () => {
     clearSession();
     router.replace("/");
   };
@@ -47,7 +47,7 @@ export const AlunoLogoutButton = () => {
           confirmLabel="Sair"
           tone="danger"
           onCancel={() => setConfirmandoSaida(false)}
-          onConfirm={handleLogout}
+          onConfirm={confirmarSaida}
         />
       )}
     </>

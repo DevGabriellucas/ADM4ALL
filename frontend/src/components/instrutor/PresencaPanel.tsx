@@ -283,7 +283,7 @@ export const PresencaPanel = ({
           type="button"
           onClick={marcarTodosPresentes}
           disabled={desabilitado || alunosAtuais.length === 0}
-          className="rounded-md border border-emerald-200 px-3 py-1.5 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded-md border border-emerald-200 px-3 py-1.5 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Marcar todos presentes
         </button>
@@ -323,7 +323,7 @@ export const PresencaPanel = ({
                         definirStatus(aluno.matriculaId, opcao.valor)
                       }
                       aria-pressed={selecionado}
-                      className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                      className={`cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors ${
                         selecionado
                           ? opcao.classes
                           : "border-slate-300 bg-white text-slate-600 hover:border-brand-medium"
@@ -354,7 +354,7 @@ export const PresencaPanel = ({
           type="button"
           onClick={salvar}
           disabled={desabilitado}
-          className="rounded-md bg-brand-dark px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+          className="cursor-pointer rounded-md bg-brand-dark px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSalvando ? "Salvando..." : "Salvar Presença"}
         </button>
