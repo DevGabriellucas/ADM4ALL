@@ -14,13 +14,14 @@ interface NewClassFormProps {
   onCancel: () => void;
   onSuccess?: () => void;
   defaultCourseName?: string;
+  defaultCourseId?: string;
   lockCourse?: boolean;
 }
 
 interface ClassFormData {
   curso: string;
   nome: string;
-  instrutor: string;
+  instrutoresSelecionados: string[];
   dataInicio: string;
   dataTermino: string;
   horarios: string;
@@ -31,7 +32,7 @@ interface ClassFormData {
 const INITIAL_FORM_DATA: ClassFormData = {
   curso: "",
   nome: "",
-  instrutor: "",
+  instrutoresSelecionados: [],
   dataInicio: "",
   dataTermino: "",
   horarios: "",
@@ -51,6 +52,7 @@ export const NewClassForm = ({
   onCancel,
   onSuccess,
   defaultCourseName,
+  defaultCourseId,
   lockCourse,
 }: NewClassFormProps) => {
   const router = useRouter();
@@ -65,6 +67,16 @@ export const NewClassForm = ({
     (instructor) => instructor.status === "ativo",
   );
 
+  const toggleInstrutor = (nome: string) => {
+    setFormData((prev) => {
+      const selected = prev.instrutoresSelecionados.includes(nome)
+        ? prev.instrutoresSelecionados.filter((n) => n !== nome)
+        : [...prev.instrutoresSelecionados, nome];
+
+      return { ...prev, instrutoresSelecionados: selected };
+    });
+  };
+
   const handleCancel = () => {
     setFormData(construirDadosIniciais(defaultCourseName));
     setSuccessMessage(null);
@@ -77,15 +89,22 @@ export const NewClassForm = ({
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    if (formData.instrutoresSelecionados.length === 0) {
+      setIsSubmitting(false);
+      setErrorMessage("Selecione pelo menos um instrutor.");
+      return;
+    }
+
     const resultado = await criarTurmaAction({
       curso: formData.curso,
       nome: formData.nome,
-      instrutor: formData.instrutor,
+      instrutores: formData.instrutoresSelecionados,
       dataInicio: formData.dataInicio,
       dataTermino: formData.dataTermino,
       horarios: formData.horarios,
       limiteAlunos: Number(formData.limiteAlunos),
       status: formData.status,
+      cursoId: defaultCourseId,
     });
 
     setIsSubmitting(false);
@@ -118,7 +137,7 @@ export const NewClassForm = ({
           Nova turma
         </h2>
         <p className="mt-1 text-slate-500 text-xs">
-          Defina o curso, o responsável e o período da nova turma.
+          Defina o curso, os instrutores e o período da nova turma.
         </p>
       </div>
 
@@ -176,24 +195,39 @@ export const NewClassForm = ({
             />
           </label>
 
-          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Instrutor responsável
-            <select
-              required
-              value={formData.instrutor}
-              onChange={(event) =>
-                setFormData({ ...formData, instrutor: event.target.value })
-              }
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
-            >
-              <option value="">Selecione um instrutor</option>
-              {activeInstructors.map((instructor) => (
-                <option key={instructor.id} value={instructor.nome}>
-                  {instructor.nome}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm md:col-span-2">
+            Instrutores
+            {activeInstructors.length === 0 ? (
+              <p className="text-slate-500 text-sm">
+                Nenhum instrutor ativo disponível.
+              </p>
+            ) : (
+              <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-300 bg-white p-3">
+                {activeInstructors.map((instructor) => {
+                  const checked = formData.instrutoresSelecionados.includes(
+                    instructor.nome,
+                  );
+
+                  return (
+                    <label
+                      key={instructor.id}
+                      className="flex cursor-pointer items-center gap-x-2 rounded px-2 py-1.5 font-normal transition-colors hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleInstrutor(instructor.nome)}
+                        className="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-dark focus:ring-brand-light/30"
+                      />
+                      <span className="text-slate-900 text-sm">
+                        {instructor.nome}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
             Limite de alunos

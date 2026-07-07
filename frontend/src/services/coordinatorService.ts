@@ -87,7 +87,7 @@ interface TurmaApi {
   id: string;
   nome: string;
   curso: string;
-  instrutor: string | null;
+  instrutores: string;
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
@@ -213,7 +213,7 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
   nome: turma.nome,
   curso: turma.curso,
-  instrutor: turma.instrutor ?? "",
+  instrutores: turma.instrutores ?? "",
   alunos: turma.alunos,
   dataInicio: turma.dataInicio,
   dataTermino: turma.dataTermino ?? "",
@@ -244,7 +244,7 @@ const mapearAulaDaTurma = (
   titulo: aula.titulo,
   curso: detalhe.turma.curso,
   turma: detalhe.turma.nome,
-  instrutor: detalhe.turma.instrutor ?? "",
+  instrutor: detalhe.turma.instrutores ?? "",
   data: aula.data,
   status: aula.status as Lesson["status"],
 });
@@ -259,7 +259,7 @@ const mapearAulaInstrutor = (
   titulo: aula.titulo,
   curso: turma.curso,
   turma: turma.nome,
-  instrutor: turma.instrutor,
+  instrutor: turma.instrutores,
   data: aula.data,
   status: aula.status,
 });
@@ -518,7 +518,7 @@ export const getClasses = async (): Promise<ClassGroup[]> => {
 export const createClass = async (input: {
   curso: string;
   nome: string;
-  instrutor: string;
+  instrutores: string[];
   dataInicio: string;
   dataTermino: string;
   horarios: string;
@@ -528,7 +528,13 @@ export const createClass = async (input: {
   const turma = await authenticatedRequest<TurmaApi>("/turmas", {
     method: "POST",
     body: JSON.stringify({
-      ...input,
+      curso: input.curso,
+      nome: input.nome,
+      instrutores: input.instrutores,
+      dataInicio: input.dataInicio,
+      dataTermino: input.dataTermino,
+      horarios: input.horarios,
+      limiteAlunos: input.limiteAlunos,
       status: serializeClassStatus(input.status),
     }),
     fallbackError: "Falha ao cadastrar a turma.",

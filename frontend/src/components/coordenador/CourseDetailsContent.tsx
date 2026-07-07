@@ -120,6 +120,7 @@ export const CourseDetailsContent = ({
               instructors={instructors}
               isOpen={isNewClassModalOpen}
               defaultCourseName={course.nome}
+              defaultCourseId={course.id}
               lockCourse={true}
               onCancel={() => setIsNewClassModalOpen(false)}
               onSuccess={() => setIsNewClassModalOpen(false)}
@@ -273,7 +274,7 @@ export const CourseDetailsContent = ({
                     Turma
                   </th>
                   <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                    Instrutor
+                    Instrutores
                   </th>
                   <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                     Período
@@ -301,7 +302,7 @@ export const CourseDetailsContent = ({
                         </p>
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                        {classGroup.instrutor || "-"}
+                        {classGroup.instrutores || "-"}
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
                         {classGroup.dataInicio}

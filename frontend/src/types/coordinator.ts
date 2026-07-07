@@ -177,7 +177,7 @@ export interface ClassGroup {
   id: string;
   nome: string;
   curso: string;
-  instrutor: string;
+  instrutores: string;
   alunos: number;
   dataInicio: string;
   dataTermino: string;
