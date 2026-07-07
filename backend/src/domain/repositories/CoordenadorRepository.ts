@@ -341,7 +341,7 @@ export interface TurmaListagem {
   id: string;
   nome: string;
   curso: string;
-  instrutor: string | null;
+  instrutores: string;
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
@@ -351,7 +351,7 @@ export interface TurmaListagem {
 
 export interface CriarTurmaInput {
   treinamentoId: string;
-  instrutorId: string;
+  instrutorIds: string[];
   coordenadorId?: string | null;
   nome: string;
   dataInicio: string;

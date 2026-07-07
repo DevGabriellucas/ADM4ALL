@@ -1098,7 +1098,7 @@ export class ExpressAdapter {
         const {
           curso,
           nome,
-          instrutor,
+          instrutores,
           dataInicio,
           dataTermino,
           horarios,
@@ -1110,7 +1110,7 @@ export class ExpressAdapter {
         const turma = await this.coordenadorUseCase.criarTurma({
           curso,
           nome,
-          instrutor,
+          instrutores: Array.isArray(instrutores) ? instrutores : [],
           dataInicio,
           dataTermino,
           horario: horarios,

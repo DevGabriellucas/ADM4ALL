@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS treinamentos (
 CREATE TABLE IF NOT EXISTS turmas (
     id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     treinamento_id   UUID         NOT NULL REFERENCES treinamentos(id) ON DELETE RESTRICT,
-    instrutor_id     UUID         REFERENCES instrutores(id) ON DELETE SET NULL,
     coordenador_id   UUID         REFERENCES coordenadores(id) ON DELETE SET NULL,
     codigo           VARCHAR(30)  NOT NULL UNIQUE,
     nome             VARCHAR(120) NOT NULL,
@@ -49,9 +48,25 @@ CREATE TABLE IF NOT EXISTS turmas (
 
 CREATE INDEX IF NOT EXISTS idx_turmas_treinamento
     ON turmas (treinamento_id);
-CREATE INDEX IF NOT EXISTS idx_turmas_instrutor
-    ON turmas (instrutor_id);
 CREATE INDEX IF NOT EXISTS idx_turmas_coordenador
     ON turmas (coordenador_id);
 CREATE INDEX IF NOT EXISTS idx_turmas_status
     ON turmas (status);
+
+-- ============================================================
+-- Vinculo muitos-para-muitos entre turmas e instrutores.
+-- Unica fonte de verdade para o relacionamento.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS turma_instrutores (
+    id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    turma_id        UUID         NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+    instrutor_id    UUID         NOT NULL REFERENCES instrutores(id) ON DELETE CASCADE,
+    criado_em       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_turma_instrutor UNIQUE (turma_id, instrutor_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_turma_instrutores_turma
+    ON turma_instrutores (turma_id);
+CREATE INDEX IF NOT EXISTS idx_turma_instrutores_instrutor
+    ON turma_instrutores (instrutor_id);

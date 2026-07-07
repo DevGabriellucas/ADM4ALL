@@ -82,7 +82,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     instrutorId: string,
   ): Promise<boolean> {
     const resultado = await this.db.query(
-      "SELECT 1 FROM turmas WHERE id = $1 AND instrutor_id = $2 LIMIT 1",
+      "SELECT 1 FROM turma_instrutores WHERE turma_id = $1 AND instrutor_id = $2 LIMIT 1",
       [turmaId, instrutorId],
     );
 
@@ -122,7 +122,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       SELECT t.id, t.codigo, t.nome, t.turno, t.local, tr.nome AS curso
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
-      WHERE t.instrutor_id = $1
+      JOIN turma_instrutores ti ON ti.turma_id = t.id
+      WHERE ti.instrutor_id = $1
       ORDER BY (t.status = 'em_andamento') DESC, t.data_inicio DESC
       LIMIT 1
     `;

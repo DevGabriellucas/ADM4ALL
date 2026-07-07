@@ -54,7 +54,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                 Curso
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Instrutor
+                Instrutores
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                 Alunos
@@ -87,7 +87,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                     {classGroup.curso}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                    {classGroup.instrutor}
+                    {classGroup.instrutores || "-"}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
                     {classGroup.alunos}

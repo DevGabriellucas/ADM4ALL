@@ -560,17 +560,21 @@ export async function exportarRelatorioAction(
 export async function criarTurmaAction(input: {
   curso: string;
   nome: string;
-  instrutor: string;
+  instrutores: string[];
   dataInicio: string;
   dataTermino: string;
   horarios: string;
   limiteAlunos: number;
   status: ClassGroup["status"];
+  cursoId?: string;
 }): Promise<ResultadoAction> {
   try {
     const turma = await coordinatorService.createClass(input);
     revalidatePath("/coordenador/turmas");
     revalidatePath("/coordenador/dashboard");
+    if (input.cursoId) {
+      revalidatePath(`/coordenador/cursos/${input.cursoId}`);
+    }
     return {
       sucesso: true,
       mensagem: `Turma "${turma.nome}" cadastrada com sucesso.`,

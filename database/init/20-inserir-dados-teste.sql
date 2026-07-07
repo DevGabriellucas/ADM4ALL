@@ -88,7 +88,10 @@ FROM (
             '11144477735',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha definida no cadastro publico: Aluno@123
             'pendente_ativacao'
-        ),
+        )
+
+
+,
         (
             'acbf238d-4461-4749-9fc9-53eb21a6da0f'::UUID,
             'aluno',
@@ -97,7 +100,10 @@ FROM (
             '93541134780',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha temporaria, substituida na ativacao
             'pendente_ativacao'
-        ),
+        )
+
+
+,
         (
             '74c65249-0017-4507-b17b-f080e770926f'::UUID,
             'instrutor',
@@ -105,8 +111,38 @@ FROM (
             'eduardo.convite@example.com',
             '39053344705',
             '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu', -- senha temporaria, substituida na ativacao
-            'pendente_ativacao'
+                        'ativo'
+        ),
+        (
+            'c1d2e3f4-a5b6-4789-9cde-f01234567890'::UUID,
+            'instrutor',
+            'Camila Rocha',
+            'camila.rocha@example.com',
+            '48296175301',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
+        ),
+        (
+            'a1b2c3d4-e5f6-4789-8abc-d234567890a1'::UUID,
+            'instrutor',
+            'Rafael Mendes',
+            'rafael.mendes@example.com',
+            '75320184690',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
+        ),
+        (
+            'b1c2d3e4-f5a6-4789-8def-c345678901b2'::UUID,
+            'instrutor',
+            'Juliana Torres',
+            'juliana.torres@example.com',
+            '30915846270',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
         )
+
+
+
 ) AS dados(id, perfil_nome, nome, email, cpf, senha, status)
 JOIN perfis ON perfis.nome = dados.perfil_nome
 ON CONFLICT DO NOTHING;
@@ -182,6 +218,27 @@ VALUES
         NULL,
         NULL,
         NULL
+    ),
+    (
+        'f1e2d3c4-b5a6-4789-8abc-de0123456789',
+        'c1d2e3f4-a5b6-4789-9cde-f01234567890',
+        '83991110001',
+        'Administracao',
+        'Gestao de Pessoas'
+    ),
+    (
+        'e1d2c3b4-a5f6-4789-9def-01234567890b',
+        'a1b2c3d4-e5f6-4789-8abc-d234567890a1',
+        '83992220002',
+        'Contabilidade',
+        'Ciencias Contabeis'
+    ),
+    (
+        'd1e2f3a4-b5c6-4789-9abc-e234567890c1',
+        'b1c2d3e4-f5a6-4789-8def-c345678901b2',
+        '83993330003',
+        'Marketing',
+        'Publicidade e Propaganda'
     )
 ON CONFLICT (usuario_id) DO NOTHING;
 
@@ -270,12 +327,11 @@ VALUES
 ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO turmas
-    (id, treinamento_id, instrutor_id, coordenador_id, codigo, nome, turno, local, status, capacidade, data_inicio, data_fim)
+    (id, treinamento_id, coordenador_id, codigo, nome, turno, local, status, capacidade, data_inicio, data_fim)
 VALUES
     (
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         '524963bc-e82c-447f-8e6f-7fd567f99e87',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'ADM-2026-01',
         'Assistente Administrativo 2026.1',
@@ -289,7 +345,6 @@ VALUES
     (
         '39e19e8c-5207-44d4-a8aa-0f566410b75d',
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'CONT-2026-01',
         'Assistente Contábil 2026.1',
@@ -303,7 +358,6 @@ VALUES
     (
         '25052a8f-00a2-47f7-82af-f46cf4f70991',
         '2f9a746b-70dc-4261-b150-2ec16d2b842c',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'RH-2026-01',
         'Assistente de RH 2026.1',
@@ -317,7 +371,6 @@ VALUES
     (
         'c00cffc0-8d1a-4f69-9c2a-654bbeb4ced1',
         '13f6bf4a-8d9d-4e54-a5f1-5a5c4b79f111',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'MKT-2026-01',
         'Assistente de Marketing 2026.1',
@@ -331,7 +384,6 @@ VALUES
     (
         'b77aeb2c-ae47-4a60-93c9-68c47c0c6a3a',
         '0af7df27-d7cf-4d86-b1a9-4b9f4fe6c222',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'EMP-2026-01',
         'Empreendedorismo 2026.1',
@@ -345,7 +397,6 @@ VALUES
     (
         '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
-        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'CONTABIL-2026-01',
         'Assistente Contábil 2026.1',
@@ -357,6 +408,25 @@ VALUES
         '2026-03-09'
     )
 ON CONFLICT (codigo) DO NOTHING;
+
+INSERT INTO turma_instrutores (turma_id, instrutor_id)
+SELECT
+    dados.turma_id::UUID,
+    dados.instrutor_id::UUID
+FROM (
+    VALUES
+        ('df349e38-0e92-4971-b67b-2deb56b90c7b', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('df349e38-0e92-4971-b67b-2deb56b90c7b', '28a1d4d4-fd35-4dcf-8e2a-536f038ff9b8'),
+        ('df349e38-0e92-4971-b67b-2deb56b90c7b', 'f1e2d3c4-b5a6-4789-8abc-de0123456789'),
+        ('39e19e8c-5207-44d4-a8aa-0f566410b75d', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('39e19e8c-5207-44d4-a8aa-0f566410b75d', 'e1d2c3b4-a5f6-4789-9def-01234567890b'),
+        ('25052a8f-00a2-47f7-82af-f46cf4f70991', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('25052a8f-00a2-47f7-82af-f46cf4f70991', 'd1e2f3a4-b5c6-4789-9abc-e234567890c1'),
+        ('c00cffc0-8d1a-4f69-9c2a-654bbeb4ced1', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('b77aeb2c-ae47-4a60-93c9-68c47c0c6a3a', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('8856e6f0-efad-47f3-88f5-ec58e8e9bbfc', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2')
+) AS dados(turma_id, instrutor_id)
+ON CONFLICT (turma_id, instrutor_id) DO NOTHING;
 
 INSERT INTO matriculas
     (id, aluno_id, treinamento_id, turma_id, status, progresso, data_matricula, data_conclusao)

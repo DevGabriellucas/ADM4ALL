@@ -81,7 +81,7 @@ export interface ConvidarAlunoEntrada {
 export interface CriarTurmaEntrada {
   curso: string;
   nome: string;
-  instrutor: string;
+  instrutores: string[];
   dataInicio: string;
   dataTermino: string;
   horario: string;
@@ -1078,8 +1078,8 @@ export class CoordenadorUseCase {
       throw new BadRequestError("O nome da turma e obrigatorio.");
     }
 
-    if (!input.instrutor || input.instrutor.trim() === "") {
-      throw new BadRequestError("O instrutor responsavel e obrigatorio.");
+    if (!input.instrutores || input.instrutores.length === 0) {
+      throw new BadRequestError("Selecione pelo menos um instrutor.");
     }
 
     if (!input.dataInicio || !input.dataTermino) {
@@ -1114,11 +1114,17 @@ export class CoordenadorUseCase {
       throw new BadRequestError("Curso nao encontrado.");
     }
 
-    const instrutor = await this.coordenadorRepository.buscarInstrutorAtivoPorNome(
-      input.instrutor.trim(),
-    );
-    if (!instrutor) {
-      throw new BadRequestError("Instrutor nao encontrado ou inativo.");
+    const instrutorIds: string[] = [];
+    for (const nomeInstrutor of input.instrutores) {
+      const instrutor = await this.coordenadorRepository.buscarInstrutorAtivoPorNome(
+        nomeInstrutor.trim(),
+      );
+      if (!instrutor) {
+        throw new BadRequestError(
+          `Instrutor "${nomeInstrutor.trim()}" nao encontrado ou inativo.`,
+        );
+      }
+      instrutorIds.push(instrutor.id);
     }
 
     const statusBanco = statusFrontend === "encerrada" ? "concluida" : statusFrontend;
@@ -1126,7 +1132,7 @@ export class CoordenadorUseCase {
     try {
       return await this.coordenadorRepository.criarTurma({
         treinamentoId: treinamento.id,
-        instrutorId: instrutor.id,
+        instrutorIds,
         coordenadorId: input.coordenadorId ?? null,
         nome: input.nome.trim(),
         dataInicio: input.dataInicio,

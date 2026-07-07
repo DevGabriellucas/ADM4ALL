@@ -182,7 +182,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         COUNT(tu.id) AS turmas_vinculadas
       FROM instrutores i
       JOIN usuarios u ON u.id = i.usuario_id
-      LEFT JOIN turmas tu ON tu.instrutor_id = i.id
+      LEFT JOIN turma_instrutores ti ON ti.instrutor_id = i.id
+      LEFT JOIN turmas tu ON tu.id = ti.turma_id
       GROUP BY i.id, u.nome, u.email, i.telefone, u.status, i.data_cadastro
       ORDER BY u.nome ASC
     `;
@@ -218,7 +219,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         COUNT(tu.id) AS turmas_vinculadas
       FROM instrutores i
       JOIN usuarios u ON u.id = i.usuario_id
-      LEFT JOIN turmas tu ON tu.instrutor_id = i.id
+      LEFT JOIN turma_instrutores ti ON ti.instrutor_id = i.id
+      LEFT JOIN turmas tu ON tu.id = ti.turma_id
       WHERE i.id = $1
       GROUP BY
         i.id,
@@ -252,10 +254,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         COUNT(m.id) AS alunos
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
+      LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN matriculas m
         ON m.turma_id = t.id
        AND m.status <> 'cancelado'
-      WHERE t.instrutor_id = $1
+      WHERE ti.instrutor_id = $1
       GROUP BY
         t.id,
         t.nome,
@@ -1299,7 +1302,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         ) AS alunos_ativos
       FROM turmas tu
       JOIN treinamentos tr ON tr.id = tu.treinamento_id
-      LEFT JOIN instrutores i ON i.id = tu.instrutor_id
+      LEFT JOIN turma_instrutores ti ON ti.turma_id = tu.id
+      LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios usuario_instrutor ON usuario_instrutor.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = tu.id
       WHERE tu.status = 'em_andamento'
@@ -1718,19 +1722,20 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.id,
         t.nome,
         tr.nome AS curso,
-        ui.nome AS instrutor,
+        STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
-        COUNT(m.id) AS alunos,
+        COUNT(DISTINCT m.id) AS alunos,
         COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
-      LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
+      LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
-      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query);
@@ -1743,20 +1748,21 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.id,
         t.nome,
         tr.nome AS curso,
-        ui.nome AS instrutor,
+        STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
-        COUNT(m.id) AS alunos,
+        COUNT(DISTINCT m.id) AS alunos,
         COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
-      LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
+      LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.treinamento_id = $1
-      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query, [cursoId]);
@@ -1770,20 +1776,21 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.id,
         t.nome,
         tr.nome AS curso,
-        ui.nome AS instrutor,
+        STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
-        COUNT(m.id) AS alunos,
+        COUNT(DISTINCT m.id) AS alunos,
         COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
-      LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
+      LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.id = $1
-      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
       `,
       [id],
     );
@@ -1839,19 +1846,22 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   async criarTurma(input: CriarTurmaInput): Promise<TurmaListagem> {
-    const query = `
-      INSERT INTO turmas (
-        treinamento_id, instrutor_id, coordenador_id, codigo, nome,
-        horario, status, capacidade, data_inicio, data_fim
-      )
-      VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9)
-      RETURNING id
-    `;
+    const client = await this.db.connect();
 
     try {
-      const resultado = await this.db.query(query, [
+      await client.query("BEGIN");
+
+      const query = `
+        INSERT INTO turmas (
+          treinamento_id, coordenador_id, codigo, nome,
+          horario, status, capacidade, data_inicio, data_fim
+        )
+        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `;
+
+      const resultado = await client.query(query, [
         input.treinamentoId,
-        input.instrutorId,
         input.coordenadorId ?? null,
         input.nome,
         input.horario,
@@ -1861,13 +1871,28 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.dataTermino,
       ]);
 
-      const turma = await this.buscarTurmaDetalhe(resultado.rows[0].id);
+      const turmaId = resultado.rows[0].id;
+
+      for (const instrutorId of input.instrutorIds) {
+        await client.query(
+          "INSERT INTO turma_instrutores (turma_id, instrutor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [turmaId, instrutorId],
+        );
+      }
+
+      await client.query("COMMIT");
+
+      const turma = await this.buscarTurmaDetalhe(turmaId);
       return turma!.turma;
     } catch (error: any) {
+      await client.query("ROLLBACK");
+
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe uma turma cadastrada com este nome.");
       }
       throw error;
+    } finally {
+      client.release();
     }
   }
 
@@ -1897,7 +1922,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       id: linha.id,
       nome: linha.nome,
       curso: linha.curso,
-      instrutor: linha.instrutor ?? null,
+      instrutores: linha.instrutores ?? "",
       alunos: Number(linha.alunos),
       dataInicio: linha.data_inicio,
       dataTermino: linha.data_termino ?? null,

@@ -81,10 +81,10 @@ export const ClassDetailsContent = ({
           <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="font-medium text-slate-500 text-xs">
-                Instrutor responsável
+                Instrutores
               </dt>
               <dd className="mt-1 font-semibold text-slate-900">
-                {classGroup.instrutor}
+                {classGroup.instrutores || "-"}
               </dd>
             </div>
             <div>
