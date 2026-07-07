@@ -112,6 +112,33 @@ FROM (
             '39053344705',
             '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu', -- senha temporaria, substituida na ativacao
                         'ativo'
+        ),
+        (
+            'c1d2e3f4-a5b6-4789-9cde-f01234567890'::UUID,
+            'instrutor',
+            'Camila Rocha',
+            'camila.rocha@example.com',
+            '48296175301',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
+        ),
+        (
+            'a1b2c3d4-e5f6-4789-8abc-d234567890a1'::UUID,
+            'instrutor',
+            'Rafael Mendes',
+            'rafael.mendes@example.com',
+            '75320184690',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
+        ),
+        (
+            'b1c2d3e4-f5a6-4789-8def-c345678901b2'::UUID,
+            'instrutor',
+            'Juliana Torres',
+            'juliana.torres@example.com',
+            '30915846270',
+            '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
+            'ativo'
         )
 
 
@@ -191,6 +218,27 @@ VALUES
         NULL,
         NULL,
         NULL
+    ),
+    (
+        'f1e2d3c4-b5a6-4789-8abc-de0123456789',
+        'c1d2e3f4-a5b6-4789-9cde-f01234567890',
+        '83991110001',
+        'Administracao',
+        'Gestao de Pessoas'
+    ),
+    (
+        'e1d2c3b4-a5f6-4789-9def-01234567890b',
+        'a1b2c3d4-e5f6-4789-8abc-d234567890a1',
+        '83992220002',
+        'Contabilidade',
+        'Ciencias Contabeis'
+    ),
+    (
+        'd1e2f3a4-b5c6-4789-9abc-e234567890c1',
+        'b1c2d3e4-f5a6-4789-8def-c345678901b2',
+        '83993330003',
+        'Marketing',
+        'Publicidade e Propaganda'
     )
 ON CONFLICT (usuario_id) DO NOTHING;
 
@@ -369,8 +417,11 @@ FROM (
     VALUES
         ('df349e38-0e92-4971-b67b-2deb56b90c7b', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
         ('df349e38-0e92-4971-b67b-2deb56b90c7b', '28a1d4d4-fd35-4dcf-8e2a-536f038ff9b8'),
+        ('df349e38-0e92-4971-b67b-2deb56b90c7b', 'f1e2d3c4-b5a6-4789-8abc-de0123456789'),
         ('39e19e8c-5207-44d4-a8aa-0f566410b75d', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('39e19e8c-5207-44d4-a8aa-0f566410b75d', 'e1d2c3b4-a5f6-4789-9def-01234567890b'),
         ('25052a8f-00a2-47f7-82af-f46cf4f70991', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
+        ('25052a8f-00a2-47f7-82af-f46cf4f70991', 'd1e2f3a4-b5c6-4789-9abc-e234567890c1'),
         ('c00cffc0-8d1a-4f69-9c2a-654bbeb4ced1', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
         ('b77aeb2c-ae47-4a60-93c9-68c47c0c6a3a', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2'),
         ('8856e6f0-efad-47f3-88f5-ec58e8e9bbfc', '9ab264bc-036b-4e62-ba6b-6a93d2da94c2')
