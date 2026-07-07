@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import * as coordinatorService from "@/services/coordinatorService";
-import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
 import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
+import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
 import type {
   CertificateDetail,
   ClassGroup,
@@ -12,8 +12,8 @@ import type {
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
-  UserStatus,
   Lesson,
+  UserStatus,
 } from "@/types/coordinator";
 
 interface ResultadoAction {
@@ -89,6 +89,82 @@ export async function convidarInstrutorAction(input: {
         error instanceof Error
           ? error.message
           : "Falha ao enviar o convite de ativacao.",
+    };
+  }
+}
+
+export async function atualizarInstrutorAction(
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    telefone: string | null;
+    areaAtuacao: string | null;
+    formacao: string | null;
+  },
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateInstructor(id, input);
+    revalidatePath("/coordenador/instrutores");
+    revalidatePath(`/coordenador/instrutores/${id}`);
+    revalidatePath("/coordenador/turmas");
+    return {
+      sucesso: true,
+      mensagem: "Dados do instrutor atualizados com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar os dados do instrutor.",
+    };
+  }
+}
+
+export async function atualizarStatusInstrutorAction(
+  instrutorId: string,
+  statusConta: UserStatus,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateInstructorStatus(instrutorId, statusConta);
+    revalidatePath("/coordenador/instrutores");
+    revalidatePath(`/coordenador/instrutores/${instrutorId}`);
+    revalidatePath("/coordenador/turmas");
+    return {
+      sucesso: true,
+      mensagem: "Status do instrutor atualizado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o status do instrutor.",
+    };
+  }
+}
+
+export async function reenviarAtivacaoInstrutorAction(
+  instrutorId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.resendInstructorActivation(instrutorId);
+    revalidatePath("/coordenador/instrutores");
+    revalidatePath(`/coordenador/instrutores/${instrutorId}`);
+    return {
+      sucesso: true,
+      mensagem: "Link de ativacao reenviado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao reenviar o link de ativacao.",
     };
   }
 }

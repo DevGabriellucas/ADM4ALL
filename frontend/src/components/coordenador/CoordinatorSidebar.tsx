@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { clearSession } from "@/services/sessionService";
 
 interface NavItem {
@@ -44,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
 export const CoordinatorSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const logout = () => {
     clearSession();
@@ -88,7 +91,7 @@ export const CoordinatorSidebar = () => {
             >
               <span className="min-w-0 truncate">{item.label}</span>
               {item.development && (
-                <span className="shrink-0 rounded-full bg-slate-400/40 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
+                <span className="shrink-0 rounded-full bg-slate-400/40 px-1.5 py-0.5 font-medium text-[10px] text-slate-700">
                   Dev
                 </span>
               )}
@@ -98,7 +101,7 @@ export const CoordinatorSidebar = () => {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={() => setConfirmandoSaida(true)}
           className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-[#8F1D2C] text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 lg:mt-2"
         >
           <svg
@@ -119,6 +122,17 @@ export const CoordinatorSidebar = () => {
           <span>Sair</span>
         </button>
       </nav>
+
+      {confirmandoSaida && (
+        <ConfirmDialog
+          title="Deseja sair?"
+          description="Voce sera desconectado da area do coordenador."
+          confirmLabel="Sair"
+          tone="danger"
+          onCancel={() => setConfirmandoSaida(false)}
+          onConfirm={logout}
+        />
+      )}
     </aside>
   );
 };

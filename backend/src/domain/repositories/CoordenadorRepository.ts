@@ -43,6 +43,41 @@ export interface InstrutorListagem {
   dataCriacao: string;
 }
 
+export interface TurmaInstrutorCoordenador {
+  id: string;
+  nome: string;
+  curso: string;
+  status: string;
+  dataInicio: string;
+  dataTermino: string | null;
+  alunos: number;
+}
+
+export interface InstrutorDetalheCoordenador extends InstrutorListagem {
+  usuarioId: string;
+  areaAtuacao: string | null;
+  formacao: string | null;
+  ativo: boolean;
+  turmas: TurmaInstrutorCoordenador[];
+}
+
+export interface AtualizarInstrutorCoordenadorInput {
+  nome: string;
+  email: string;
+  telefone: string | null;
+  areaAtuacao: string | null;
+  formacao: string | null;
+}
+
+export interface InstrutorParaReenvioAtivacao {
+  usuarioId: string;
+  nome: string;
+  email: string;
+  status: string;
+  origem: OrigemAtivacao | null;
+  camposPendentes: CampoPendenteAtivacao[];
+}
+
 export interface AlunoListagemCoordenador {
   id: string;
   nome: string;
@@ -353,6 +388,20 @@ export interface CoordenadorRepository {
   criarCurso(input: CriarCursoInput): Promise<CursoResumo>;
 
   listarInstrutores(): Promise<InstrutorListagem[]>;
+  buscarInstrutorDetalhe(
+    id: string,
+  ): Promise<InstrutorDetalheCoordenador | null>;
+  atualizarInstrutor(
+    id: string,
+    input: AtualizarInstrutorCoordenadorInput,
+  ): Promise<InstrutorDetalheCoordenador | null>;
+  atualizarStatusInstrutor(
+    id: string,
+    statusConta: InstrutorDetalheCoordenador["status"],
+  ): Promise<InstrutorDetalheCoordenador | null>;
+  buscarUsuarioPorInstrutorId(
+    instrutorId: string,
+  ): Promise<InstrutorParaReenvioAtivacao | null>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
   atualizarAluno(

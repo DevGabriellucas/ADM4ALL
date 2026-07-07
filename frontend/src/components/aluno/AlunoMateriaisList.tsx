@@ -31,15 +31,22 @@ const formatarTipo = (tipo: string) => {
 
 const agruparPorTurma = (
   materiais: MaterialAluno[],
-): Map<string, MaterialAluno[]> => {
-  const grupos = new Map<string, MaterialAluno[]>();
+): Map<string, { turmaNome: string; itens: MaterialAluno[] }> => {
+  const grupos = new Map<
+    string,
+    { turmaNome: string; itens: MaterialAluno[] }
+  >();
 
   for (const material of materiais) {
-    const existente = grupos.get(material.turmaNome);
+    const chaveTurma = material.turmaId || material.turmaNome;
+    const existente = grupos.get(chaveTurma);
     if (existente) {
-      existente.push(material);
+      existente.itens.push(material);
     } else {
-      grupos.set(material.turmaNome, [material]);
+      grupos.set(chaveTurma, {
+        turmaNome: material.turmaNome,
+        itens: [material],
+      });
     }
   }
 
@@ -89,20 +96,20 @@ export const AlunoMateriaisList = ({ materiais }: AlunoMateriaisListProps) => {
 
   return (
     <div className="flex flex-col gap-y-8">
-      {Array.from(grupos.entries()).map(([turmaNome, itens]) => (
-        <div key={turmaNome} className="flex flex-col gap-y-4">
+      {Array.from(grupos.entries()).map(([turmaId, grupo]) => (
+        <div key={turmaId} className="flex flex-col gap-y-4">
           <h3 className="font-semibold text-brand-medium text-sm tracking-[0.35em]">
-            {turmaNome}
+            {grupo.turmaNome}
           </h3>
 
           <div className="flex flex-col gap-y-3">
-            {itens.map((material) => {
+            {grupo.itens.map((material) => {
               const isLoading = loadingId === material.id;
               const hasError = erroId === material.id;
 
               return (
                 <div
-                  key={material.id}
+                  key={`${material.turmaId}-${material.id}-${material.criadoEm}-${material.titulo}`}
                   className="flex flex-col gap-y-2 rounded-lg bg-[#F1F4FC] px-5 py-4"
                 >
                   <div className="flex flex-col gap-y-1 sm:flex-row sm:items-center sm:justify-between">

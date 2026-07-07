@@ -3,9 +3,6 @@
 // nunca por componentes "use client".
 import { isMatriculaStatus } from "@/constants/matriculaStatus";
 import {
-  coordinatorClassMaterialsMock,
-} from "@/mocks/coordinatorMock";
-import {
   ApiError,
   type AuthenticatedFileResponse,
   authenticatedFileRequest,
@@ -25,6 +22,7 @@ import type {
   EditableEnrollmentStatus,
   EnrollmentClassOption,
   Instructor,
+  InstructorDetail,
   Lesson,
   Student,
   StudentDetail,
@@ -33,9 +31,7 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 
-// Mock temporario: materiais da turma ainda nao possuem backend real.
-// Dashboard, cursos, instrutores, alunos, turmas, frequencia,
-// certificados, relatorios e cronograma consultam a API real.
+// Modulo server-only: as telas do coordenador consultam a API real.
 
 interface CursoApi {
   id: string;
@@ -54,6 +50,24 @@ interface InstrutorApi {
   status: Instructor["status"];
   turmasVinculadas: number;
   dataCriacao: string;
+}
+
+interface TurmaInstrutorApi {
+  id: string;
+  nome: string;
+  curso: string;
+  status: string;
+  dataInicio: string;
+  dataTermino: string | null;
+  alunos: number;
+}
+
+interface InstrutorDetalheApi extends InstrutorApi {
+  usuarioId: string;
+  areaAtuacao: string | null;
+  formacao: string | null;
+  ativo: boolean;
+  turmas: TurmaInstrutorApi[];
 }
 
 interface AlunoListagemApi {
@@ -156,6 +170,25 @@ const mapearInstrutor = (instrutor: InstrutorApi): Instructor => ({
   status: instrutor.status,
   turmasVinculadas: instrutor.turmasVinculadas,
   dataCriacao: instrutor.dataCriacao,
+});
+
+const mapearInstrutorDetalhe = (
+  instrutor: InstrutorDetalheApi,
+): InstructorDetail => ({
+  ...mapearInstrutor(instrutor),
+  usuarioId: instrutor.usuarioId,
+  areaAtuacao: instrutor.areaAtuacao,
+  formacao: instrutor.formacao,
+  ativo: instrutor.ativo,
+  turmas: instrutor.turmas.map((turma) => ({
+    id: turma.id,
+    nome: turma.nome,
+    curso: turma.curso,
+    status: normalizeClassStatus(turma.status),
+    dataInicio: turma.dataInicio,
+    dataTermino: turma.dataTermino,
+    alunos: turma.alunos,
+  })),
 });
 
 const normalizeClassStatus = (status: string): ClassGroup["status"] => {
@@ -309,6 +342,81 @@ export const inviteInstructor = async (input: {
       method: "POST",
       body: JSON.stringify(input),
       fallbackError: "Falha ao enviar o convite de ativacao.",
+    },
+  );
+};
+
+export const getInstructorById = async (
+  id: string,
+): Promise<InstructorDetail | null> => {
+  try {
+    const instrutor = await authenticatedRequest<InstrutorDetalheApi>(
+      `/coordenador/instrutores/${id}`,
+      {
+        cache: "no-store",
+        fallbackError: "Falha ao carregar os dados do instrutor.",
+      },
+    );
+
+    return mapearInstrutorDetalhe(instrutor);
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+export const updateInstructor = async (
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    telefone: string | null;
+    areaAtuacao: string | null;
+    formacao: string | null;
+  },
+): Promise<InstructorDetail> => {
+  const instrutor = await authenticatedRequest<InstrutorDetalheApi>(
+    `/coordenador/instrutores/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao atualizar os dados do instrutor.",
+    },
+  );
+
+  return mapearInstrutorDetalhe(instrutor);
+};
+
+export const updateInstructorStatus = async (
+  id: string,
+  statusConta: UserStatus,
+): Promise<InstructorDetail> => {
+  const instrutor = await authenticatedRequest<InstrutorDetalheApi>(
+    `/coordenador/instrutores/${id}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ statusConta }),
+      fallbackError: "Falha ao atualizar o status do instrutor.",
+    },
+  );
+
+  return mapearInstrutorDetalhe(instrutor);
+};
+
+export const resendInstructorActivation = async (
+  instructorId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/instrutores/${instructorId}/reenviar-ativacao`,
+    {
+      method: "POST",
+      fallbackError: "Falha ao reenviar o link de ativacao.",
     },
   );
 };
