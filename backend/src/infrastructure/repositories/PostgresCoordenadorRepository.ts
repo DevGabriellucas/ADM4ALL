@@ -5,6 +5,7 @@ import {
   AlunoListagemCoordenador,
   AlunoParaReenvioAtivacao,
   AtualizarAlunoCoordenadorInput,
+  AtualizarCursoInput,
   AtualizarInstrutorCoordenadorInput,
   AtualizarStatusMatriculaInput,
   AulaResumo,
@@ -90,6 +91,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return resultado.rows.map((linha) => this.mapearCurso(linha));
   }
 
+  async buscarCursoPorId(id: string): Promise<CursoResumo | null> {
+    const query = `
+      SELECT
+        t.id,
+        t.nome,
+        t.descricao,
+        t.carga_horaria,
+        t.status,
+        COUNT(tu.id) AS quantidade_turmas
+      FROM treinamentos t
+      LEFT JOIN turmas tu ON tu.treinamento_id = t.id
+      WHERE t.id = $1
+      GROUP BY t.id, t.nome, t.descricao, t.carga_horaria, t.status
+    `;
+    const resultado = await this.db.query(query, [id]);
+    return resultado.rows[0] ? this.mapearCurso(resultado.rows[0]) : null;
+  }
+
   async criarCurso(input: CriarCursoInput): Promise<CursoResumo> {
     const query = `
       INSERT INTO treinamentos (nome, descricao, carga_horaria, status, ativo)
@@ -106,6 +125,43 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.status === "ativo",
       ]);
       return this.mapearCurso({ ...resultado.rows[0], quantidade_turmas: 0 });
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Ja existe um curso cadastrado com este nome.");
+      }
+      throw error;
+    }
+  }
+
+  async atualizarCurso(id: string, input: AtualizarCursoInput): Promise<CursoResumo | null> {
+    const query = `
+      UPDATE treinamentos
+      SET nome = $1, descricao = $2, carga_horaria = $3, status = $4, ativo = $5
+      WHERE id = $6
+      RETURNING id, nome, descricao, carga_horaria, status
+    `;
+
+    try {
+      const resultado = await this.db.query(query, [
+        input.nome,
+        input.descricao,
+        input.cargaHoraria,
+        input.status,
+        input.status === "ativo",
+        id,
+      ]);
+
+      if (resultado.rows.length === 0) return null;
+
+      const countResult = await this.db.query(
+        "SELECT COUNT(id) AS quantidade_turmas FROM turmas WHERE treinamento_id = $1",
+        [id],
+      );
+
+      return this.mapearCurso({
+        ...resultado.rows[0],
+        quantidade_turmas: Number(countResult.rows[0].quantidade_turmas),
+      });
     } catch (error: any) {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe um curso cadastrado com este nome.");
@@ -1678,6 +1734,32 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query);
+    return resultado.rows.map((linha) => this.mapearTurma(linha));
+  }
+
+  async listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]> {
+    const query = `
+      SELECT
+        t.id,
+        t.nome,
+        tr.nome AS curso,
+        ui.nome AS instrutor,
+        t.status,
+        to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
+        COUNT(m.id) AS alunos,
+        COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
+      FROM turmas t
+      JOIN treinamentos tr ON tr.id = t.treinamento_id
+      LEFT JOIN instrutores i ON i.id = t.instrutor_id
+      LEFT JOIN usuarios ui ON ui.id = i.usuario_id
+      LEFT JOIN matriculas m ON m.turma_id = t.id
+      LEFT JOIN frequencias f ON f.matricula_id = m.id
+      WHERE t.treinamento_id = $1
+      GROUP BY t.id, t.nome, tr.nome, ui.nome, t.status, t.data_inicio, t.data_fim
+      ORDER BY t.data_inicio DESC
+    `;
+    const resultado = await this.db.query(query, [cursoId]);
     return resultado.rows.map((linha) => this.mapearTurma(linha));
   }
 

@@ -303,6 +303,72 @@ export const getCourses = async (): Promise<Course[]> => {
   return cursos.map(mapearCurso);
 };
 
+export const getCourseById = async (id: string): Promise<Course | null> => {
+  try {
+    const curso = await authenticatedRequest<CursoApi>(`/cursos/${id}`, {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar os dados do curso.",
+    });
+
+    return mapearCurso(curso);
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 400 || error.status === 404)
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+export const updateCourse = async (
+  id: string,
+  input: {
+    nome: string;
+    descricao: string;
+    cargaHoraria: number;
+    status: Course["status"];
+  },
+): Promise<Course> => {
+  const curso = await authenticatedRequest<CursoApi>(`/cursos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+    fallbackError: "Falha ao atualizar o curso.",
+  });
+
+  return mapearCurso(curso);
+};
+
+export const getClassesByCourse = async (
+  courseId: string,
+): Promise<ClassGroup[]> => {
+  const turmas = await authenticatedRequest<TurmaApi[]>(
+    `/cursos/${courseId}/turmas`,
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar as turmas do curso.",
+    },
+  );
+
+  return turmas.map(mapearTurma);
+};
+
+export const deactivateCourse = async (id: string): Promise<Course | null> => {
+  const curso = await getCourseById(id);
+  if (!curso) {
+    return null;
+  }
+
+  return await updateCourse(id, {
+    nome: curso.nome,
+    descricao: curso.descricao,
+    cargaHoraria: curso.cargaHoraria,
+    status: "desativado",
+  });
+};
+
 export const createCourse = async (input: {
   nome: string;
   descricao: string;

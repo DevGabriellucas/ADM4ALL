@@ -33,6 +33,13 @@ export interface CriarCursoInput {
   status: string;
 }
 
+export interface AtualizarCursoInput {
+  nome: string;
+  descricao: string;
+  cargaHoraria: number;
+  status: string;
+}
+
 export interface InstrutorListagem {
   id: string;
   nome: string;
@@ -386,6 +393,9 @@ export interface CoordenadorRepository {
 
   listarCursos(): Promise<CursoResumo[]>;
   criarCurso(input: CriarCursoInput): Promise<CursoResumo>;
+  buscarCursoPorId(id: string): Promise<CursoResumo | null>;
+  atualizarCurso(id: string, input: AtualizarCursoInput): Promise<CursoResumo | null>;
+  listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]>;
 
   listarInstrutores(): Promise<InstrutorListagem[]>;
   buscarInstrutorDetalhe(
