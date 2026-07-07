@@ -165,7 +165,6 @@ export const NewCourseForm = ({ isOpen, onCancel }: NewCourseFormProps) => {
             >
               <option value="em_planejamento">Em planejamento</option>
               <option value="ativo">Ativo</option>
-              <option value="encerrado">Concluído</option>
             </select>
           </label>
         </div>

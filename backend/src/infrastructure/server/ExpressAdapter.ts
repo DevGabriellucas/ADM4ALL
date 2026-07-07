@@ -847,6 +847,44 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/cursos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const curso = await this.coordenadorUseCase.buscarCursoPorId(id);
+        res.json(curso);
+      }),
+    );
+
+    this.app.get(
+      "/cursos/:id/turmas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const turmas = await this.coordenadorUseCase.listarTurmasPorCurso(id);
+        res.json(turmas);
+      }),
+    );
+
+    this.app.patch(
+      "/cursos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, descricao, cargaHoraria, status } = req.body;
+
+        const curso = await this.coordenadorUseCase.atualizarCurso(id, {
+          nome,
+          descricao,
+          cargaHoraria: Number(cargaHoraria),
+          status,
+        });
+
+        res.json(curso);
+      }),
+    );
+
+    this.app.get(
       "/instrutores",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {

@@ -68,6 +68,57 @@ export async function criarCursoAction(input: {
   }
 }
 
+export async function atualizarCursoAction(
+  id: string,
+  input: {
+    nome: string;
+    descricao: string;
+    cargaHoraria: number;
+    status: Course["status"];
+  },
+): Promise<ResultadoAction> {
+  try {
+    const curso = await coordinatorService.updateCourse(id, input);
+    revalidatePath("/coordenador/cursos");
+    revalidatePath(`/coordenador/cursos/${id}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Curso "${curso.nome}" atualizado com sucesso.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao atualizar o curso.",
+    };
+  }
+}
+
+export async function desativarCursoAction(
+  id: string,
+): Promise<ResultadoAction> {
+  try {
+    const curso = await coordinatorService.deactivateCourse(id);
+    if (!curso) {
+      return { sucesso: false, mensagem: "Curso nao encontrado." };
+    }
+    revalidatePath("/coordenador/cursos");
+    revalidatePath(`/coordenador/cursos/${id}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Curso "${curso.nome}" desativado com sucesso.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao desativar o curso.",
+    };
+  }
+}
+
 export async function convidarInstrutorAction(input: {
   nome: string;
   email: string;

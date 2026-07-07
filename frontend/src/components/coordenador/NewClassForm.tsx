@@ -12,6 +12,9 @@ interface NewClassFormProps {
   instructors: Instructor[];
   isOpen: boolean;
   onCancel: () => void;
+  onSuccess?: () => void;
+  defaultCourseName?: string;
+  lockCourse?: boolean;
 }
 
 interface ClassFormData {
@@ -36,14 +39,24 @@ const INITIAL_FORM_DATA: ClassFormData = {
   status: "planejada",
 };
 
+const construirDadosIniciais = (defaultCourseName?: string): ClassFormData => ({
+  ...INITIAL_FORM_DATA,
+  ...(defaultCourseName ? { curso: defaultCourseName } : {}),
+});
+
 export const NewClassForm = ({
   courses,
   instructors,
   isOpen,
   onCancel,
+  onSuccess,
+  defaultCourseName,
+  lockCourse,
 }: NewClassFormProps) => {
   const router = useRouter();
-  const [formData, setFormData] = useState<ClassFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<ClassFormData>(
+    construirDadosIniciais(defaultCourseName),
+  );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +66,7 @@ export const NewClassForm = ({
   );
 
   const handleCancel = () => {
-    setFormData(INITIAL_FORM_DATA);
+    setFormData(construirDadosIniciais(defaultCourseName));
     setSuccessMessage(null);
     setErrorMessage(null);
     onCancel();
@@ -83,8 +96,9 @@ export const NewClassForm = ({
     }
 
     setSuccessMessage(resultado.mensagem);
-    setFormData(INITIAL_FORM_DATA);
+    setFormData(construirDadosIniciais(defaultCourseName));
     router.refresh();
+    onSuccess?.();
   };
 
   if (!isOpen) {
@@ -132,11 +146,12 @@ export const NewClassForm = ({
             Curso
             <select
               required
+              disabled={lockCourse}
               value={formData.curso}
               onChange={(event) =>
                 setFormData({ ...formData, curso: event.target.value })
               }
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70"
             >
               <option value="">Selecione um curso</option>
               {courses.map((course) => (

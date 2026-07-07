@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS treinamentos (
     CONSTRAINT chk_treinamentos_carga_horaria_positiva
         CHECK (carga_horaria > 0),
     CONSTRAINT chk_treinamentos_status
-        CHECK (status IN ('ativo', 'em_planejamento', 'encerrado'))
+        CHECK (status IN ('ativo', 'em_planejamento', 'desativado'))
 );
 
 CREATE TABLE IF NOT EXISTS turmas (

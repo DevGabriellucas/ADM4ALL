@@ -1,8 +1,13 @@
+"use client";
+
+import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { Course } from "@/types/coordinator";
 
 interface CourseTableProps {
   courses: Course[];
+  onEdit: (course: Course) => void;
+  onDeactivate: (course: Course) => void;
 }
 
 const getCourseStatusInfo = (status: Course["status"]) => {
@@ -14,10 +19,14 @@ const getCourseStatusInfo = (status: Course["status"]) => {
     return { label: "Em planejamento", tone: "blue" as const };
   }
 
-  return { label: "Concluído", tone: "slate" as const };
+  return { label: "Desativado", tone: "slate" as const };
 };
 
-export const CourseTable = ({ courses }: CourseTableProps) => {
+export const CourseTable = ({
+  courses,
+  onEdit,
+  onDeactivate,
+}: CourseTableProps) => {
   return (
     <section
       aria-labelledby="courses-table-heading"
@@ -83,27 +92,24 @@ export const CourseTable = ({ courses }: CourseTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
-                      <button
-                        type="button"
-                        disabled
-                        title="Funcionalidade ainda não disponível"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                      <Link
+                        href={`/coordenador/cursos/${course.id}`}
+                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
                       >
                         Visualizar
-                      </button>
+                      </Link>
                       <button
                         type="button"
-                        disabled
-                        title="Funcionalidade ainda não disponível"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                        onClick={() => onEdit(course)}
+                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
                       >
                         Editar
                       </button>
                       <button
                         type="button"
-                        disabled
-                        title="Funcionalidade ainda não disponível"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                        disabled={course.status === "desativado"}
+                        onClick={() => onDeactivate(course)}
+                        className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Desativar
                       </button>

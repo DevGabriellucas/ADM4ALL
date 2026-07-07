@@ -104,7 +104,7 @@ export interface FiltrosFrequenciaEntrada {
   periodo?: string;
 }
 
-const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "encerrado"];
+const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "desativado"];
 const TURMA_STATUS_VALIDOS = [
   "planejada",
   "em_andamento",
@@ -194,6 +194,14 @@ export class CoordenadorUseCase {
     return await this.coordenadorRepository.listarCursos();
   }
 
+  async listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]> {
+    if (!UUID_PATTERN.test(cursoId)) {
+      throw new BadRequestError("O ID do curso e invalido.");
+    }
+
+    return await this.coordenadorRepository.listarTurmasPorCurso(cursoId);
+  }
+
   async criarCurso(input: CriarCursoEntrada): Promise<CursoResumo> {
     if (!input.nome || input.nome.trim() === "") {
       throw new BadRequestError("O nome do curso e obrigatorio.");
@@ -221,6 +229,66 @@ export class CoordenadorUseCase {
         cargaHoraria: input.cargaHoraria,
         status,
       });
+    } catch (error: any) {
+      throw new BadRequestError(error.message);
+    }
+  }
+
+  async buscarCursoPorId(id: string): Promise<CursoResumo> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do curso e invalido.");
+    }
+
+    const curso = await this.coordenadorRepository.buscarCursoPorId(id);
+    if (!curso) {
+      throw new BadRequestError("Curso nao encontrado.");
+    }
+
+    return curso;
+  }
+
+  async atualizarCurso(id: string, input: CriarCursoEntrada): Promise<CursoResumo> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do curso e invalido.");
+    }
+
+    if (!input.nome || input.nome.trim() === "") {
+      throw new BadRequestError("O nome do curso e obrigatorio.");
+    }
+
+    if (!input.descricao || input.descricao.trim() === "") {
+      throw new BadRequestError("A descricao do curso e obrigatoria.");
+    }
+
+    if (!input.cargaHoraria || input.cargaHoraria <= 0) {
+      throw new BadRequestError("A carga horaria deve ser maior que zero.");
+    }
+
+    const status = input.status ?? "em_planejamento";
+    if (!CURSO_STATUS_VALIDOS.includes(status)) {
+      throw new BadRequestError(
+        `Status de curso invalido. Use: ${CURSO_STATUS_VALIDOS.join(", ")}.`,
+      );
+    }
+
+    const existente = await this.coordenadorRepository.buscarCursoPorId(id);
+    if (!existente) {
+      throw new BadRequestError("Curso nao encontrado.");
+    }
+
+    try {
+      const curso = await this.coordenadorRepository.atualizarCurso(id, {
+        nome: input.nome.trim(),
+        descricao: input.descricao.trim(),
+        cargaHoraria: input.cargaHoraria,
+        status,
+      });
+
+      if (!curso) {
+        throw new BadRequestError("Curso nao encontrado.");
+      }
+
+      return curso;
     } catch (error: any) {
       throw new BadRequestError(error.message);
     }

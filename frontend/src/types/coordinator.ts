@@ -11,7 +11,7 @@ export type UserStatus =
   | "inativo"
   | "bloqueado";
 
-export type CourseStatus = "ativo" | "em_planejamento" | "encerrado";
+export type CourseStatus = "ativo" | "em_planejamento" | "desativado";
 
 export type ClassStatus =
   | "planejada"
