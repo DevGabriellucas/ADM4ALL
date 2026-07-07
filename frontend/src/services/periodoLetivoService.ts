@@ -10,16 +10,35 @@ export interface PeriodoLetivoResponse {
   atualizadoPor?: string | null;
 }
 
-export const getPeriodoLetivo =
+const calcularPeriodoLetivoAtual = () => {
+  const hoje = new Date();
+  const semestre = hoje.getMonth() < 6 ? "1" : "2";
+  return `${hoje.getFullYear()}.${semestre}`;
+};
+
+export const getPeriodoLetivoSeguro =
   async (): Promise<PeriodoLetivoResponse> => {
-    return await authenticatedRequest<PeriodoLetivoResponse>(
-      "/coordenador/periodo-letivo",
-      {
-        cache: "no-store",
-        fallbackError: "Falha ao carregar o periodo letivo.",
-      },
-    );
+    try {
+      return await getPeriodoLetivo();
+    } catch {
+      return {
+        periodoLetivo: calcularPeriodoLetivoAtual(),
+        origem: "automatico",
+        atualizadoEm: null,
+        atualizadoPor: null,
+      };
+    }
   };
+
+export const getPeriodoLetivo = async (): Promise<PeriodoLetivoResponse> => {
+  return await authenticatedRequest<PeriodoLetivoResponse>(
+    "/coordenador/periodo-letivo",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar o periodo letivo.",
+    },
+  );
+};
 
 export const atualizarPeriodoLetivo = async (
   periodoLetivo: string,

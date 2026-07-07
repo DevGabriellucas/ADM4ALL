@@ -230,24 +230,18 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                       >
                         Visualizar
                       </Link>
-                      <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Funcionalidade ainda não disponível no MVP"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                      <Link
+                        href={`/coordenador/alunos/${student.id}?modo=editar`}
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Editar
-                      </button>
-                      <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Funcionalidade ainda não disponível no MVP"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                      </Link>
+                      <Link
+                        href={`/coordenador/alunos/${student.id}?modo=vincular`}
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Vincular à turma
-                      </button>
+                      </Link>
                       {student.statusConta === "pendente_ativacao" && (
                         <button
                           type="button"

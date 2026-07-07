@@ -5,6 +5,7 @@ import {
   AlunoListagemCoordenador,
   AlunoParaReenvioAtivacao,
   AtualizarAlunoCoordenadorInput,
+  AtualizarInstrutorCoordenadorInput,
   AtualizarStatusMatriculaInput,
   AulaResumo,
   CertificadoAlunoDetalhe,
@@ -21,7 +22,9 @@ import {
   FiltrosFrequenciaCoordenador,
   FrequenciaCoordenador,
   IdentificadorPorNome,
+  InstrutorDetalheCoordenador,
   InstrutorListagem,
+  InstrutorParaReenvioAtivacao,
   MatriculaCriada,
   MatriculaEncontrada,
   MatriculaStatusAtualizado,
@@ -138,6 +141,223 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       turmasVinculadas: Number(linha.turmas_vinculadas),
       dataCriacao: linha.data_criacao,
     }));
+  }
+
+  async buscarInstrutorDetalhe(
+    id: string,
+  ): Promise<InstrutorDetalheCoordenador | null> {
+    const instrutorResultado = await this.db.query(
+      `
+      SELECT
+        i.id,
+        i.usuario_id,
+        u.nome,
+        u.email,
+        i.telefone,
+        i.area_atuacao,
+        i.formacao,
+        i.ativo,
+        u.status,
+        to_char(i.data_cadastro, 'YYYY-MM-DD') AS data_criacao,
+        COUNT(tu.id) AS turmas_vinculadas
+      FROM instrutores i
+      JOIN usuarios u ON u.id = i.usuario_id
+      LEFT JOIN turmas tu ON tu.instrutor_id = i.id
+      WHERE i.id = $1
+      GROUP BY
+        i.id,
+        i.usuario_id,
+        u.nome,
+        u.email,
+        i.telefone,
+        i.area_atuacao,
+        i.formacao,
+        i.ativo,
+        u.status,
+        i.data_cadastro
+      `,
+      [id],
+    );
+    const linha = instrutorResultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    const turmasResultado = await this.db.query(
+      `
+      SELECT
+        t.id,
+        t.nome,
+        tr.nome AS curso,
+        t.status,
+        to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
+        COUNT(m.id) AS alunos
+      FROM turmas t
+      JOIN treinamentos tr ON tr.id = t.treinamento_id
+      LEFT JOIN matriculas m
+        ON m.turma_id = t.id
+       AND m.status <> 'cancelado'
+      WHERE t.instrutor_id = $1
+      GROUP BY
+        t.id,
+        t.nome,
+        tr.nome,
+        t.status,
+        t.data_inicio,
+        t.data_fim
+      ORDER BY t.data_inicio DESC, t.nome ASC
+      `,
+      [id],
+    );
+
+    return {
+      id: linha.id,
+      usuarioId: linha.usuario_id,
+      nome: linha.nome,
+      email: linha.email,
+      telefone: linha.telefone ?? null,
+      status: linha.status,
+      turmasVinculadas: Number(linha.turmas_vinculadas),
+      dataCriacao: linha.data_criacao,
+      areaAtuacao: linha.area_atuacao ?? null,
+      formacao: linha.formacao ?? null,
+      ativo: Boolean(linha.ativo),
+      turmas: turmasResultado.rows.map((turma) => ({
+        id: turma.id,
+        nome: turma.nome,
+        curso: turma.curso,
+        status: turma.status,
+        dataInicio: turma.data_inicio,
+        dataTermino: turma.data_termino ?? null,
+        alunos: Number(turma.alunos),
+      })),
+    };
+  }
+
+  async atualizarInstrutor(
+    id: string,
+    input: AtualizarInstrutorCoordenadorInput,
+  ): Promise<InstrutorDetalheCoordenador | null> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const instrutorResultado = await cliente.query(
+        "SELECT usuario_id FROM instrutores WHERE id = $1 FOR UPDATE",
+        [id],
+      );
+      const usuarioId = instrutorResultado.rows[0]?.usuario_id;
+      if (!usuarioId) {
+        await cliente.query("ROLLBACK");
+        return null;
+      }
+
+      await cliente.query(
+        `UPDATE usuarios
+         SET nome = $1, email = $2
+         WHERE id = $3`,
+        [input.nome, input.email, usuarioId],
+      );
+      await cliente.query(
+        `UPDATE instrutores
+         SET telefone = $1,
+             area_atuacao = $2,
+             formacao = $3
+         WHERE id = $4`,
+        [input.telefone, input.areaAtuacao, input.formacao, id],
+      );
+
+      await cliente.query("COMMIT");
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Ja existe um usuario com este e-mail.");
+      }
+      throw error;
+    } finally {
+      cliente.release();
+    }
+
+    return await this.buscarInstrutorDetalhe(id);
+  }
+
+  async atualizarStatusInstrutor(
+    id: string,
+    statusConta: InstrutorDetalheCoordenador["status"],
+  ): Promise<InstrutorDetalheCoordenador | null> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const instrutorResultado = await cliente.query(
+        "SELECT usuario_id FROM instrutores WHERE id = $1 FOR UPDATE",
+        [id],
+      );
+      const usuarioId = instrutorResultado.rows[0]?.usuario_id;
+      if (!usuarioId) {
+        await cliente.query("ROLLBACK");
+        return null;
+      }
+
+      await cliente.query("UPDATE usuarios SET status = $1 WHERE id = $2", [
+        statusConta,
+        usuarioId,
+      ]);
+      await cliente.query("UPDATE instrutores SET ativo = $1 WHERE id = $2", [
+        statusConta === "ativo",
+        id,
+      ]);
+
+      await cliente.query("COMMIT");
+    } catch (error) {
+      await cliente.query("ROLLBACK");
+      throw error;
+    } finally {
+      cliente.release();
+    }
+
+    return await this.buscarInstrutorDetalhe(id);
+  }
+
+  async buscarUsuarioPorInstrutorId(
+    instrutorId: string,
+  ): Promise<InstrutorParaReenvioAtivacao | null> {
+    const resultado = await this.db.query(
+      `SELECT
+         u.id AS usuario_id,
+         u.nome,
+         u.email,
+         u.status,
+         ativacao.origem,
+         ativacao.campos_pendentes
+       FROM instrutores i
+       JOIN usuarios u ON u.id = i.usuario_id
+       LEFT JOIN LATERAL (
+         SELECT origem, campos_pendentes
+         FROM ativacoes_conta
+         WHERE usuario_id = u.id AND tipo = 'ativacao'
+         ORDER BY criado_em DESC
+         LIMIT 1
+       ) ativacao ON TRUE
+       WHERE i.id = $1`,
+      [instrutorId],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          usuarioId: linha.usuario_id,
+          nome: linha.nome,
+          email: linha.email,
+          status: linha.status,
+          origem: linha.origem ?? null,
+          camposPendentes: linha.campos_pendentes ?? [],
+        }
+      : null;
   }
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
@@ -1276,7 +1496,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       `SELECT i.id
        FROM instrutores i
        JOIN usuarios u ON u.id = i.usuario_id
-       WHERE u.nome = $1 AND i.ativo = TRUE
+       WHERE u.nome = $1 AND i.ativo = TRUE AND u.status = 'ativo'
        LIMIT 1`,
       [nome],
     );

@@ -9,6 +9,7 @@ import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
   AlunoParaReenvioAtivacao,
+  AtualizarInstrutorCoordenadorInput,
   AtualizarStatusMatriculaInput,
   AtualizarAlunoCoordenadorInput,
   CertificadoDetalhe,
@@ -21,6 +22,8 @@ import {
   FiltrosFrequenciaCoordenador,
   FiltrosRelatorioCoordenador,
   FrequenciaCoordenador,
+  InstrutorDetalheCoordenador,
+  InstrutorParaReenvioAtivacao,
   InstrutorListagem,
   MatriculaCriada,
   MatriculaStatusAtualizado,
@@ -55,6 +58,14 @@ export interface ConvidarInstrutorEntrada {
   email: string;
   cpf: string;
   telefone?: string | null;
+}
+
+export interface AtualizarInstrutorEntrada {
+  nome: string;
+  email: string;
+  telefone?: string | null;
+  areaAtuacao?: string | null;
+  formacao?: string | null;
 }
 
 export interface ConvidarAlunoEntrada {
@@ -217,6 +228,148 @@ export class CoordenadorUseCase {
 
   async listarInstrutores(): Promise<InstrutorListagem[]> {
     return await this.coordenadorRepository.listarInstrutores();
+  }
+
+  async buscarInstrutorDetalhe(
+    id: string,
+  ): Promise<InstrutorDetalheCoordenador> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do instrutor e invalido.");
+    }
+
+    const instrutor =
+      await this.coordenadorRepository.buscarInstrutorDetalhe(id);
+    if (!instrutor) {
+      throw new BadRequestError("Instrutor nao encontrado.");
+    }
+
+    return instrutor;
+  }
+
+  async atualizarInstrutor(
+    id: string,
+    input: AtualizarInstrutorEntrada,
+  ): Promise<InstrutorDetalheCoordenador> {
+    const instrutorAtual = await this.buscarInstrutorDetalhe(id);
+
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do instrutor e obrigatorio.");
+    }
+
+    let email: string;
+    let telefone: string | null;
+    try {
+      email = new Email(input.email).value;
+      telefone = input.telefone ? new Telefone(input.telefone).value : null;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados pessoais invalidos.",
+      );
+    }
+
+    const usuarioComEmail =
+      await this.coordenadorRepository.buscarUsuarioPorEmail(email);
+    if (usuarioComEmail && usuarioComEmail.id !== instrutorAtual.usuarioId) {
+      throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const dadosAtualizados: AtualizarInstrutorCoordenadorInput = {
+      nome: input.nome.trim(),
+      email,
+      telefone,
+      areaAtuacao: input.areaAtuacao?.trim() || null,
+      formacao: input.formacao?.trim() || null,
+    };
+    const instrutor = await this.coordenadorRepository.atualizarInstrutor(
+      id,
+      dadosAtualizados,
+    );
+
+    if (!instrutor) {
+      throw new BadRequestError("Instrutor nao encontrado.");
+    }
+
+    return instrutor;
+  }
+
+  async atualizarStatusInstrutor(
+    id: string,
+    statusConta: string,
+  ): Promise<InstrutorDetalheCoordenador> {
+    const instrutorAtual = await this.buscarInstrutorDetalhe(id);
+
+    if (!STATUS_CONTA_VALIDOS.includes(statusConta as any)) {
+      throw new BadRequestError("Status da conta invalido.");
+    }
+
+    if (
+      instrutorAtual.status === "pendente_ativacao" &&
+      statusConta !== "inativo"
+    ) {
+      throw new BadRequestError(
+        "Convites pendentes so podem ser desativados ou reenviados.",
+      );
+    }
+
+    const instrutor =
+      await this.coordenadorRepository.atualizarStatusInstrutor(
+        id,
+        statusConta as InstrutorDetalheCoordenador["status"],
+      );
+
+    if (!instrutor) {
+      throw new BadRequestError("Instrutor nao encontrado.");
+    }
+
+    return instrutor;
+  }
+
+  async reenviarAtivacaoInstrutor(instrutorId: string): Promise<void> {
+    if (!UUID_PATTERN.test(instrutorId)) {
+      throw new BadRequestError("O ID do instrutor e invalido.");
+    }
+
+    const instrutor: InstrutorParaReenvioAtivacao | null =
+      await this.coordenadorRepository.buscarUsuarioPorInstrutorId(instrutorId);
+    if (!instrutor) {
+      throw new BadRequestError("Instrutor nao encontrado.");
+    }
+    if (instrutor.status !== "pendente_ativacao") {
+      throw new BadRequestError(
+        "A conta do instrutor nao esta pendente de ativacao.",
+      );
+    }
+
+    await this.coordenadorRepository.invalidarAtivacoesPendentes(
+      instrutor.usuarioId,
+    );
+    const token = await this.activationUseCase.criar(
+      instrutor.usuarioId,
+      instrutor.origem ?? "criado_por_coordenador",
+      instrutor.camposPendentes.length > 0
+        ? instrutor.camposPendentes
+        : ["senha", "whatsapp", "areaAtuacao", "formacao"],
+    );
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+
+    try {
+      await this.emailService.enviar(
+        instrutor.email,
+        "Novo link de ativacao - ADM Para Todos",
+        `<p>Ola, ${instrutor.nome}!</p>
+         <p>Foi solicitado um novo link para ativar sua conta de instrutor.</p>
+         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch {
+      await this.coordenadorRepository.invalidarAtivacoesPendentes(
+        instrutor.usuarioId,
+      );
+      throw new BadRequestError(
+        "Nao foi possivel enviar o e-mail de ativacao. Tente novamente em instantes.",
+      );
+    }
   }
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {

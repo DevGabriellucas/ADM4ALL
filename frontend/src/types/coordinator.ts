@@ -85,6 +85,24 @@ export interface Instructor {
   dataCriacao: string;
 }
 
+export interface InstructorClassSummary {
+  id: string;
+  nome: string;
+  curso: string;
+  status: ClassStatus;
+  dataInicio: string;
+  dataTermino: string | null;
+  alunos: number;
+}
+
+export interface InstructorDetail extends Instructor {
+  usuarioId: string;
+  areaAtuacao: string | null;
+  formacao: string | null;
+  ativo: boolean;
+  turmas: InstructorClassSummary[];
+}
+
 export interface Student {
   id: string;
   nome: string;

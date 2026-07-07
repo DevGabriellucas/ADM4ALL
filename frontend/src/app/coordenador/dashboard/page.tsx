@@ -9,7 +9,7 @@ import {
   getClasses,
   getDashboardSummary,
 } from "@/services/coordinatorService";
-import { getPeriodoLetivo } from "@/services/periodoLetivoService";
+import { getPeriodoLetivoSeguro } from "@/services/periodoLetivoService";
 
 export default async function CoordinatorDashboardPage() {
   const [summary, classes, attendanceSummary, certificates, periodo] =
@@ -18,7 +18,7 @@ export default async function CoordinatorDashboardPage() {
       getClasses(),
       getAttendanceSummary(),
       getCertificates(),
-      getPeriodoLetivo(),
+      getPeriodoLetivoSeguro(),
     ]);
 
   const activeClasses = classes.filter(

@@ -22,6 +22,7 @@ import type {
 
 interface StudentDetailContentProps {
   student: StudentDetail;
+  initialMode?: "editar" | "vincular";
 }
 
 interface EnrollmentCancelTarget {
@@ -52,10 +53,11 @@ const formatDate = (date: string | null) => {
 
 export const StudentDetailContent = ({
   student,
+  initialMode,
 }: StudentDetailContentProps) => {
   const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialMode === "editar");
+  const [isEnrolling, setIsEnrolling] = useState(initialMode === "vincular");
   const [cancelingEnrollmentId, setCancelingEnrollmentId] = useState<
     string | null
   >(null);

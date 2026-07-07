@@ -104,85 +104,65 @@ export const activateAccount = async (
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  try {
-    const response = await fetch(`${getApiUrl()}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        identifier: data.identifier,
-        password: data.password,
-      }),
-    });
+  const response = await fetch(`${getApiUrl()}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      identifier: data.identifier,
+      password: data.password,
+    }),
+  });
 
-    if (!response.ok) {
-      const error: ApiErrorResponse = await response.json();
-      throw new Error(error.erro);
-    }
-
-    const result: LoginResponse = await response.json();
-
-    return result;
-  } catch (error: unknown) {
-    console.error("Erro ao tentar realizar login", error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Credenciais invalidas."));
   }
+
+  return (await response.json()) as LoginResponse;
 };
 
 export const forgotPassword = async ({
   email,
 }: ForgotPasswordPayload): Promise<ForgotPasswordResponse> => {
-  try {
-    const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-      }),
-    });
+  const response = await fetch(`${getApiUrl()}/auth/recuperar-senha`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+    }),
+  });
 
-    if (!response.ok) {
-      const error: ApiErrorResponse = await response.json();
-      throw new Error(error.erro);
-    }
-
-    const result: ForgotPasswordResponse = await response.json();
-
-    return result;
-  } catch (error: unknown) {
-    console.error("Erro ao tentar recuperar senha", error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Nao foi possivel recuperar a senha."),
+    );
   }
+
+  return (await response.json()) as ForgotPasswordResponse;
 };
 
 export const resetPassword = async (
   data: ResetPasswordPayload,
 ): Promise<ResetPasswordResponse> => {
-  try {
-    const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: data.token,
-        novaSenha: data.novaSenha,
-      }),
-    });
+  const response = await fetch(`${getApiUrl()}/auth/redefinir-senha`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      token: data.token,
+      novaSenha: data.novaSenha,
+    }),
+  });
 
-    if (!response.ok) {
-      const error: ApiErrorResponse = await response.json();
-      throw new Error(error.erro);
-    }
-
-    const result: ResetPasswordResponse = await response.json();
-
-    return result;
-  } catch (error: unknown) {
-    console.error("Erro ao tentar redefinir senha", error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Nao foi possivel redefinir a senha."),
+    );
   }
+
+  return (await response.json()) as ResetPasswordResponse;
 };

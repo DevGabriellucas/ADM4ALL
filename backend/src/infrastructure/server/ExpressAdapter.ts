@@ -877,6 +877,60 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/instrutores/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const instrutor =
+          await this.coordenadorUseCase.buscarInstrutorDetalhe(id);
+        res.json(instrutor);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/instrutores/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, email, telefone, areaAtuacao, formacao } =
+          req.body ?? {};
+        const instrutor = await this.coordenadorUseCase.atualizarInstrutor(id, {
+          nome,
+          email,
+          telefone,
+          areaAtuacao,
+          formacao,
+        });
+        res.json(instrutor);
+      }),
+    );
+
+    this.app.patch(
+      "/coordenador/instrutores/:id/status",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { statusConta } = req.body ?? {};
+        const instrutor =
+          await this.coordenadorUseCase.atualizarStatusInstrutor(
+            id,
+            statusConta,
+          );
+        res.json(instrutor);
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/instrutores/:id/reenviar-ativacao",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        await this.coordenadorUseCase.reenviarAtivacaoInstrutor(id);
+        res.json({ mensagem: "Link de ativacao reenviado com sucesso." });
+      }),
+    );
+
+    this.app.get(
       "/coordenador/relatorios/:tipo/pdf",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {

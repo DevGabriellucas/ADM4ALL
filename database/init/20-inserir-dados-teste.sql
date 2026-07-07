@@ -131,7 +131,7 @@ VALUES
         '2000-09-30',
         TRUE,
         'Administracao',
-        'Excel Basico',
+        'Assistente Contábil',
         '20231001'
     ),
     (
@@ -251,8 +251,20 @@ VALUES
     ),
     (
         '2f9a746b-70dc-4261-b150-2ec16d2b842c',
-        'RH',
+        'Assistente de RH',
         'Rotinas de recursos humanos, admissão, documentos e atendimento.',
+        30
+    ),
+    (
+        '13f6bf4a-8d9d-4e54-a5f1-5a5c4b79f111',
+        'Assistente de Marketing',
+        'Fundamentos de marketing, atendimento, comunicacao e apoio comercial.',
+        30
+    ),
+    (
+        '0af7df27-d7cf-4d86-b1a9-4b9f4fe6c222',
+        'Empreendedorismo',
+        'Planejamento, validacao de ideias e gestao inicial de pequenos negocios.',
         30
     )
 ON CONFLICT (nome) DO NOTHING;
@@ -275,12 +287,68 @@ VALUES
         '2026-06-30'
     ),
     (
+        '39e19e8c-5207-44d4-a8aa-0f566410b75d',
+        '3b4169fc-5a08-44aa-b03e-3b2620533378',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
+        'CONT-2026-01',
+        'Assistente Contábil 2026.1',
+        'noite',
+        'Sala 02',
+        'em_andamento',
+        30,
+        '2026-02-03',
+        '2026-06-30'
+    ),
+    (
+        '25052a8f-00a2-47f7-82af-f46cf4f70991',
+        '2f9a746b-70dc-4261-b150-2ec16d2b842c',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
+        'RH-2026-01',
+        'Assistente de RH 2026.1',
+        'manha',
+        'Sala 03',
+        'em_andamento',
+        30,
+        '2026-02-03',
+        '2026-06-30'
+    ),
+    (
+        'c00cffc0-8d1a-4f69-9c2a-654bbeb4ced1',
+        '13f6bf4a-8d9d-4e54-a5f1-5a5c4b79f111',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
+        'MKT-2026-01',
+        'Assistente de Marketing 2026.1',
+        'tarde',
+        'Sala 04',
+        'em_andamento',
+        30,
+        '2026-02-03',
+        '2026-06-30'
+    ),
+    (
+        'b77aeb2c-ae47-4a60-93c9-68c47c0c6a3a',
+        '0af7df27-d7cf-4d86-b1a9-4b9f4fe6c222',
+        '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
+        '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
+        'EMP-2026-01',
+        'Empreendedorismo 2026.1',
+        'online',
+        'Ambiente virtual',
+        'em_andamento',
+        30,
+        '2026-02-03',
+        '2026-06-30'
+    ),
+    (
         '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
         '9ab264bc-036b-4e62-ba6b-6a93d2da94c2',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
-        'EXCEL-2026-01',
-        'Excel Basico 2026.1',
+        'CONTABIL-2026-01',
+        'Assistente Contábil 2026.1',
         'online',
         'Ambiente virtual',
         'concluida',
