@@ -89,6 +89,7 @@ interface TurmaApi {
   curso: string;
   instrutores: string;
   alunos: number;
+  capacidade: number;
   dataInicio: string;
   dataTermino: string | null;
   periodoLetivo: string;
@@ -215,6 +216,7 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   curso: turma.curso,
   instrutores: turma.instrutores ?? "",
   alunos: turma.alunos,
+  capacidade: turma.capacidade,
   dataInicio: turma.dataInicio,
   dataTermino: turma.dataTermino ?? "",
   periodoLetivo: turma.periodoLetivo ?? "",
@@ -522,7 +524,7 @@ export const createClass = async (input: {
   instrutores: string[];
   periodoLetivo: string;
   horarios: string;
-  limiteAlunos: number;
+  capacidade: number;
   status: ClassGroup["status"];
 }): Promise<ClassGroup> => {
   const turma = await authenticatedRequest<TurmaApi>("/turmas", {
@@ -533,7 +535,7 @@ export const createClass = async (input: {
       instrutores: input.instrutores,
       periodoLetivo: input.periodoLetivo,
       horarios: input.horarios,
-      limiteAlunos: input.limiteAlunos,
+      limiteAlunos: input.capacidade,
       status: serializeClassStatus(input.status),
     }),
     fallbackError: "Falha ao cadastrar a turma.",
@@ -582,7 +584,7 @@ export const closeClass = async (id: string): Promise<ClassGroup | null> => {
     curso: turma.curso,
     instrutores: turma.instrutores.split(", ").filter(Boolean),
     periodoLetivo: turma.periodoLetivo ?? "2026.1",
-    capacidade: turma.alunos > 0 ? turma.alunos : 30,
+    capacidade: turma.capacidade > 0 ? turma.capacidade : 30,
     status: "encerrada",
   });
 };

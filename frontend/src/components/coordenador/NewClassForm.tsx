@@ -24,7 +24,7 @@ interface ClassFormData {
   instrutoresSelecionados: string[];
   periodoLetivo: string;
   horarios: string;
-  limiteAlunos: string;
+  capacidade: string;
   status: ClassStatus;
 }
 
@@ -34,7 +34,7 @@ const INITIAL_FORM_DATA: ClassFormData = {
   instrutoresSelecionados: [],
   periodoLetivo: "",
   horarios: "",
-  limiteAlunos: "",
+  capacidade: "",
   status: "planejada",
 };
 
@@ -99,7 +99,7 @@ export const NewClassForm = ({
       instrutores: formData.instrutoresSelecionados,
       periodoLetivo: formData.periodoLetivo,
       horarios: formData.horarios,
-      limiteAlunos: Number(formData.limiteAlunos),
+      capacidade: Number(formData.capacidade),
       status: formData.status,
       cursoId: defaultCourseId,
     });
@@ -227,16 +227,16 @@ export const NewClassForm = ({
           </div>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Limite de alunos
+            Capacidade
             <input
               required
               min="1"
               type="number"
-              value={formData.limiteAlunos}
+              value={formData.capacidade}
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  limiteAlunos: event.target.value,
+                  capacidade: event.target.value,
                 })
               }
               placeholder="Ex.: 30"
@@ -290,7 +290,6 @@ export const NewClassForm = ({
               <option value="planejada">Planejada</option>
               <option value="em_andamento">Em andamento</option>
               <option value="concluida">Concluída</option>
-              <option value="encerrada">Encerrada</option>
               <option value="cancelada">Cancelada</option>
             </select>
           </label>

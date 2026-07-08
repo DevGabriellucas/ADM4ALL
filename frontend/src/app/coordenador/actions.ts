@@ -564,7 +564,7 @@ export async function criarTurmaAction(input: {
   instrutores: string[];
   periodoLetivo: string;
   horarios: string;
-  limiteAlunos: number;
+  capacidade: number;
   status: ClassGroup["status"];
   cursoId?: string;
 }): Promise<ResultadoAction> {

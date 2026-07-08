@@ -343,6 +343,7 @@ export interface TurmaListagem {
   curso: string;
   instrutores: string;
   alunos: number;
+  capacidade: number;
   dataInicio: string;
   dataTermino: string | null;
   periodoLetivo: string;
