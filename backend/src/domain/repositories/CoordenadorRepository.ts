@@ -103,6 +103,16 @@ export interface AlunoListagemCoordenador {
   dataCriacao: string;
 }
 
+export interface UsuarioListagemCoordenador {
+  id: string;
+  nome: string;
+  email: string;
+  role: "administrador" | "coordenador" | "instrutor" | "aluno";
+  status: "ativo" | "inativo" | "bloqueado" | "pendente_ativacao";
+  dataCriacao: string;
+  ultimoAcesso: string | null;
+}
+
 export interface MatriculaAlunoCoordenador {
   id: string;
   turmaId: string | null;
@@ -319,6 +329,15 @@ export interface ConvidarInstrutorInput {
   senhaTemporariaCriptografada: string;
 }
 
+export interface ConvidarCoordenadorInput {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  areaCoordenacao?: string | null;
+  senhaTemporariaCriptografada: string;
+}
+
 export interface ConviteCriado {
   usuarioId: string;
   instrutorId: string;
@@ -427,6 +446,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorInstrutorId(
     instrutorId: string,
   ): Promise<InstrutorParaReenvioAtivacao | null>;
+  listarUsuarios(): Promise<UsuarioListagemCoordenador[]>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
   atualizarAluno(
@@ -478,6 +498,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
   convidarInstrutor(input: ConvidarInstrutorInput): Promise<ConviteCriado>;
   convidarAluno(input: ConvidarAlunoInput): Promise<ConviteCriado>;
+  convidarCoordenador(input: ConvidarCoordenadorInput): Promise<ConviteCriado>;
 
   listarTurmas(): Promise<TurmaListagem[]>;
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;

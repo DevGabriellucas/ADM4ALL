@@ -1,4 +1,4 @@
-import { apiClient } from "./apiClient";
+import { authenticatedRequest } from "./apiClient";
 import type {
   InstituicaoFormData,
   PeriodoLetivoFormData,
@@ -7,83 +7,53 @@ import type {
   ConfiguracoesData,
 } from "@/schemas/configuracionsSchema";
 
-const API_URL = "/configuracoes";
-
 interface ApiResponse {
   mensagem: string;
 }
 
 export const configService = {
   async obter(): Promise<ConfiguracoesData> {
-    const response = await apiClient.get(API_URL);
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.erro || error.mensagem || "Erro ao buscar configurações",
-      );
-    }
-    return response.json();
+    return authenticatedRequest<ConfiguracoesData>("/configuracoes", {
+      cache: "no-store",
+      fallbackError: "Erro ao buscar configurações",
+    });
   },
 
   async atualizarInstituicao(dados: InstituicaoFormData): Promise<ApiResponse> {
-    const response = await apiClient.patch(
-      `${API_URL}/instituicao`,
-      dados,
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.erro || error.mensagem || "Erro ao atualizar instituição",
-      );
-    }
-    return response.json();
+    return authenticatedRequest<ApiResponse>("/configuracoes/instituicao", {
+      method: "PATCH",
+      body: JSON.stringify(dados),
+      fallbackError: "Erro ao atualizar instituição",
+    });
   },
 
   async atualizarPeriodoLetivo(
     dados: PeriodoLetivoFormData,
   ): Promise<ApiResponse> {
-    const response = await apiClient.patch(
-      `${API_URL}/periodo-letivo`,
-      dados,
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.erro || error.mensagem || "Erro ao atualizar período letivo",
-      );
-    }
-    return response.json();
+    return authenticatedRequest<ApiResponse>("/configuracoes/periodo-letivo", {
+      method: "PATCH",
+      body: JSON.stringify(dados),
+      fallbackError: "Erro ao atualizar período letivo",
+    });
   },
 
   async atualizarCertificado(
     dados: CertificadoFormData,
   ): Promise<ApiResponse> {
-    const response = await apiClient.patch(
-      `${API_URL}/certificado`,
-      dados,
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.erro || error.mensagem || "Erro ao atualizar regras de certificado",
-      );
-    }
-    return response.json();
+    return authenticatedRequest<ApiResponse>("/configuracoes/certificado", {
+      method: "PATCH",
+      body: JSON.stringify(dados),
+      fallbackError: "Erro ao atualizar regras de certificado",
+    });
   },
 
   async atualizarPreferencias(
     dados: PreferenciasFormData,
   ): Promise<ApiResponse> {
-    const response = await apiClient.patch(
-      `${API_URL}/preferencias`,
-      dados,
-    );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.erro || error.mensagem || "Erro ao atualizar preferências",
-      );
-    }
-    return response.json();
+    return authenticatedRequest<ApiResponse>("/configuracoes/preferencias", {
+      method: "PATCH",
+      body: JSON.stringify(dados),
+      fallbackError: "Erro ao atualizar preferências",
+    });
   },
 };

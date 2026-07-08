@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { instituicaoSchema, type InstituicaoFormData } from "@/schemas/configuracionsSchema";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { configService } from "@/services/configService";
+import { atualizarInstituicaoAction } from "@/app/coordenador/actions";
 
 interface InstituicaoCardProps {
   initialData: InstituicaoFormData;
@@ -29,8 +29,12 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
     setSuccessMessage(null);
 
     try {
-      await configService.atualizarInstituicao(data);
-      setSuccessMessage("Dados atualizados com sucesso!");
+      const resultado = await atualizarInstituicaoAction(data);
+      if (!resultado.sucesso) {
+        setErrorMessage(resultado.mensagem);
+        return;
+      }
+      setSuccessMessage(resultado.mensagem);
       onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {

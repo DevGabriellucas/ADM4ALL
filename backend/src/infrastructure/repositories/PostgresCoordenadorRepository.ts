@@ -13,6 +13,7 @@ import {
   CertificadoAlunoDetalhe,
   CertificadoListagemCoordenador,
   ConvidarAlunoInput,
+  ConvidarCoordenadorInput,
   ConvidarInstrutorInput,
   ConviteCriado,
   CoordenadorRepository,
@@ -36,6 +37,7 @@ import {
   TurmaDetalhe,
   TurmaListagem,
   TurmaParaMatricula,
+  UsuarioListagemCoordenador,
   VincularAlunoInput,
 } from "../../domain/repositories/CoordenadorRepository";
 
@@ -418,6 +420,38 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           camposPendentes: linha.campos_pendentes ?? [],
         }
       : null;
+  }
+
+  async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
+    const query = `
+      SELECT
+        u.id,
+        u.nome,
+        u.email,
+        CASE
+          WHEN p.nome = 'admin' THEN 'administrador'
+          ELSE p.nome
+        END AS role,
+        u.status,
+        u.data_criacao,
+        u.ultimo_login
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      ORDER BY u.nome ASC
+    `;
+    const resultado = await this.db.query(query);
+
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      nome: linha.nome,
+      email: linha.email,
+      role: linha.role,
+      status: linha.status,
+      dataCriacao: linha.data_criacao.toISOString(),
+      ultimoAcesso: linha.ultimo_login
+        ? linha.ultimo_login.toISOString()
+        : null,
+    }));
   }
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
@@ -1711,6 +1745,68 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe um usuario com este e-mail ou CPF.");
       }
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
+  async convidarCoordenador(
+    input: ConvidarCoordenadorInput,
+  ): Promise<ConviteCriado> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const perfilResultado = await cliente.query(
+        "SELECT id FROM perfis WHERE nome = 'coordenador' LIMIT 1",
+      );
+      const perfilId = perfilResultado.rows[0]?.id;
+      if (!perfilId) {
+        throw new Error("Perfil 'coordenador' nao encontrado.");
+      }
+
+      let usuarioId: string;
+      try {
+        const usuarioResultado = await cliente.query(
+          `INSERT INTO usuarios (perfil_id, nome, email, cpf, senha, status)
+           VALUES ($1, $2, $3, $4, $5, 'pendente_ativacao')
+           RETURNING id`,
+          [
+            perfilId,
+            input.nome,
+            input.email,
+            input.cpf,
+            input.senhaTemporariaCriptografada,
+          ],
+        );
+        usuarioId = usuarioResultado.rows[0].id;
+      } catch (error: any) {
+        if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+          throw new Error("Ja existe um usuario cadastrado com este e-mail ou CPF.");
+        }
+        throw error;
+      }
+
+      const coordenadorResultado = await cliente.query(
+        `INSERT INTO coordenadores (usuario_id, telefone, area_coordenacao)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [usuarioId, input.telefone ?? null, input.areaCoordenacao ?? null],
+      );
+      const coordenadorId = coordenadorResultado.rows[0].id;
+
+      await cliente.query("COMMIT");
+
+      return {
+        usuarioId,
+        instrutorId: coordenadorId,
+        nome: input.nome,
+        email: input.email,
+      };
+    } catch (error) {
+      await cliente.query("ROLLBACK");
       throw error;
     } finally {
       cliente.release();

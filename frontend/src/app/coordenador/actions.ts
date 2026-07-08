@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 import * as coordinatorService from "@/services/coordinatorService";
 import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
+import { configService } from "@/services/configService";
+import type {
+  InstituicaoFormData,
+  PeriodoLetivoFormData,
+  CertificadoFormData,
+  PreferenciasFormData,
+  ConfiguracoesData,
+} from "@/schemas/configuracionsSchema";
 import type {
   CertificateDetail,
   ClassGroup,
@@ -12,7 +20,6 @@ import type {
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
-  Lesson,
   Student,
   UserStatus,
 } from "@/types/coordinator";
@@ -129,6 +136,7 @@ export async function convidarInstrutorAction(input: {
   try {
     const convite = await coordinatorService.inviteInstructor(input);
     revalidatePath("/coordenador/instrutores");
+    revalidatePath("/coordenador/usuarios");
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
@@ -141,6 +149,32 @@ export async function convidarInstrutorAction(input: {
         error instanceof Error
           ? error.message
           : "Falha ao enviar o convite de ativacao.",
+    };
+  }
+}
+
+export async function convidarCoordenadorAction(input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  areaCoordenacao?: string;
+}): Promise<ResultadoAction> {
+  try {
+    const convite = await coordinatorService.inviteCoordinator(input);
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Convite de ativacao enviado para ${convite.nome}.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao enviar o convite de coordenador.",
     };
   }
 }
@@ -233,6 +267,7 @@ export async function convidarAlunoAction(input: {
   try {
     const convite = await coordinatorService.inviteStudent(input);
     revalidatePath("/coordenador/alunos");
+    revalidatePath("/coordenador/usuarios");
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
@@ -647,85 +682,6 @@ export async function atualizarPeriodoLetivoAction(
   return await atualizarPeriodoLetivo(periodoLetivo);
 }
 
-export async function criarAulaCronogramaAction(input: {
-  turmaId: string;
-  titulo: string;
-  data: string;
-  horaInicio?: string | null;
-  horaFim?: string | null;
-}): Promise<ResultadoAction> {
-  try {
-    const aula = await coordinatorService.createLesson(input.turmaId, {
-      titulo: input.titulo,
-      data: input.data,
-      horaInicio: input.horaInicio ?? null,
-      horaFim: input.horaFim ?? null,
-    });
-    revalidatePath("/coordenador/cronograma");
-    revalidatePath(`/coordenador/turmas/${input.turmaId}`);
-    revalidatePath("/instrutor/dashboard");
-    return {
-      sucesso: true,
-      mensagem: `Aula ${aula.numeroAula} cadastrada com sucesso.`,
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao cadastrar a aula.",
-    };
-  }
-}
-
-export async function atualizarAulaCronogramaAction(
-  turmaId: string,
-  aulaId: string,
-  input: {
-    titulo?: string;
-    data?: string;
-    status?: Lesson["status"];
-  },
-): Promise<ResultadoAction> {
-  try {
-    await coordinatorService.updateLesson(turmaId, aulaId, input);
-    revalidatePath("/coordenador/cronograma");
-    revalidatePath(`/coordenador/turmas/${turmaId}`);
-    revalidatePath("/instrutor/dashboard");
-    return {
-      sucesso: true,
-      mensagem: "Aula atualizada com sucesso.",
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao atualizar a aula.",
-    };
-  }
-}
-
-export async function removerAulaCronogramaAction(
-  turmaId: string,
-  aulaId: string,
-): Promise<ResultadoAction> {
-  try {
-    await coordinatorService.removeLesson(turmaId, aulaId);
-    revalidatePath("/coordenador/cronograma");
-    revalidatePath(`/coordenador/turmas/${turmaId}`);
-    revalidatePath("/instrutor/dashboard");
-    return {
-      sucesso: true,
-      mensagem: "Aula removida com sucesso.",
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao remover a aula.",
-    };
-  }
-}
-
 interface AlunosDaTurmaResultado extends ResultadoAction {
   students: Student[];
 }
@@ -809,6 +765,85 @@ export async function removerAlunoDaTurmaAction(
         error instanceof Error
           ? error.message
           : "Falha ao remover o aluno da turma.",
+    };
+  }
+}
+
+export async function obterConfiguracoesAction(): Promise<ConfiguracoesData> {
+  return configService.obter();
+}
+
+export async function atualizarInstituicaoAction(
+  dados: InstituicaoFormData,
+): Promise<ResultadoAction> {
+  try {
+    await configService.atualizarInstituicao(dados);
+    revalidatePath("/coordenador/configuracoes");
+    return { sucesso: true, mensagem: "Dados da instituição atualizados com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar dados da instituição.",
+    };
+  }
+}
+
+export async function atualizarPeriodoLetivoConfigAction(
+  dados: PeriodoLetivoFormData,
+): Promise<ResultadoAction> {
+  try {
+    await configService.atualizarPeriodoLetivo(dados);
+    revalidatePath("/coordenador/configuracoes");
+    return { sucesso: true, mensagem: "Período letivo atualizado com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar período letivo.",
+    };
+  }
+}
+
+export async function atualizarCertificadoAction(
+  dados: CertificadoFormData,
+): Promise<ResultadoAction> {
+  try {
+    await configService.atualizarCertificado(dados);
+    revalidatePath("/coordenador/configuracoes");
+    return {
+      sucesso: true,
+      mensagem: "Regras de certificado atualizadas com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar regras de certificado.",
+    };
+  }
+}
+
+export async function atualizarPreferenciasAction(
+  dados: PreferenciasFormData,
+): Promise<ResultadoAction> {
+  try {
+    await configService.atualizarPreferencias(dados);
+    revalidatePath("/coordenador/configuracoes");
+    return { sucesso: true, mensagem: "Preferências atualizadas com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar preferências.",
     };
   }
 }

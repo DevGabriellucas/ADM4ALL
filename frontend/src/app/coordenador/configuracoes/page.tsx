@@ -7,7 +7,7 @@ import { InstituicaoCard } from "@/components/coordenador/InstituicaoCard";
 import { PeriodoLetivoCard } from "@/components/coordenador/PeriodoLetivoCard";
 import { CertificadoCard } from "@/components/coordenador/CertificadoCard";
 import { PreferenciasCard } from "@/components/coordenador/PreferenciasCard";
-import { configService } from "@/services/configService";
+import { obterConfiguracoesAction } from "@/app/coordenador/actions";
 import type { ConfiguracoesData } from "@/schemas/configuracionsSchema";
 
 export default function CoordinatorSettingsPage() {
@@ -18,7 +18,7 @@ export default function CoordinatorSettingsPage() {
   useEffect(() => {
     const carregarConfiguracoes = async () => {
       try {
-        const dados = await configService.obter();
+        const dados = await obterConfiguracoesAction();
         setConfiguracoes(dados);
       } catch (err) {
         setError(
@@ -34,7 +34,7 @@ export default function CoordinatorSettingsPage() {
 
   const handleConfigurationUpdated = async () => {
     try {
-      const dados = await configService.obter();
+      const dados = await obterConfiguracoesAction();
       setConfiguracoes(dados);
     } catch (err) {
       setError(

@@ -9,7 +9,7 @@ import {
 } from "@/schemas/configuracionsSchema";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { configService } from "@/services/configService";
+import { atualizarCertificadoAction } from "@/app/coordenador/actions";
 
 interface CertificadoCardProps {
   initialData: CertificadoFormData;
@@ -35,8 +35,12 @@ export const CertificadoCard = ({
     setSuccessMessage(null);
 
     try {
-      await configService.atualizarCertificado(data);
-      setSuccessMessage("Regras de certificado atualizadas com sucesso!");
+      const resultado = await atualizarCertificadoAction(data);
+      if (!resultado.sucesso) {
+        setErrorMessage(resultado.mensagem);
+        return;
+      }
+      setSuccessMessage(resultado.mensagem);
       onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
@@ -98,9 +102,12 @@ export const CertificadoCard = ({
               control={control}
               render={({ field }) => (
                 <input
-                  {...field}
                   type="checkbox"
                   checked={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                   disabled={isSubmitting}
                   className="h-4 w-4 rounded border-gray-300 text-brand-dark focus:ring-2 focus:ring-brand-dark"
                 />

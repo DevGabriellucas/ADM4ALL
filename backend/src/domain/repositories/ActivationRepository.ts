@@ -11,7 +11,8 @@ export type CampoPendenteAtivacao =
   | "rgm"
   | "cursoUnipe"
   | "areaAtuacao"
-  | "formacao";
+  | "formacao"
+  | "areaCoordenacao";
 
 export interface RegistrarAtivacaoInput {
   usuarioId: string;

@@ -9,7 +9,7 @@ import {
 } from "@/schemas/configuracionsSchema";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { configService } from "@/services/configService";
+import { atualizarPeriodoLetivoConfigAction } from "@/app/coordenador/actions";
 
 interface PeriodoLetivoCardProps {
   initialData: string;
@@ -35,8 +35,12 @@ export const PeriodoLetivoCard = ({
     setSuccessMessage(null);
 
     try {
-      await configService.atualizarPeriodoLetivo(data);
-      setSuccessMessage("Período letivo atualizado com sucesso!");
+      const resultado = await atualizarPeriodoLetivoConfigAction(data);
+      if (!resultado.sucesso) {
+        setErrorMessage(resultado.mensagem);
+        return;
+      }
+      setSuccessMessage(resultado.mensagem);
       onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {

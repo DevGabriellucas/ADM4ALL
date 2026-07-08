@@ -1040,6 +1040,37 @@ export class ExpressAdapter {
     );
 
     this.app.get(
+      "/coordenador/usuarios",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (_req: Request, res: Response) => {
+        const usuarios = await this.coordenadorUseCase.listarUsuarios();
+        res.json(usuarios);
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/coordenadores",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { nome, email, cpf, telefone, areaCoordenacao } = req.body;
+
+        const convite = await this.coordenadorUseCase.convidarCoordenador({
+          nome,
+          email,
+          cpf,
+          telefone,
+          areaCoordenacao,
+        });
+
+        res.status(201).json({
+          id: convite.instrutorId,
+          nome: convite.nome,
+          mensagem: "Convite de ativacao enviado por e-mail.",
+        });
+      }),
+    );
+
+    this.app.get(
       "/coordenador/alunos/:id",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {

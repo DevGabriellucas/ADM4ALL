@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/Input";
 import { Select } from "@/components/Select";
 import { Button } from "@/components/Button";
-import { configService } from "@/services/configService";
+import { atualizarPreferenciasAction } from "@/app/coordenador/actions";
 
 interface PreferenciasCardProps {
   initialData: PreferenciasFormData;
@@ -36,8 +36,12 @@ export const PreferenciasCard = ({
     setSuccessMessage(null);
 
     try {
-      await configService.atualizarPreferencias(data);
-      setSuccessMessage("Preferências atualizadas com sucesso!");
+      const resultado = await atualizarPreferenciasAction(data);
+      if (!resultado.sucesso) {
+        setErrorMessage(resultado.mensagem);
+        return;
+      }
+      setSuccessMessage(resultado.mensagem);
       onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {

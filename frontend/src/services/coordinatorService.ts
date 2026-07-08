@@ -10,6 +10,7 @@ import {
 } from "@/services/apiClient";
 import type {
   AttendanceSummary,
+  BaseUser,
   CertificateDetail,
   CertificateRecord,
   ClassGroup,
@@ -415,6 +416,23 @@ export const inviteInstructor = async (input: {
   );
 };
 
+export const inviteCoordinator = async (input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  areaCoordenacao?: string;
+}): Promise<{ id: string; nome: string }> => {
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/coordenador/coordenadores",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de coordenador.",
+    },
+  );
+};
+
 export const getInstructorById = async (
   id: string,
 ): Promise<InstructorDetail | null> => {
@@ -721,6 +739,13 @@ export const getStudentById = async (
   }
 };
 
+export const getUsers = async (): Promise<BaseUser[]> => {
+  return await authenticatedRequest<BaseUser[]>("/coordenador/usuarios", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os usuarios.",
+  });
+};
+
 export const updateStudent = async (
   id: string,
   input: {
@@ -849,22 +874,6 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
 
     return { ...record, situacao };
   });
-};
-
-export const getLessons = async (): Promise<Lesson[]> => {
-  const classes = await getClasses();
-  const detalhes = await Promise.all(
-    classes.map(async (classGroup) => ({
-      classGroup,
-      detalhe: await buscarTurmaDetalheApi(classGroup.id),
-    })),
-  );
-
-  return detalhes.flatMap(({ detalhe }) =>
-    detalhe
-      ? detalhe.cronograma.map((aula) => mapearAulaDaTurma(aula, detalhe))
-      : [],
-  );
 };
 
 export const createLesson = async (
