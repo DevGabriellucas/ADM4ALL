@@ -26,7 +26,7 @@ export const CoordinatorStatusBadge = ({
 }: CoordinatorStatusBadgeProps) => {
   return (
     <span
-      className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 font-medium text-[0.7rem] ${TONE_STYLES[tone]}`}
+      className={`inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-1 font-medium text-[0.7rem] ${TONE_STYLES[tone]}`}
     >
       {label}
     </span>

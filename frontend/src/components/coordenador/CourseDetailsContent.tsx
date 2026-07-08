@@ -30,11 +30,12 @@ const getCourseStatusInfo = (status: Course["status"]) => {
 const getClassStatusInfo = (status: ClassGroup["status"]) => {
   const map: Record<
     ClassGroup["status"],
-    { label: string; tone: "green" | "blue" | "amber" | "slate" }
+    { label: string; tone: "green" | "blue" | "amber" | "slate" | "red" }
   > = {
-    planejada: { label: "Planejada", tone: "blue" },
-    em_andamento: { label: "Em andamento", tone: "green" },
-    concluida: { label: "Concluída", tone: "amber" },
+    planejada: { label: "Planejada", tone: "amber" },
+    em_andamento: { label: "Em andamento", tone: "blue" },
+    concluida: { label: "Concluída", tone: "green" },
+    encerrada: { label: "Encerrada", tone: "red" },
     cancelada: { label: "Cancelada", tone: "slate" },
   };
 
@@ -277,7 +278,7 @@ export const CourseDetailsContent = ({
                     Instrutores
                   </th>
                   <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                    Período
+                    Período letivo
                   </th>
                   <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                     Status
@@ -305,10 +306,7 @@ export const CourseDetailsContent = ({
                         {classGroup.instrutores || "-"}
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                        {classGroup.dataInicio}
-                        {classGroup.dataTermino
-                          ? ` - ${classGroup.dataTermino}`
-                          : ""}
+                        {classGroup.periodoLetivo || "-"}
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3">
                         <CoordinatorStatusBadge

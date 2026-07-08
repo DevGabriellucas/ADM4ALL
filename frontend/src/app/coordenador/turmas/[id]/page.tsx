@@ -7,6 +7,8 @@ import {
   getClassById,
   getClassMaterials,
   getClassStudentsAndLessons,
+  getCourses,
+  getInstructors,
 } from "@/services/coordinatorService";
 
 interface CoordinatorClassDetailsPageProps {
@@ -23,13 +25,21 @@ export default async function CoordinatorClassDetailsPage({
     notFound();
   }
 
-  const [{ students, lessons }, attendance, materials, certificates] =
-    await Promise.all([
-      getClassStudentsAndLessons(id),
-      getAttendanceSummary(),
-      getClassMaterials(id, classGroup),
-      getCertificates(),
-    ]);
+  const [
+    { students, lessons },
+    attendance,
+    materials,
+    certificates,
+    courses,
+    instructors,
+  ] = await Promise.all([
+    getClassStudentsAndLessons(id),
+    getAttendanceSummary(),
+    getClassMaterials(id, classGroup),
+    getCertificates(),
+    getCourses(),
+    getInstructors(),
+  ]);
 
   return (
     <>
@@ -45,6 +55,8 @@ export default async function CoordinatorClassDetailsPage({
         certificates={certificates.filter(
           (certificate) => certificate.turma === classGroup.nome,
         )}
+        courses={courses}
+        instructors={instructors}
       />
     </>
   );

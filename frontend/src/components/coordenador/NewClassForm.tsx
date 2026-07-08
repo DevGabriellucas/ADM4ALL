@@ -22,8 +22,7 @@ interface ClassFormData {
   curso: string;
   nome: string;
   instrutoresSelecionados: string[];
-  dataInicio: string;
-  dataTermino: string;
+  periodoLetivo: string;
   horarios: string;
   limiteAlunos: string;
   status: ClassStatus;
@@ -33,8 +32,7 @@ const INITIAL_FORM_DATA: ClassFormData = {
   curso: "",
   nome: "",
   instrutoresSelecionados: [],
-  dataInicio: "",
-  dataTermino: "",
+  periodoLetivo: "",
   horarios: "",
   limiteAlunos: "",
   status: "planejada",
@@ -99,8 +97,7 @@ export const NewClassForm = ({
       curso: formData.curso,
       nome: formData.nome,
       instrutores: formData.instrutoresSelecionados,
-      dataInicio: formData.dataInicio,
-      dataTermino: formData.dataTermino,
+      periodoLetivo: formData.periodoLetivo,
       horarios: formData.horarios,
       limiteAlunos: Number(formData.limiteAlunos),
       status: formData.status,
@@ -248,30 +245,20 @@ export const NewClassForm = ({
           </label>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Data de início
+            Período letivo
             <input
               required
-              type="date"
-              value={formData.dataInicio}
+              type="text"
+              value={formData.periodoLetivo}
               onChange={(event) =>
-                setFormData({ ...formData, dataInicio: event.target.value })
+                setFormData({ ...formData, periodoLetivo: event.target.value })
               }
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              placeholder="2026.1"
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
-          </label>
-
-          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Data de término
-            <input
-              required
-              min={formData.dataInicio}
-              type="date"
-              value={formData.dataTermino}
-              onChange={(event) =>
-                setFormData({ ...formData, dataTermino: event.target.value })
-              }
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
-            />
+            <span className="text-slate-400 text-xs">
+              Use o formato ano.semestre, por exemplo 2026.1 ou 2026.2.
+            </span>
           </label>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm md:col-span-2">
@@ -303,6 +290,7 @@ export const NewClassForm = ({
               <option value="planejada">Planejada</option>
               <option value="em_andamento">Em andamento</option>
               <option value="concluida">Concluída</option>
+              <option value="encerrada">Encerrada</option>
               <option value="cancelada">Cancelada</option>
             </select>
           </label>

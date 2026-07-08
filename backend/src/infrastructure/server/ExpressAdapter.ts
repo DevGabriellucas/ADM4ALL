@@ -1099,8 +1099,7 @@ export class ExpressAdapter {
           curso,
           nome,
           instrutores,
-          dataInicio,
-          dataTermino,
+          periodoLetivo,
           horarios,
           limiteAlunos,
           status,
@@ -1111,8 +1110,7 @@ export class ExpressAdapter {
           curso,
           nome,
           instrutores: Array.isArray(instrutores) ? instrutores : [],
-          dataInicio,
-          dataTermino,
+          periodoLetivo,
           horario: horarios,
           limiteAlunos: Number(limiteAlunos),
           status,
@@ -1313,6 +1311,26 @@ export class ExpressAdapter {
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const turma = await this.coordenadorUseCase.buscarTurmaDetalhe(id);
+        res.json(turma);
+      }),
+    );
+
+    this.app.patch(
+      "/turmas/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, curso, instrutores, periodoLetivo, capacidade, status } = req.body;
+
+        const turma = await this.coordenadorUseCase.atualizarTurma(id, {
+          nome,
+          curso,
+          instrutores: Array.isArray(instrutores) ? instrutores : [],
+          periodoLetivo,
+          capacidade: Number(capacidade),
+          status,
+        });
+
         res.json(turma);
       }),
     );

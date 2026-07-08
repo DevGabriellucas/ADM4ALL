@@ -82,8 +82,7 @@ export interface CriarTurmaEntrada {
   curso: string;
   nome: string;
   instrutores: string[];
-  dataInicio: string;
-  dataTermino: string;
+  periodoLetivo: string;
   horario: string;
   limiteAlunos: number;
   status?: string;
@@ -108,10 +107,24 @@ const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "desativado"];
 const TURMA_STATUS_VALIDOS = [
   "planejada",
   "em_andamento",
+  "concluida",
   "encerrada",
   "cancelada",
 ];
 const SALT_ROUNDS = 10;
+const PERIODO_LETIVO_REGEX = /^\d{4}\.[12]$/;
+
+function derivarDatasDoPeriodo(periodoLetivo: string): { dataInicio: string; dataFim: string } {
+  const ano = periodoLetivo.substring(0, 4);
+  const semestre = periodoLetivo.charAt(5);
+
+  if (semestre === "1") {
+    return { dataInicio: `${ano}-02-03`, dataFim: `${ano}-06-30` };
+  }
+
+  return { dataInicio: `${ano}-08-01`, dataFim: `${ano}-12-15` };
+}
+
 const STATUS_CONTA_VALIDOS = [
   "ativo",
   "inativo",
@@ -570,9 +583,9 @@ export class CoordenadorUseCase {
     if (!turma) {
       throw new BadRequestError("Turma nao encontrada.");
     }
-    if (turma.status === "concluida" || turma.status === "cancelada") {
+    if (turma.status === "encerrada" || turma.status === "concluida" || turma.status === "cancelada") {
       throw new BadRequestError(
-        "Nao e possivel matricular alunos em uma turma concluida ou cancelada.",
+        "Nao e possivel matricular alunos em uma turma finalizada ou cancelada.",
       );
     }
 
@@ -814,7 +827,7 @@ export class CoordenadorUseCase {
         "O certificado so pode ser emitido para uma matricula aprovada.",
       );
     }
-    if (candidato.statusTurma !== "concluida") {
+    if (candidato.statusTurma !== "concluida" && candidato.statusTurma !== "encerrada") {
       throw new BadRequestError(
         "O certificado so pode ser emitido apos a conclusao da turma.",
       );
@@ -1069,6 +1082,85 @@ export class CoordenadorUseCase {
     return turma;
   }
 
+  async atualizarTurma(id: string, input: {
+    nome: string;
+    curso: string;
+    instrutores: string[];
+    periodoLetivo: string;
+    capacidade: number;
+    status: string;
+  }): Promise<TurmaListagem> {
+    if (!id) {
+      throw new BadRequestError("O ID da turma e obrigatorio.");
+    }
+
+    if (!input.nome || input.nome.trim() === "") {
+      throw new BadRequestError("O nome da turma e obrigatorio.");
+    }
+
+    if (!input.curso || input.curso.trim() === "") {
+      throw new BadRequestError("O curso e obrigatorio.");
+    }
+
+    if (!input.instrutores || input.instrutores.length === 0) {
+      throw new BadRequestError("Selecione pelo menos um instrutor.");
+    }
+
+    if (!input.periodoLetivo || !PERIODO_LETIVO_REGEX.test(input.periodoLetivo)) {
+      throw new BadRequestError("Informe um periodo letivo valido no formato 2026.1 ou 2026.2.");
+    }
+
+    if (!input.capacidade || input.capacidade <= 0) {
+      throw new BadRequestError("A capacidade deve ser maior que zero.");
+    }
+
+    if (!TURMA_STATUS_VALIDOS.includes(input.status)) {
+      throw new BadRequestError("Status de turma invalido.");
+    }
+
+    const turmaExistente = await this.coordenadorRepository.buscarTurmaDetalhe(id);
+    if (!turmaExistente) {
+      throw new BadRequestError("Turma nao encontrada.");
+    }
+
+    const treinamento = await this.coordenadorRepository.buscarTreinamentoPorNome(input.curso.trim());
+    if (!treinamento) {
+      throw new BadRequestError("Curso nao encontrado.");
+    }
+
+    const instrutorIds: string[] = [];
+    for (const nome of input.instrutores) {
+      const instrutor = await this.coordenadorRepository.buscarInstrutorAtivoPorNome(nome.trim());
+      if (!instrutor) {
+        throw new BadRequestError(`Instrutor "${nome.trim()}" nao encontrado ou inativo.`);
+      }
+      instrutorIds.push(instrutor.id);
+    }
+
+    try {
+      const datas = derivarDatasDoPeriodo(input.periodoLetivo);
+
+      const turma = await this.coordenadorRepository.atualizarTurma(id, {
+        nome: input.nome.trim(),
+        treinamentoId: treinamento.id,
+        instrutorIds,
+        periodoLetivo: input.periodoLetivo,
+        dataInicio: datas.dataInicio,
+        dataFim: datas.dataFim,
+        capacidade: input.capacidade,
+        status: input.status,
+      });
+
+      if (!turma) {
+        throw new BadRequestError("Turma nao encontrada.");
+      }
+
+      return turma;
+    } catch (error: any) {
+      throw new BadRequestError(error.message);
+    }
+  }
+
   async criarTurma(input: CriarTurmaEntrada): Promise<TurmaListagem> {
     if (!input.curso || input.curso.trim() === "") {
       throw new BadRequestError("O curso e obrigatorio.");
@@ -1082,14 +1174,8 @@ export class CoordenadorUseCase {
       throw new BadRequestError("Selecione pelo menos um instrutor.");
     }
 
-    if (!input.dataInicio || !input.dataTermino) {
-      throw new BadRequestError("Informe data de inicio e de termino.");
-    }
-
-    if (input.dataTermino < input.dataInicio) {
-      throw new BadRequestError(
-        "A data de termino deve ser igual ou posterior a data de inicio.",
-      );
+    if (!input.periodoLetivo || !PERIODO_LETIVO_REGEX.test(input.periodoLetivo)) {
+      throw new BadRequestError("Informe um periodo letivo valido no formato 2026.1 ou 2026.2.");
     }
 
     if (!input.horario || input.horario.trim() === "") {
@@ -1127,19 +1213,20 @@ export class CoordenadorUseCase {
       instrutorIds.push(instrutor.id);
     }
 
-    const statusBanco = statusFrontend === "encerrada" ? "concluida" : statusFrontend;
-
     try {
+      const datas = derivarDatasDoPeriodo(input.periodoLetivo);
+
       return await this.coordenadorRepository.criarTurma({
         treinamentoId: treinamento.id,
         instrutorIds,
         coordenadorId: input.coordenadorId ?? null,
         nome: input.nome.trim(),
-        dataInicio: input.dataInicio,
-        dataTermino: input.dataTermino,
+        periodoLetivo: input.periodoLetivo,
+        dataInicio: datas.dataInicio,
+        dataFim: datas.dataFim,
         horario: input.horario.trim(),
         limiteAlunos: input.limiteAlunos,
-        status: statusBanco,
+        status: statusFrontend,
       });
     } catch (error: any) {
       throw new BadRequestError(error.message);

@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS turmas (
     turno            VARCHAR(20)  NOT NULL DEFAULT 'noite',
     local            VARCHAR(120),
     horario          VARCHAR(120),
+    periodo_letivo   VARCHAR(6)   NOT NULL DEFAULT '2026.1',
     status           VARCHAR(20)  NOT NULL DEFAULT 'planejada',
     capacidade       INTEGER      NOT NULL DEFAULT 30,
     data_inicio      DATE         NOT NULL,
-    data_fim         DATE,
+    data_fim         DATE         NOT NULL,
     data_criacao     TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_turmas_codigo_nao_vazio
@@ -38,12 +39,14 @@ CREATE TABLE IF NOT EXISTS turmas (
         CHECK (length(trim(nome)) > 0),
     CONSTRAINT chk_turmas_turno
         CHECK (turno IN ('manha', 'tarde', 'noite', 'integral', 'online')),
+    CONSTRAINT chk_turmas_periodo_letivo
+        CHECK (periodo_letivo ~ '^[0-9]{4}\.[12]$'),
     CONSTRAINT chk_turmas_status
-        CHECK (status IN ('planejada', 'em_andamento', 'concluida', 'cancelada')),
+        CHECK (status IN ('planejada', 'em_andamento', 'concluida', 'encerrada', 'cancelada')),
     CONSTRAINT chk_turmas_capacidade
         CHECK (capacidade > 0),
     CONSTRAINT chk_turmas_datas
-        CHECK (data_fim IS NULL OR data_fim >= data_inicio)
+        CHECK (data_fim >= data_inicio)
 );
 
 CREATE INDEX IF NOT EXISTS idx_turmas_treinamento

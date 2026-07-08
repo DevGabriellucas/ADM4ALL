@@ -1,12 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { encerrarTurmaAction } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AddInstructorToClassModal } from "@/components/coordenador/AddInstructorToClassModal";
 import { ClassDetailsTabs } from "@/components/coordenador/ClassDetailsTabs";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { EditClassForm } from "@/components/coordenador/EditClassForm";
+import { ManageClassStudentsModal } from "@/components/coordenador/ManageClassStudentsModal";
 import type {
   AttendanceSummary,
   CertificateRecord,
   ClassGroup,
   ClassMaterial,
+  Course,
+  Instructor,
   Lesson,
   Student,
 } from "@/types/coordinator";
@@ -19,13 +29,9 @@ interface ClassDetailsContentProps {
   attendance: AttendanceSummary[];
   materials: ClassMaterial[];
   certificates: CertificateRecord[];
+  courses: Course[];
+  instructors: Instructor[];
 }
-
-const formatDate = (date: string) => {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
-    new Date(date),
-  );
-};
 
 const classStatusInfo: Record<
   ClassGroup["status"],
@@ -35,8 +41,9 @@ const classStatusInfo: Record<
   }
 > = {
   planejada: { label: "Planejada", tone: "amber" },
-  em_andamento: { label: "Em andamento", tone: "green" },
-  concluida: { label: "Concluída", tone: "blue" },
+  em_andamento: { label: "Em andamento", tone: "blue" },
+  concluida: { label: "Concluída", tone: "green" },
+  encerrada: { label: "Encerrada", tone: "red" },
   cancelada: { label: "Cancelada", tone: "red" },
 };
 
@@ -47,7 +54,20 @@ export const ClassDetailsContent = ({
   attendance,
   materials,
   certificates,
+  courses,
+  instructors,
 }: ClassDetailsContentProps) => {
+  const [editingClass, setEditingClass] = useState<ClassGroup | null>(null);
+  const [closingClass, setClosingClass] = useState<ClassGroup | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [managingStudents, setManagingStudents] = useState<ClassGroup | null>(
+    null,
+  );
+  const [addingInstructor, setAddingInstructor] = useState<ClassGroup | null>(
+    null,
+  );
+
   const status = classStatusInfo[classGroup.status];
   const completedLessons = lessons.filter(
     (lesson) => lesson.status === "realizada",
@@ -57,8 +77,77 @@ export const ClassDetailsContent = ({
     return status !== "nao_elegivel" && status !== "cancelado";
   }).length;
 
+  const handleCloseConfirm = async () => {
+    if (!closingClass) return;
+
+    setIsClosing(true);
+    setCloseError(null);
+
+    const resultado = await encerrarTurmaAction(closingClass.id);
+
+    setIsClosing(false);
+
+    if (!resultado.sucesso) {
+      setCloseError(resultado.mensagem);
+      return;
+    }
+
+    setClosingClass(null);
+    setCloseError(null);
+  };
+
   return (
     <>
+      {editingClass && (
+        <EditClassForm
+          classGroup={editingClass}
+          courses={courses}
+          instructors={instructors}
+          onCancel={() => setEditingClass(null)}
+          onSuccess={() => setEditingClass(null)}
+        />
+      )}
+
+      {closingClass && (
+        <ConfirmDialog
+          title="Encerrar turma?"
+          description="Esta ação marcará a turma como encerrada. Revise presenças, alunos e certificados antes de confirmar."
+          confirmLabel={isClosing ? "Encerrando..." : "Encerrar turma"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isClosing}
+          onCancel={() => {
+            setClosingClass(null);
+            setCloseError(null);
+          }}
+          onConfirm={handleCloseConfirm}
+        />
+      )}
+
+      {managingStudents && (
+        <ManageClassStudentsModal
+          classGroup={managingStudents}
+          onClose={() => setManagingStudents(null)}
+        />
+      )}
+
+      {addingInstructor && (
+        <AddInstructorToClassModal
+          classGroup={addingInstructor}
+          instructors={instructors}
+          onClose={() => setAddingInstructor(null)}
+        />
+      )}
+
+      {closeError && (
+        <output
+          aria-live="polite"
+          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {closeError}
+        </output>
+      )}
+
       <header className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
         <Link
           href="/coordenador/turmas"
@@ -88,13 +177,47 @@ export const ClassDetailsContent = ({
               </dd>
             </div>
             <div>
-              <dt className="font-medium text-slate-500 text-xs">Período</dt>
+              <dt className="font-medium text-slate-500 text-xs">
+                Período letivo
+              </dt>
               <dd className="mt-1 font-semibold text-slate-900">
-                {formatDate(classGroup.dataInicio)} a{" "}
-                {formatDate(classGroup.dataTermino)}
+                {classGroup.periodoLetivo || "-"}
               </dd>
             </div>
           </dl>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setEditingClass(classGroup)}
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+          >
+            Editar turma
+          </button>
+          <button
+            type="button"
+            onClick={() => setManagingStudents(classGroup)}
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+          >
+            Adicionar aluno
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddingInstructor(classGroup)}
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+          >
+            Adicionar instrutor
+          </button>
+          {classGroup.status === "em_andamento" && (
+            <button
+              type="button"
+              onClick={() => setClosingClass(classGroup)}
+              className="h-10 cursor-pointer rounded-lg bg-red-600 px-4 font-semibold text-sm text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2"
+            >
+              Encerrar turma
+            </button>
+          )}
         </div>
       </header>
 
