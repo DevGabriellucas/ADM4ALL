@@ -2,6 +2,7 @@ import "dotenv/config";
 import { AlunoUseCase } from "./application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "./application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "./application/use-cases/ActivationUseCase";
+import { ConfiguracoesUseCase } from "./application/use-cases/ConfiguracoesUseCase";
 import { CoordenadorUseCase } from "./application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
@@ -11,6 +12,7 @@ import { EmailService } from "./infrastructure/email/EmailService";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
 import { PostgresActivationRepository } from "./infrastructure/repositories/PostgresActivationRepository";
 import { PostgresAuthRepository } from "./infrastructure/repositories/PostgresAuthRepository";
+import { PostgresConfiguracoeRepository } from "./infrastructure/repositories/PostgresConfiguracoeRepository";
 import { PostgresCoordenadorRepository } from "./infrastructure/repositories/PostgresCoordenadorRepository";
 import { PostgresInstrutorRepository } from "./infrastructure/repositories/PostgresInstrutorRepository";
 import { ExpressAdapter } from "./infrastructure/server/ExpressAdapter";
@@ -20,6 +22,7 @@ const activationRepository = new PostgresActivationRepository(pool);
 const alunoRepository = new PostgresAlunoRepository(pool);
 const instrutorRepository = new PostgresInstrutorRepository(pool);
 const coordenadorRepository = new PostgresCoordenadorRepository(pool);
+const configuracoeRepository = new PostgresConfiguracoeRepository(pool);
 const emailHost = process.env.EMAIL_HOST?.trim() || undefined;
 const emailPort = process.env.EMAIL_PORT?.trim()
   ? Number(process.env.EMAIL_PORT)
@@ -51,6 +54,7 @@ const coordenadorUseCase = new CoordenadorUseCase(
   emailService,
   activationUseCase,
 );
+const configuracoeUseCase = new ConfiguracoesUseCase(configuracoeRepository);
 
 const servidor = new ExpressAdapter(
   authUseCase,
@@ -58,6 +62,7 @@ const servidor = new ExpressAdapter(
   alunoUseCase,
   instrutorUseCase,
   coordenadorUseCase,
+  configuracoeUseCase,
   jwtService,
 );
 

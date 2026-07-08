@@ -43,9 +43,22 @@ const isTokenExpirado = (token: string): boolean => {
 
 export const getServerSession = async (): Promise<ServerSession | null> => {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAMES.token)?.value;
-  const perfil = cookieStore.get(SESSION_COOKIE_NAMES.perfil)?.value;
-  const usuarioId = cookieStore.get(SESSION_COOKIE_NAMES.usuarioId)?.value;
+  const rawToken = cookieStore.get(SESSION_COOKIE_NAMES.token)?.value;
+  const rawPerfil = cookieStore.get(SESSION_COOKIE_NAMES.perfil)?.value;
+  const rawUsuarioId = cookieStore.get(SESSION_COOKIE_NAMES.usuarioId)?.value;
+
+  const tryDecode = (v?: string) => {
+    if (!v) return undefined;
+    try {
+      return decodeURIComponent(v);
+    } catch {
+      return v;
+    }
+  };
+
+  const token = tryDecode(rawToken);
+  const perfil = tryDecode(rawPerfil);
+  const usuarioId = tryDecode(rawUsuarioId);
 
   if (
     !token ||
