@@ -51,7 +51,8 @@ const classStatusInfo: Record<
 > = {
   planejada: { label: "Planejada", tone: "amber" },
   em_andamento: { label: "Em andamento", tone: "green" },
-  concluida: { label: "Concluida", tone: "slate" },
+  concluida: { label: "Concluída", tone: "green" },
+  encerrada: { label: "Encerrada", tone: "red" },
   cancelada: { label: "Cancelada", tone: "red" },
 };
 

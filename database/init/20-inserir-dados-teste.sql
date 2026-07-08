@@ -327,7 +327,7 @@ VALUES
 ON CONFLICT (nome) DO NOTHING;
 
 INSERT INTO turmas
-    (id, treinamento_id, coordenador_id, codigo, nome, turno, local, status, capacidade, data_inicio, data_fim)
+    (id, treinamento_id, coordenador_id, codigo, nome, turno, local, periodo_letivo, status, capacidade, data_inicio, data_fim)
 VALUES
     (
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
@@ -337,6 +337,7 @@ VALUES
         'Assistente Administrativo 2026.1',
         'noite',
         'Sala 01',
+        '2026.1',
         'em_andamento',
         30,
         '2026-02-03',
@@ -350,6 +351,7 @@ VALUES
         'Assistente Contábil 2026.1',
         'noite',
         'Sala 02',
+        '2026.1',
         'em_andamento',
         30,
         '2026-02-03',
@@ -363,6 +365,7 @@ VALUES
         'Assistente de RH 2026.1',
         'manha',
         'Sala 03',
+        '2026.1',
         'em_andamento',
         30,
         '2026-02-03',
@@ -376,6 +379,7 @@ VALUES
         'Assistente de Marketing 2026.1',
         'tarde',
         'Sala 04',
+        '2026.1',
         'em_andamento',
         30,
         '2026-02-03',
@@ -389,6 +393,7 @@ VALUES
         'Empreendedorismo 2026.1',
         'online',
         'Ambiente virtual',
+        '2026.1',
         'em_andamento',
         30,
         '2026-02-03',
@@ -402,7 +407,8 @@ VALUES
         'Assistente Contábil 2026.1',
         'online',
         'Ambiente virtual',
-        'concluida',
+        '2026.1',
+        'encerrada',
         25,
         '2026-01-05',
         '2026-03-09'

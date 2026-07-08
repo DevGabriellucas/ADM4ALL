@@ -345,6 +345,7 @@ export interface TurmaListagem {
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
+  periodoLetivo: string;
   status: string;
   frequenciaMedia: number;
 }
@@ -354,10 +355,22 @@ export interface CriarTurmaInput {
   instrutorIds: string[];
   coordenadorId?: string | null;
   nome: string;
+  periodoLetivo: string;
   dataInicio: string;
-  dataTermino: string;
+  dataFim: string;
   horario: string;
   limiteAlunos: number;
+  status: string;
+}
+
+export interface AtualizarTurmaInput {
+  nome: string;
+  treinamentoId: string;
+  instrutorIds: string[];
+  periodoLetivo: string;
+  dataInicio: string;
+  dataFim: string;
+  capacidade: number;
   status: string;
 }
 
@@ -368,6 +381,7 @@ export interface AlunoMatriculaResumo {
   telefone: string | null;
   frequencia: number;
   status: string;
+  matriculaId: string;
 }
 
 export interface AulaResumo {
@@ -467,6 +481,7 @@ export interface CoordenadorRepository {
   listarTurmas(): Promise<TurmaListagem[]>;
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;
   criarTurma(input: CriarTurmaInput): Promise<TurmaListagem>;
+  atualizarTurma(id: string, input: AtualizarTurmaInput): Promise<TurmaListagem | null>;
   buscarTreinamentoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
 
   buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse>;

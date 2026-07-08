@@ -13,6 +13,7 @@ import type {
   EditableEnrollmentStatus,
   EnrollmentClassOption,
   Lesson,
+  Student,
   UserStatus,
 } from "@/types/coordinator";
 
@@ -561,8 +562,7 @@ export async function criarTurmaAction(input: {
   curso: string;
   nome: string;
   instrutores: string[];
-  dataInicio: string;
-  dataTermino: string;
+  periodoLetivo: string;
   horarios: string;
   limiteAlunos: number;
   status: ClassGroup["status"];
@@ -584,6 +584,59 @@ export async function criarTurmaAction(input: {
       sucesso: false,
       mensagem:
         error instanceof Error ? error.message : "Falha ao cadastrar a turma.",
+    };
+  }
+}
+
+export async function atualizarTurmaAction(
+  id: string,
+  input: {
+    nome: string;
+    curso: string;
+    instrutores: string[];
+    periodoLetivo: string;
+    capacidade: number;
+    status: ClassGroup["status"];
+  },
+): Promise<ResultadoAction> {
+  try {
+    const turma = await coordinatorService.updateClass(id, input);
+    revalidatePath("/coordenador/turmas");
+    revalidatePath(`/coordenador/turmas/${id}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Turma "${turma.nome}" atualizada com sucesso.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao atualizar a turma.",
+    };
+  }
+}
+
+export async function encerrarTurmaAction(
+  id: string,
+): Promise<ResultadoAction> {
+  try {
+    const turma = await coordinatorService.closeClass(id);
+    if (!turma) {
+      return { sucesso: false, mensagem: "Turma nao encontrada." };
+    }
+    revalidatePath("/coordenador/turmas");
+    revalidatePath(`/coordenador/turmas/${id}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Turma "${turma.nome}" encerrada com sucesso.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao encerrar a turma.",
     };
   }
 }
@@ -669,6 +722,93 @@ export async function removerAulaCronogramaAction(
       sucesso: false,
       mensagem:
         error instanceof Error ? error.message : "Falha ao remover a aula.",
+    };
+  }
+}
+
+interface AlunosDaTurmaResultado extends ResultadoAction {
+  students: Student[];
+}
+
+interface AlunosDisponiveisResultado extends ResultadoAction {
+  students: Student[];
+}
+
+export async function buscarAlunosDaTurmaAction(
+  turmaId: string,
+): Promise<AlunosDaTurmaResultado> {
+  try {
+    const { students } =
+      await coordinatorService.getClassStudentsAndLessons(turmaId);
+    return { sucesso: true, mensagem: "", students };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao carregar os alunos.",
+      students: [],
+    };
+  }
+}
+
+export async function buscarAlunosDisponiveisAction(): Promise<AlunosDisponiveisResultado> {
+  try {
+    const students = await coordinatorService.getStudents();
+    return { sucesso: true, mensagem: "", students };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error ? error.message : "Falha ao carregar os alunos.",
+      students: [],
+    };
+  }
+}
+
+export async function adicionarAlunoNaTurmaAction(
+  turmaId: string,
+  alunoId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.enrollStudentInClass(turmaId, alunoId);
+    revalidatePath("/coordenador/turmas");
+    revalidatePath(`/coordenador/turmas/${turmaId}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Aluno vinculado a turma com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao adicionar o aluno na turma.",
+    };
+  }
+}
+
+export async function removerAlunoDaTurmaAction(
+  turmaId: string,
+  matriculaId: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.cancelStudentEnrollment(turmaId, matriculaId);
+    revalidatePath("/coordenador/turmas");
+    revalidatePath(`/coordenador/turmas/${turmaId}`);
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Aluno removido da turma com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao remover o aluno da turma.",
     };
   }
 }

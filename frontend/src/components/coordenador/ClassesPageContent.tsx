@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { encerrarTurmaAction } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ClassTable } from "@/components/coordenador/ClassTable";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
+import { EditClassForm } from "@/components/coordenador/EditClassForm";
+import { ManageClassStudentsModal } from "@/components/coordenador/ManageClassStudentsModal";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
 import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
 
@@ -19,12 +23,19 @@ export const ClassesPageContent = ({
   instructors,
 }: ClassesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<ClassGroup | null>(null);
+  const [closingClass, setClosingClass] = useState<ClassGroup | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [managingStudents, setManagingStudents] = useState<ClassGroup | null>(
+    null,
+  );
 
   const activeClasses = classes.filter(
     (classGroup) => classGroup.status === "em_andamento",
   );
   const completedClasses = classes.filter(
-    (classGroup) => classGroup.status === "concluida",
+    (classGroup) => classGroup.status === "encerrada",
   ).length;
   const enrolledStudents = classes
     .filter(
@@ -42,6 +53,25 @@ export const ClassesPageContent = ({
           ) / activeClasses.length,
         )
       : 0;
+
+  const handleCloseConfirm = async () => {
+    if (!closingClass) return;
+
+    setIsClosing(true);
+    setCloseError(null);
+
+    const resultado = await encerrarTurmaAction(closingClass.id);
+
+    setIsClosing(false);
+
+    if (!resultado.sucesso) {
+      setCloseError(resultado.mensagem);
+      return;
+    }
+
+    setClosingClass(null);
+    setCloseError(null);
+  };
 
   return (
     <>
@@ -66,6 +96,48 @@ export const ClassesPageContent = ({
         isOpen={isFormOpen}
         onCancel={() => setIsFormOpen(false)}
       />
+
+      {editingClass && (
+        <EditClassForm
+          classGroup={editingClass}
+          courses={courses}
+          instructors={instructors}
+          onCancel={() => setEditingClass(null)}
+          onSuccess={() => setEditingClass(null)}
+        />
+      )}
+
+      {closingClass && (
+        <ConfirmDialog
+          title="Encerrar turma?"
+          description="Esta ação encerrará a turma administrativamente. Revise presenças, alunos e certificados antes de confirmar."
+          confirmLabel={isClosing ? "Encerrando..." : "Encerrar turma"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isClosing}
+          onCancel={() => {
+            setClosingClass(null);
+            setCloseError(null);
+          }}
+          onConfirm={handleCloseConfirm}
+        />
+      )}
+
+      {managingStudents && (
+        <ManageClassStudentsModal
+          classGroup={managingStudents}
+          onClose={() => setManagingStudents(null)}
+        />
+      )}
+
+      {closeError && (
+        <output
+          aria-live="polite"
+          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+        >
+          {closeError}
+        </output>
+      )}
 
       <section
         aria-label="Indicadores de turmas"
@@ -97,7 +169,12 @@ export const ClassesPageContent = ({
         />
       </section>
 
-      <ClassTable classes={classes} />
+      <ClassTable
+        classes={classes}
+        onEdit={(classGroup) => setEditingClass(classGroup)}
+        onClose={(classGroup) => setClosingClass(classGroup)}
+        onManageStudents={(classGroup) => setManagingStudents(classGroup)}
+      />
     </>
   );
 };

@@ -17,6 +17,7 @@ export type ClassStatus =
   | "planejada"
   | "em_andamento"
   | "concluida"
+  | "encerrada"
   | "cancelada";
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
@@ -114,6 +115,7 @@ export interface Student {
   statusConta: UserStatus | null;
   statusMatricula: MatriculaStatus | null;
   dataCriacao: string;
+  matriculaId?: string;
 }
 
 export interface StudentEnrollment {
@@ -181,6 +183,7 @@ export interface ClassGroup {
   alunos: number;
   dataInicio: string;
   dataTermino: string;
+  periodoLetivo: string;
   status: ClassStatus;
   frequenciaMedia: number;
 }

@@ -91,6 +91,7 @@ interface TurmaApi {
   alunos: number;
   dataInicio: string;
   dataTermino: string | null;
+  periodoLetivo: string;
   status: string;
   frequenciaMedia: number;
 }
@@ -122,6 +123,7 @@ interface TurmaDetalheApi {
     telefone: string | null;
     frequencia: number;
     status: string;
+    matriculaId: string;
   }[];
   cronograma: {
     id: string;
@@ -192,22 +194,20 @@ const mapearInstrutorDetalhe = (
 });
 
 const normalizeClassStatus = (status: string): ClassGroup["status"] => {
-  const normalizedStatus = status === "encerrada" ? "concluida" : status;
-
   if (
-    normalizedStatus === "planejada" ||
-    normalizedStatus === "em_andamento" ||
-    normalizedStatus === "concluida" ||
-    normalizedStatus === "cancelada"
+    status === "planejada" ||
+    status === "em_andamento" ||
+    status === "concluida" ||
+    status === "encerrada" ||
+    status === "cancelada"
   ) {
-    return normalizedStatus;
+    return status;
   }
 
   throw new Error(`Status de turma inválido recebido: ${status}.`);
 };
 
-const serializeClassStatus = (status: ClassGroup["status"]): string =>
-  status === "concluida" ? "encerrada" : status;
+const serializeClassStatus = (status: ClassGroup["status"]): string => status;
 
 const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
@@ -217,6 +217,7 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   alunos: turma.alunos,
   dataInicio: turma.dataInicio,
   dataTermino: turma.dataTermino ?? "",
+  periodoLetivo: turma.periodoLetivo ?? "",
   status: normalizeClassStatus(turma.status),
   frequenciaMedia: turma.frequenciaMedia,
 });
@@ -519,8 +520,7 @@ export const createClass = async (input: {
   curso: string;
   nome: string;
   instrutores: string[];
-  dataInicio: string;
-  dataTermino: string;
+  periodoLetivo: string;
   horarios: string;
   limiteAlunos: number;
   status: ClassGroup["status"];
@@ -531,8 +531,7 @@ export const createClass = async (input: {
       curso: input.curso,
       nome: input.nome,
       instrutores: input.instrutores,
-      dataInicio: input.dataInicio,
-      dataTermino: input.dataTermino,
+      periodoLetivo: input.periodoLetivo,
       horarios: input.horarios,
       limiteAlunos: input.limiteAlunos,
       status: serializeClassStatus(input.status),
@@ -541,6 +540,51 @@ export const createClass = async (input: {
   });
 
   return mapearTurma(turma);
+};
+
+export const updateClass = async (
+  id: string,
+  input: {
+    nome: string;
+    curso: string;
+    instrutores: string[];
+    periodoLetivo: string;
+    capacidade: number;
+    status: ClassGroup["status"];
+  },
+): Promise<ClassGroup> => {
+  const turma = await authenticatedRequest<TurmaApi>(`/turmas/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      nome: input.nome,
+      curso: input.curso,
+      instrutores: input.instrutores,
+      periodoLetivo: input.periodoLetivo,
+      capacidade: input.capacidade,
+      status: serializeClassStatus(input.status),
+    }),
+    fallbackError: "Falha ao atualizar a turma.",
+  });
+
+  return mapearTurma(turma);
+};
+
+export const closeClass = async (id: string): Promise<ClassGroup | null> => {
+  const detalhe = await buscarTurmaDetalheApi(id);
+  if (!detalhe) {
+    return null;
+  }
+
+  const turma = detalhe.turma;
+
+  return await updateClass(id, {
+    nome: turma.nome,
+    curso: turma.curso,
+    instrutores: turma.instrutores.split(", ").filter(Boolean),
+    periodoLetivo: turma.periodoLetivo ?? "2026.1",
+    capacidade: turma.alunos > 0 ? turma.alunos : 30,
+    status: "encerrada",
+  });
 };
 
 const buscarTurmaDetalheApi = async (
@@ -597,6 +641,7 @@ export const getClassStudentsAndLessons = async (
       statusConta: null,
       statusMatricula: aluno.status,
       dataCriacao: "",
+      matriculaId: aluno.matriculaId,
     };
   });
 

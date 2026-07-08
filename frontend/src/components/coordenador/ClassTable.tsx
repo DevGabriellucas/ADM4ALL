@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type { ClassGroup } from "@/types/coordinator";
 
 interface ClassTableProps {
   classes: ClassGroup[];
+  onEdit: (classGroup: ClassGroup) => void;
+  onClose: (classGroup: ClassGroup) => void;
+  onManageStudents: (classGroup: ClassGroup) => void;
 }
 
 const classStatusInfo: Record<
@@ -14,18 +19,18 @@ const classStatusInfo: Record<
   }
 > = {
   planejada: { label: "Planejada", tone: "amber" },
-  em_andamento: { label: "Em andamento", tone: "green" },
-  concluida: { label: "Concluída", tone: "blue" },
+  em_andamento: { label: "Em andamento", tone: "blue" },
+  concluida: { label: "Concluída", tone: "green" },
+  encerrada: { label: "Encerrada", tone: "red" },
   cancelada: { label: "Cancelada", tone: "red" },
 };
 
-const formatDate = (date: string) => {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
-    new Date(date),
-  );
-};
-
-export const ClassTable = ({ classes }: ClassTableProps) => {
+export const ClassTable = ({
+  classes,
+  onEdit,
+  onClose,
+  onManageStudents,
+}: ClassTableProps) => {
   return (
     <section
       aria-labelledby="classes-table-heading"
@@ -44,7 +49,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-6xl border-separate border-spacing-0 border-slate-200 text-left text-sm">
+        <table className="w-full min-w-5xl border-separate border-spacing-0 border-slate-200 text-left text-sm">
           <thead>
             <tr className="text-slate-500 text-xs">
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
@@ -60,10 +65,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                 Alunos
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Início
-              </th>
-              <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Término
+                Período letivo
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                 Status
@@ -93,10 +95,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                     {classGroup.alunos}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                    {formatDate(classGroup.dataInicio)}
-                  </td>
-                  <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                    {formatDate(classGroup.dataTermino)}
+                    {classGroup.periodoLetivo || "-"}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <CoordinatorStatusBadge
@@ -108,27 +107,24 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <Link
                         href={`/coordenador/turmas/${classGroup.id}`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Visualizar
                       </Link>
                       <button
                         type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Funcionalidade ainda não disponível no MVP"
-                        className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                        onClick={() => onEdit(classGroup)}
+                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                       >
                         Editar
                       </button>
                       {classGroup.status !== "cancelada" &&
+                        classGroup.status !== "encerrada" &&
                         classGroup.status !== "concluida" && (
                           <button
                             type="button"
-                            disabled
-                            aria-disabled="true"
-                            title="Funcionalidade ainda não disponível no MVP"
-                            className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                            onClick={() => onManageStudents(classGroup)}
+                            className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                           >
                             Gerenciar alunos
                           </button>
@@ -136,10 +132,8 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                       {classGroup.status === "em_andamento" && (
                         <button
                           type="button"
-                          disabled
-                          aria-disabled="true"
-                          title="Funcionalidade ainda não disponível no MVP"
-                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                          onClick={() => onClose(classGroup)}
+                          className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
                         >
                           Encerrar turma
                         </button>
@@ -153,7 +147,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
             {classes.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-3 py-8 text-center text-slate-500 text-sm"
                 >
                   Nenhuma turma cadastrada.

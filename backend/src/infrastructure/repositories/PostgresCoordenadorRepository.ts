@@ -7,6 +7,7 @@ import {
   AtualizarAlunoCoordenadorInput,
   AtualizarCursoInput,
   AtualizarInstrutorCoordenadorInput,
+  AtualizarTurmaInput,
   AtualizarStatusMatriculaInput,
   AulaResumo,
   CertificadoAlunoDetalhe,
@@ -1135,7 +1136,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       LEFT JOIN certificados c ON c.matricula_id = m.id
       WHERE m.status = 'aprovado'
-        AND tu.status = 'concluida'
+        AND (tu.status = 'concluida' OR tu.status = 'encerrada')
         AND u.status = 'ativo'
         AND (c.status IS NULL OR c.status NOT IN ('pendente', 'emitido'))
       GROUP BY
@@ -1368,14 +1369,14 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         ) AS frequencia,
         (
           m.status = 'aprovado'
-          AND tu.status = 'concluida'
+        AND (tu.status = 'concluida' OR tu.status = 'encerrada')
           AND u.status = 'ativo'
           AND COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
           AND (c.status IS NULL OR c.status NOT IN ('pendente', 'emitido'))
         ) AS elegivel,
         CASE
           WHEN m.status <> 'aprovado' THEN 'Matrícula ainda não aprovada.'
-          WHEN tu.status <> 'concluida' THEN 'Turma ainda não concluída.'
+          WHEN tu.status <> 'concluida' AND tu.status <> 'encerrada' THEN 'Turma ainda nao finalizada.'
           WHEN u.status <> 'ativo' THEN 'Conta do aluno não está ativa.'
           WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
             THEN 'Aluno possui 3 ou mais faltas.'
@@ -1723,6 +1724,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.nome,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
+        t.periodo_letivo,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1735,7 +1737,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
-      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query);
@@ -1749,6 +1751,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.nome,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
+        t.periodo_letivo,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1762,7 +1765,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.treinamento_id = $1
-      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query, [cursoId]);
@@ -1777,6 +1780,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         t.nome,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
+        t.periodo_letivo,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1790,7 +1794,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.id = $1
-      GROUP BY t.id, t.nome, tr.nome, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
       `,
       [id],
     );
@@ -1808,6 +1812,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           u.nome,
           u.email,
           a.telefone,
+          m.id AS matricula_id,
           m.status,
           COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia
         FROM matriculas m
@@ -1815,7 +1820,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         JOIN usuarios u ON u.id = a.usuario_id
         LEFT JOIN frequencias f ON f.matricula_id = m.id
         WHERE m.turma_id = $1
-        GROUP BY a.id, u.nome, u.email, a.telefone, m.status
+        GROUP BY a.id, u.nome, u.email, a.telefone, m.id, m.status
         ORDER BY u.nome ASC
         `,
         [id],
@@ -1840,6 +1845,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         telefone: linha.telefone ?? null,
         frequencia: Number(linha.frequencia),
         status: linha.status,
+        matriculaId: linha.matricula_id,
       })),
       cronograma: aulasResultado.rows.map((linha) => this.mapearAula(linha)),
     };
@@ -1854,9 +1860,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       const query = `
         INSERT INTO turmas (
           treinamento_id, coordenador_id, codigo, nome,
-          horario, status, capacidade, data_inicio, data_fim
+          periodo_letivo, data_inicio, data_fim, horario, status, capacidade
         )
-        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id
       `;
 
@@ -1864,11 +1870,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.treinamentoId,
         input.coordenadorId ?? null,
         input.nome,
+        input.periodoLetivo,
+        input.dataInicio,
+        input.dataFim,
         input.horario,
         input.status,
         input.limiteAlunos,
-        input.dataInicio,
-        input.dataTermino,
       ]);
 
       const turmaId = resultado.rows[0].id;
@@ -1884,6 +1891,51 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
       const turma = await this.buscarTurmaDetalhe(turmaId);
       return turma!.turma;
+    } catch (error: any) {
+      await client.query("ROLLBACK");
+
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        throw new Error("Ja existe uma turma cadastrada com este nome.");
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async atualizarTurma(id: string, input: AtualizarTurmaInput): Promise<TurmaListagem | null> {
+    const client = await this.db.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const resultado = await client.query(
+        `UPDATE turmas
+         SET nome = $1, treinamento_id = $2, capacidade = $3,
+             periodo_letivo = $4, data_inicio = $5, data_fim = $6, status = $7
+         WHERE id = $8
+         RETURNING id`,
+        [input.nome, input.treinamentoId, input.capacidade, input.periodoLetivo, input.dataInicio, input.dataFim, input.status, id],
+      );
+
+      if (resultado.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      await client.query("DELETE FROM turma_instrutores WHERE turma_id = $1", [id]);
+
+      for (const instrutorId of input.instrutorIds) {
+        await client.query(
+          "INSERT INTO turma_instrutores (turma_id, instrutor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [id, instrutorId],
+        );
+      }
+
+      await client.query("COMMIT");
+
+      const turma = await this.buscarTurmaDetalhe(id);
+      return turma?.turma ?? null;
     } catch (error: any) {
       await client.query("ROLLBACK");
 
@@ -1926,7 +1978,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       alunos: Number(linha.alunos),
       dataInicio: linha.data_inicio,
       dataTermino: linha.data_termino ?? null,
-      status: linha.status === "concluida" ? "encerrada" : linha.status,
+      periodoLetivo: linha.periodo_letivo ?? "",
+      status: linha.status,
       frequenciaMedia: Number(linha.frequencia_media),
     };
   }
