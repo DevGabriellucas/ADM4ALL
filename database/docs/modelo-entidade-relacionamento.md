@@ -14,7 +14,8 @@ erDiagram
     USUARIOS ||--o| COORDENADORES : representa
 
     TREINAMENTOS ||--o{ TURMAS : abre
-    INSTRUTORES ||--o{ TURMAS : ministra
+    INSTRUTORES ||--o{ TURMA_INSTRUTORES : ministra
+    TURMAS ||--o{ TURMA_INSTRUTORES : vincula
     COORDENADORES ||--o{ TURMAS : coordena
     TURMAS ||--o{ AULAS : possui
 
@@ -118,7 +119,6 @@ erDiagram
     TURMAS {
         uuid id PK
         uuid treinamento_id FK
-        uuid instrutor_id FK
         uuid coordenador_id FK
         varchar codigo UK
         varchar nome
@@ -128,6 +128,13 @@ erDiagram
         integer capacidade
         date data_inicio
         date data_fim
+    }
+
+    TURMA_INSTRUTORES {
+        uuid id PK
+        uuid turma_id FK
+        uuid instrutor_id FK
+        timestamptz criado_em
     }
 
     MATRICULAS {

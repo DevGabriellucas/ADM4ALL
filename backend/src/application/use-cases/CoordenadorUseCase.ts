@@ -37,6 +37,7 @@ import {
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { getRequiredEnv } from "../../infrastructure/config/env";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
@@ -430,7 +431,7 @@ export class CoordenadorUseCase {
         ? instrutor.camposPendentes
         : ["senha", "whatsapp", "areaAtuacao", "formacao"],
     );
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const frontendUrl = getRequiredEnv("FRONTEND_URL");
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
 
     try {
@@ -545,7 +546,7 @@ export class CoordenadorUseCase {
       aluno.origem,
       aluno.camposPendentes,
     );
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const frontendUrl = getRequiredEnv("FRONTEND_URL");
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
 
     try {
@@ -973,7 +974,7 @@ export class CoordenadorUseCase {
       camposPendentes,
     );
 
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const frontendUrl = getRequiredEnv("FRONTEND_URL");
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${tokenAtivacao}`;
 
     try {
@@ -1045,7 +1046,7 @@ export class CoordenadorUseCase {
       "criado_por_coordenador",
       camposPendentes,
     );
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const frontendUrl = getRequiredEnv("FRONTEND_URL");
     const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
 
     try {

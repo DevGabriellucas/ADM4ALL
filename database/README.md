@@ -24,7 +24,8 @@ database/
     11-adicionar-visibilidade-materiais.sql
     12-criar-configuracoes-sistema.sql
     20-inserir-dados-teste.sql
-    21-inserir-aluno-demo-aprovacao.sql
+  migrations/
+    20260708_turma_instrutores.sql
 ```
 
 ## Como subir
@@ -44,7 +45,7 @@ locais diferentes. Use sempre o `docker-compose.yml` da raiz.
 
 Os arquivos em `database/init/` sao numerados porque o Postgres executa tudo
 em ordem alfabetica na primeira inicializacao. Por isso os arquivos `01` a
-`12` criam a estrutura, e os arquivos `20` e `21` inserem os dados de teste.
+`12` criam a estrutura, e o arquivo `20` insere os dados de teste.
 
 ## Volumes Docker e persistencia de dados
 
@@ -55,13 +56,13 @@ em ordem alfabetica na primeira inicializacao. Por isso os arquivos `01` a
   Se o banco ja existe e voce adicionar um novo script de init, ele nao sera
   executado automaticamente.
 
-### Aplicar nova migration em banco existente
+### Aplicar migration em banco existente
 
-Se uma nova tabela for adicionada em `database/init/` apos a criacao inicial
-do banco, execute o script manualmente:
+Se uma nova tabela for adicionada apos a criacao inicial do banco, execute o
+script de `database/migrations/` manualmente:
 
-```bash
-docker exec -i adm4all_db psql -U adm4all -d adm4all < database/init/NN-novo-script.sql
+```powershell
+Get-Content .\database\migrations\20260708_turma_instrutores.sql | docker compose exec -T db psql -U adm4all -d adm4all
 ```
 
 ## Resetar o banco local
@@ -118,7 +119,8 @@ Tabelas criadas:
 | `instrutores` | Dados dos instrutores vinculados a usuarios |
 | `coordenadores` | Dados de coordenacao vinculados a usuarios |
 | `treinamentos` | Cursos/treinamentos oferecidos |
-| `turmas` | Turmas abertas por treinamento, instrutor e coordenador |
+| `turmas` | Turmas abertas por treinamento e coordenador |
+| `turma_instrutores` | Vinculo muitos-para-muitos entre turmas e instrutores |
 | `matriculas` | Vinculo entre aluno, treinamento e turma, com status e progresso |
 | `aulas` | Cronograma de aulas das turmas |
 | `frequencias` | Presencas e faltas por matricula/aula |
@@ -171,7 +173,7 @@ O arquivo `init/20-inserir-dados-teste.sql` cria dados para testar cenarios reai
 
 - perfis de aluno, instrutor, coordenador e admin;
 - usuarios para cada perfil;
-- instrutor e coordenadora;
+- instrutores e coordenadora;
 - turmas e cronograma de aulas;
 - aluno em andamento;
 - aluno aprovado com certificado emitido;
@@ -179,9 +181,6 @@ O arquivo `init/20-inserir-dados-teste.sql` cria dados para testar cenarios reai
 - materiais de turma;
 - documentos aprovados e pendentes;
 - frequencias, avaliacoes e certificado emitido.
-
-O arquivo `init/21-inserir-aluno-demo-aprovacao.sql` cria um aluno adicional
-para demonstracao do fluxo de aprovacao e emissao de certificado.
 
 Esse seed nao e outro banco. Ele apenas popula o banco local criado pelo
 compose da raiz.
