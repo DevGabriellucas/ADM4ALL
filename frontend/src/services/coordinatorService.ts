@@ -10,6 +10,7 @@ import {
 } from "@/services/apiClient";
 import type {
   AttendanceSummary,
+  BaseUser,
   CertificateDetail,
   CertificateRecord,
   ClassGroup,
@@ -719,6 +720,13 @@ export const getStudentById = async (
 
     throw error;
   }
+};
+
+export const getUsers = async (): Promise<BaseUser[]> => {
+  return await authenticatedRequest<BaseUser[]>("/coordenador/usuarios", {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os usuarios.",
+  });
 };
 
 export const updateStudent = async (

@@ -3,6 +3,7 @@ import type { BaseUser, UserRole } from "@/types/coordinator";
 
 interface UserTableProps {
   users: BaseUser[];
+  showActions?: boolean;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -36,7 +37,7 @@ const formatLastAccess = (lastAccess: string | null) => {
   }).format(new Date(lastAccess));
 };
 
-export const UserTable = ({ users }: UserTableProps) => {
+export const UserTable = ({ users, showActions = true }: UserTableProps) => {
   return (
     <section
       aria-labelledby="users-table-heading"
@@ -73,9 +74,11 @@ export const UserTable = ({ users }: UserTableProps) => {
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                 Último acesso
               </th>
-              <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Ações
-              </th>
+              {showActions && (
+                <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                  Ações
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -103,44 +106,46 @@ export const UserTable = ({ users }: UserTableProps) => {
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-600 text-xs">
                     {formatLastAccess(user.ultimoAcesso)}
                   </td>
-                  <td className="border-slate-100 border-b px-3 py-3">
-                    <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
-                      <button
-                        type="button"
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                      >
-                        Visualizar
-                      </button>
-                      <button
-                        type="button"
-                        className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
-                      >
-                        Editar perfil
-                      </button>
-                      {user.status === "pendente_ativacao" && (
+                  {showActions && (
+                    <td className="border-slate-100 border-b px-3 py-3">
+                      <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                         <button
                           type="button"
-                          className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                         >
-                          Reenviar ativação
+                          Visualizar
                         </button>
-                      )}
-                      {user.status === "ativo" && (
                         <button
                           type="button"
-                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
                         >
-                          Desativar
+                          Editar perfil
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </td>
+                        {user.status === "pendente_ativacao" && (
+                          <button
+                            type="button"
+                            className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
+                          >
+                            Reenviar ativação
+                          </button>
+                        )}
+                        {user.status === "ativo" && (
+                          <button
+                            type="button"
+                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                          >
+                            Desativar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -148,7 +153,7 @@ export const UserTable = ({ users }: UserTableProps) => {
             {users.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={showActions ? 6 : 5}
                   className="px-3 py-8 text-center text-slate-500 text-sm"
                 >
                   Nenhum usuário encontrado para os filtros selecionados.

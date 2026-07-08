@@ -103,6 +103,16 @@ export interface AlunoListagemCoordenador {
   dataCriacao: string;
 }
 
+export interface UsuarioListagemCoordenador {
+  id: string;
+  nome: string;
+  email: string;
+  role: "administrador" | "coordenador" | "instrutor" | "aluno";
+  status: "ativo" | "inativo" | "bloqueado" | "pendente_ativacao";
+  dataCriacao: string;
+  ultimoAcesso: string | null;
+}
+
 export interface MatriculaAlunoCoordenador {
   id: string;
   turmaId: string | null;
@@ -427,6 +437,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorInstrutorId(
     instrutorId: string,
   ): Promise<InstrutorParaReenvioAtivacao | null>;
+  listarUsuarios(): Promise<UsuarioListagemCoordenador[]>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
   atualizarAluno(

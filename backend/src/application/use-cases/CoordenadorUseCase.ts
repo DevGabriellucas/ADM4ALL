@@ -33,6 +33,7 @@ import {
   TipoCertificado,
   TurmaDetalhe,
   TurmaListagem,
+  UsuarioListagemCoordenador,
 } from "../../domain/repositories/CoordenadorRepository";
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
@@ -455,6 +456,10 @@ export class CoordenadorUseCase {
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
     return await this.coordenadorRepository.listarAlunos();
+  }
+
+  async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
+    return await this.coordenadorRepository.listarUsuarios();
   }
 
   async buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador> {

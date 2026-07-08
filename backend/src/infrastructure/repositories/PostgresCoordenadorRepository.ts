@@ -36,6 +36,7 @@ import {
   TurmaDetalhe,
   TurmaListagem,
   TurmaParaMatricula,
+  UsuarioListagemCoordenador,
   VincularAlunoInput,
 } from "../../domain/repositories/CoordenadorRepository";
 
@@ -418,6 +419,38 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           camposPendentes: linha.campos_pendentes ?? [],
         }
       : null;
+  }
+
+  async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
+    const query = `
+      SELECT
+        u.id,
+        u.nome,
+        u.email,
+        CASE
+          WHEN p.nome = 'admin' THEN 'administrador'
+          ELSE p.nome
+        END AS role,
+        u.status,
+        u.data_criacao,
+        u.ultimo_login
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      ORDER BY u.nome ASC
+    `;
+    const resultado = await this.db.query(query);
+
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      nome: linha.nome,
+      email: linha.email,
+      role: linha.role,
+      status: linha.status,
+      dataCriacao: linha.data_criacao.toISOString(),
+      ultimoAcesso: linha.ultimo_login
+        ? linha.ultimo_login.toISOString()
+        : null,
+    }));
   }
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
