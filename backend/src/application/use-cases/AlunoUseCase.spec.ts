@@ -21,6 +21,8 @@ describe("AlunoUseCase", () => {
   let mockActivationUseCase: jest.Mocked<ActivationUseCase>;
 
   beforeEach(() => {
+    process.env.FRONTEND_URL = "https://app.test";
+
     mockAlunoRepository = {
       buscarPorEmailOuCpf: jest.fn(),
       buscarPorCpf: jest.fn(),
@@ -59,6 +61,7 @@ describe("AlunoUseCase", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    delete process.env.FRONTEND_URL;
   });
 
   describe("cadastrar", () => {

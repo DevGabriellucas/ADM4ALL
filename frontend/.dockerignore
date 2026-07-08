@@ -1,8 +1,6 @@
 node_modules
-dist
+.next
 .env
 .env.*
 npm-debug.log*
-uploads
-storage
 coverage

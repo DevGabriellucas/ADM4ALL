@@ -14,9 +14,6 @@ import type {
   RegistrarPresencasInput,
 } from "@/types/instrutor";
 
-const INSTRUTOR_ID_DEMO =
-  process.env.INSTRUTOR_ID ?? "9ab264bc-036b-4e62-ba6b-6a93d2da94c2";
-
 const isErroAutenticacao = (error: unknown): boolean => {
   return (
     error instanceof ApiError && (error.status === 401 || error.status === 403)
@@ -25,8 +22,7 @@ const isErroAutenticacao = (error: unknown): boolean => {
 
 export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
   const session = await getServerSession();
-  const instrutorId =
-    session?.instrutorId ?? process.env.INSTRUTOR_ID ?? INSTRUTOR_ID_DEMO;
+  const instrutorId = session?.instrutorId;
 
   if (!session?.token || !instrutorId) {
     throw new ApiError("Sessao de instrutor nao encontrada.", 401);

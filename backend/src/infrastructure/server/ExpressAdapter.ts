@@ -13,6 +13,7 @@ import type {
   CertificadoDetalhe,
   FiltrosRelatorioCoordenador,
 } from "../../domain/repositories/CoordenadorRepository";
+import { getRequiredEnv } from "../config/env";
 import { BadRequestError } from "../errors/BadRequestError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
@@ -71,9 +72,7 @@ export class ExpressAdapter {
     private jwtService: JwtService,
   ) {
     this.app.use(express.json({ limit: "60mb" }));
-    this.app.use(
-      cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000" }),
-    );
+    this.app.use(cors({ origin: getRequiredEnv("FRONTEND_URL") }));
     this.app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
     this.configurarRotas();
     this.app.use(errorMiddleware);
@@ -214,6 +213,10 @@ export class ExpressAdapter {
   }
 
   private configurarRotas() {
+    this.app.get("/health", (_req: Request, res: Response) => {
+      res.status(200).json({ status: "ok" });
+    });
+
     this.app.get(
       "/auth/ativacoes/:token",
       asyncHandler(async (req: Request, res: Response) => {
@@ -1397,7 +1400,7 @@ export class ExpressAdapter {
 
   public iniciar(porta: number) {
     this.app.listen(porta, () => {
-      console.log(`Rodando na porta ${porta}`);
+      console.info(`Rodando na porta ${porta}`);
     });
   }
 }
