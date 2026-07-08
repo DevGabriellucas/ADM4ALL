@@ -1,14 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
+import { NewUserModal } from "@/components/coordenador/NewUserModal";
 import { UserTable } from "@/components/coordenador/UserTable";
-import type { BaseUser } from "@/types/coordinator";
+import type { BaseUser, ClassGroup, Course } from "@/types/coordinator";
 
 interface UsersPageContentProps {
   users: BaseUser[];
+  courses: Course[];
+  classes: ClassGroup[];
 }
 
-export const UsersPageContent = ({ users }: UsersPageContentProps) => {
+export const UsersPageContent = ({
+  users,
+  courses,
+  classes,
+}: UsersPageContentProps) => {
+  const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
+
   return (
     <>
       <CoordinatorPageHeader
@@ -17,13 +27,19 @@ export const UsersPageContent = ({ users }: UsersPageContentProps) => {
         action={
           <button
             type="button"
-            disabled
-            title="A criação de usuários será implementada na próxima etapa."
-            className="h-11 w-full cursor-not-allowed rounded-lg bg-slate-300 px-5 font-semibold text-slate-600 text-sm sm:w-auto"
+            onClick={() => setIsNewUserModalOpen(true)}
+            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Novo usuário
           </button>
         }
+      />
+
+      <NewUserModal
+        isOpen={isNewUserModalOpen}
+        onClose={() => setIsNewUserModalOpen(false)}
+        courses={courses}
+        classes={classes}
       />
 
       <UserTable users={users} showActions={false} />

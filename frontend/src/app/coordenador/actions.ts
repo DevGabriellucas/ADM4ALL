@@ -128,6 +128,7 @@ export async function convidarInstrutorAction(input: {
   try {
     const convite = await coordinatorService.inviteInstructor(input);
     revalidatePath("/coordenador/instrutores");
+    revalidatePath("/coordenador/usuarios");
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
@@ -232,6 +233,7 @@ export async function convidarAlunoAction(input: {
   try {
     const convite = await coordinatorService.inviteStudent(input);
     revalidatePath("/coordenador/alunos");
+    revalidatePath("/coordenador/usuarios");
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,

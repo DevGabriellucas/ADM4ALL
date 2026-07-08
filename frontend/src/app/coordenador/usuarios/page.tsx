@@ -1,14 +1,22 @@
 import { UsersPageContent } from "@/components/coordenador/UsersPageContent";
 import { BackButton } from "@/components/shared/BackButton";
-import { getUsers } from "@/services/coordinatorService";
+import {
+  getClasses,
+  getCourses,
+  getUsers,
+} from "@/services/coordinatorService";
 
 export default async function CoordinatorUsersPage() {
-  const users = await getUsers();
+  const [users, courses, classes] = await Promise.all([
+    getUsers(),
+    getCourses(),
+    getClasses(),
+  ]);
 
   return (
     <>
       <BackButton className="mb-4" />
-      <UsersPageContent users={users} />
+      <UsersPageContent users={users} courses={courses} classes={classes} />
     </>
   );
 }
