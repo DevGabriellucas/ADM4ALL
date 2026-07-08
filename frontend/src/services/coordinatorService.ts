@@ -851,22 +851,6 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
   });
 };
 
-export const getLessons = async (): Promise<Lesson[]> => {
-  const classes = await getClasses();
-  const detalhes = await Promise.all(
-    classes.map(async (classGroup) => ({
-      classGroup,
-      detalhe: await buscarTurmaDetalheApi(classGroup.id),
-    })),
-  );
-
-  return detalhes.flatMap(({ detalhe }) =>
-    detalhe
-      ? detalhe.cronograma.map((aula) => mapearAulaDaTurma(aula, detalhe))
-      : [],
-  );
-};
-
 export const createLesson = async (
   turmaId: string,
   input: {
