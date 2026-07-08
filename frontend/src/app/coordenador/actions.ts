@@ -145,6 +145,32 @@ export async function convidarInstrutorAction(input: {
   }
 }
 
+export async function convidarCoordenadorAction(input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  areaCoordenacao?: string;
+}): Promise<ResultadoAction> {
+  try {
+    const convite = await coordinatorService.inviteCoordinator(input);
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: `Convite de ativacao enviado para ${convite.nome}.`,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao enviar o convite de coordenador.",
+    };
+  }
+}
+
 export async function atualizarInstrutorAction(
   id: string,
   input: {

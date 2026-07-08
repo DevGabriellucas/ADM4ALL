@@ -416,6 +416,23 @@ export const inviteInstructor = async (input: {
   );
 };
 
+export const inviteCoordinator = async (input: {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string;
+  areaCoordenacao?: string;
+}): Promise<{ id: string; nome: string }> => {
+  return await authenticatedRequest<{ id: string; nome: string }>(
+    "/coordenador/coordenadores",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao enviar o convite de coordenador.",
+    },
+  );
+};
+
 export const getInstructorById = async (
   id: string,
 ): Promise<InstructorDetail | null> => {

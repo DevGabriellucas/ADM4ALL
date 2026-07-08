@@ -329,6 +329,15 @@ export interface ConvidarInstrutorInput {
   senhaTemporariaCriptografada: string;
 }
 
+export interface ConvidarCoordenadorInput {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  areaCoordenacao?: string | null;
+  senhaTemporariaCriptografada: string;
+}
+
 export interface ConviteCriado {
   usuarioId: string;
   instrutorId: string;
@@ -489,6 +498,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
   convidarInstrutor(input: ConvidarInstrutorInput): Promise<ConviteCriado>;
   convidarAluno(input: ConvidarAlunoInput): Promise<ConviteCriado>;
+  convidarCoordenador(input: ConvidarCoordenadorInput): Promise<ConviteCriado>;
 
   listarTurmas(): Promise<TurmaListagem[]>;
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;

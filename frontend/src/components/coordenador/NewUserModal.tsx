@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NewCoordinatorForm } from "@/components/coordenador/NewCoordinatorForm";
 import { NewInstructorForm } from "@/components/coordenador/NewInstructorForm";
 import { NewStudentForm } from "@/components/coordenador/NewStudentForm";
 import type { ClassGroup, Course } from "@/types/coordinator";
@@ -156,37 +157,16 @@ export const NewUserModal = ({
           )}
 
           {selectedType === "coordenador" && (
-            <section
-              aria-labelledby="new-coordinator-heading"
-              className="rounded-lg border border-[#C9D2E6] bg-white p-5"
-            >
-              <h3
-                id="new-coordinator-heading"
-                className="font-semibold text-slate-900 text-sm tracking-[0.2em]"
+            <div className="flex flex-col gap-y-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-[#23275F]"
               >
-                Novo coordenador
-              </h3>
-              <p className="mt-3 text-slate-600 text-sm leading-relaxed">
-                A criação de coordenadores será implementada na próxima etapa.
-              </p>
-
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="h-10 cursor-pointer rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-50"
-                >
-                  Voltar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68]"
-                >
-                  Fechar
-                </button>
-              </div>
-            </section>
+                Voltar
+              </button>
+              <NewCoordinatorForm isOpen={isOpen} onCancel={handleClose} />
+            </div>
           )}
         </div>
       </div>

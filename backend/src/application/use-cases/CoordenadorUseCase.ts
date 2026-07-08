@@ -62,6 +62,14 @@ export interface ConvidarInstrutorEntrada {
   telefone?: string | null;
 }
 
+export interface ConvidarCoordenadorEntrada {
+  nome: string;
+  email: string;
+  cpf: string;
+  telefone?: string | null;
+  areaCoordenacao?: string | null;
+}
+
 export interface AtualizarInstrutorEntrada {
   nome: string;
   email: string;
@@ -1061,6 +1069,88 @@ export class CoordenadorUseCase {
         `<p>Ola, ${convite.nome}!</p>
          <p>Voce foi cadastrado como aluno no ADM Para Todos.</p>
          <p><a href="${linkAtivacao}">Complete seu cadastro e ative sua conta</a></p>
+         <p>Este link expira em 3 dias.</p>`,
+      );
+    } catch (error) {
+      console.error("Falha ao enviar e-mail de convite:", error);
+    }
+
+    return convite;
+  }
+
+  async convidarCoordenador(
+    input: ConvidarCoordenadorEntrada,
+  ): Promise<ConviteCriado> {
+    if (!input.nome || input.nome.trim() === "") {
+      throw new BadRequestError("O nome do coordenador e obrigatorio.");
+    }
+
+    if (!input.email || !input.email.includes("@")) {
+      throw new BadRequestError("Informe um e-mail valido.");
+    }
+
+    const emailNormalizado = input.email.trim().toLowerCase();
+    let cpfNormalizado: string;
+
+    try {
+      cpfNormalizado = new Cpf(input.cpf).value;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Informe um CPF valido.",
+      );
+    }
+
+    const usuarioExistente =
+      await this.coordenadorRepository.buscarUsuarioPorEmail(emailNormalizado);
+
+    if (usuarioExistente) {
+      throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const usuarioComCpf =
+      await this.coordenadorRepository.buscarUsuarioPorCpf(cpfNormalizado);
+
+    if (usuarioComCpf) {
+      throw new BadRequestError("Ja existe um usuario com este CPF.");
+    }
+
+    const senhaTemporaria = randomBytes(32).toString("hex");
+    const senhaTemporariaCriptografada = await bcrypt.hash(
+      senhaTemporaria,
+      SALT_ROUNDS,
+    );
+
+    const convite = await this.coordenadorRepository.convidarCoordenador({
+      nome: input.nome.trim(),
+      email: emailNormalizado,
+      cpf: cpfNormalizado,
+      telefone: input.telefone ?? null,
+      areaCoordenacao: input.areaCoordenacao ?? null,
+      senhaTemporariaCriptografada,
+    });
+    const camposPendentes: CampoPendenteAtivacao[] = ["senha"];
+    if (!input.telefone) {
+      camposPendentes.push("whatsapp");
+    }
+    if (!input.areaCoordenacao) {
+      camposPendentes.push("areaCoordenacao");
+    }
+    const tokenAtivacao = await this.activationUseCase.criar(
+      convite.usuarioId,
+      "criado_por_coordenador",
+      camposPendentes,
+    );
+
+    const frontendUrl = getRequiredEnv("FRONTEND_URL");
+    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${tokenAtivacao}`;
+
+    try {
+      await this.emailService.enviar(
+        convite.email,
+        "Convite para acessar o ADM Para Todos",
+        `<p>Ola, ${convite.nome}!</p>
+         <p>Voce foi cadastrado como coordenador no ADM Para Todos.</p>
+         <p><a href="${linkAtivacao}">Clique aqui para definir sua senha e ativar sua conta</a></p>
          <p>Este link expira em 3 dias.</p>`,
       );
     } catch (error) {
