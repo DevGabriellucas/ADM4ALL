@@ -18,19 +18,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Turmas", href: "/coordenador/turmas" },
   { label: "Alunos", href: "/coordenador/alunos" },
   { label: "Instrutores", href: "/coordenador/instrutores" },
-  { label: "Frequência", href: "/coordenador/frequencia" },
   { label: "Certificados", href: "/coordenador/certificados" },
   { label: "Relatórios", href: "/coordenador/relatorios" },
-  {
-    label: "Cronograma",
-    href: "/coordenador/cronograma",
-    development: true,
-  },
-  {
-    label: "Processos",
-    href: "/coordenador/processos",
-    development: true,
-  },
   {
     label: "Usuários",
     href: "/coordenador/usuarios",
