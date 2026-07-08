@@ -6,10 +6,7 @@ import { CoordenadorUseCase } from "./application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "./application/use-cases/InstrutorUseCase";
 import { JwtService } from "./application/security/JwtService";
 import { pool } from "./infrastructure/database/database";
-import {
-  getFirstAvailableEnv,
-  getRequiredEnv,
-} from "./infrastructure/config/env";
+import { getRequiredEnv } from "./infrastructure/config/env";
 import { EmailService } from "./infrastructure/email/EmailService";
 import { PostgresAlunoRepository } from "./infrastructure/repositories/PostgresAlunoRepository";
 import { PostgresActivationRepository } from "./infrastructure/repositories/PostgresActivationRepository";
@@ -27,11 +24,15 @@ const emailHost = process.env.EMAIL_HOST?.trim() || undefined;
 const emailPort = process.env.EMAIL_PORT?.trim()
   ? Number(process.env.EMAIL_PORT)
   : undefined;
+const emailUser =
+  process.env.GMAIL_USER?.trim() || process.env.EMAIL_USER?.trim() || "";
+const emailPassword =
+  process.env.GMAIL_APP_PASSWORD?.trim() || process.env.EMAIL_PASS?.trim() || "";
 
 const jwtService = new JwtService(getRequiredEnv("JWT_SECRET"));
 const emailService = new EmailService(
-  getFirstAvailableEnv("GMAIL_USER", "EMAIL_USER"),
-  getFirstAvailableEnv("GMAIL_APP_PASSWORD", "EMAIL_PASS"),
+  emailUser,
+  emailPassword,
   emailHost,
   emailPort,
   process.env.EMAIL_TLS_REJECT_UNAUTHORIZED !== "false",

@@ -46,11 +46,11 @@ const classStatusInfo: Record<
   ClassStatus,
   {
     label: string;
-    tone: "green" | "amber" | "slate" | "red";
+    tone: "green" | "amber" | "slate" | "red" | "blue";
   }
 > = {
   planejada: { label: "Planejada", tone: "amber" },
-  em_andamento: { label: "Em andamento", tone: "green" },
+  em_andamento: { label: "Em andamento", tone: "blue" },
   concluida: { label: "Concluída", tone: "green" },
   encerrada: { label: "Encerrada", tone: "red" },
   cancelada: { label: "Cancelada", tone: "red" },

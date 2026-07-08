@@ -58,7 +58,7 @@ export const AddInstructorToClassModal = ({
       curso: classGroup.curso,
       instrutores: todosInstrutores,
       periodoLetivo: classGroup.periodoLetivo,
-      capacidade: classGroup.alunos > 0 ? classGroup.alunos : 30,
+      capacidade: classGroup.capacidade > 0 ? classGroup.capacidade : 30,
       status: classGroup.status,
     });
 

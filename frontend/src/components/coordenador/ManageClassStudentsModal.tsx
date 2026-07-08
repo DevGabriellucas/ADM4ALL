@@ -7,6 +7,7 @@ import {
   buscarAlunosDisponiveisAction,
   removerAlunoDaTurmaAction,
 } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { ClassGroup, Student } from "@/types/coordinator";
 
 interface ManageClassStudentsModalProps {
@@ -27,6 +28,10 @@ export const ManageClassStudentsModal = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [confirmRemoveStudent, setConfirmRemoveStudent] = useState<{
+    matriculaId: string;
+    nome: string;
+  } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -210,11 +215,12 @@ export const ManageClassStudentsModal = ({
                         <button
                           type="button"
                           disabled={isRemoving === student.matriculaId}
-                          onClick={() => {
-                            if (student.matriculaId) {
-                              handleRemove(student.matriculaId);
-                            }
-                          }}
+                          onClick={() =>
+                            setConfirmRemoveStudent({
+                              matriculaId: student.matriculaId!,
+                              nome: student.nome,
+                            })
+                          }
                           className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isRemoving === student.matriculaId
@@ -243,6 +249,22 @@ export const ManageClassStudentsModal = ({
             Fechar
           </button>
         </div>
+
+        {confirmRemoveStudent && (
+          <ConfirmDialog
+            title="Remover aluno da turma?"
+            description={`A matrícula de ${confirmRemoveStudent.nome} será cancelada nesta turma. O cadastro do aluno será preservado.`}
+            confirmLabel="Remover aluno"
+            cancelLabel="Cancelar"
+            tone="danger"
+            isLoading={isRemoving === confirmRemoveStudent.matriculaId}
+            onCancel={() => setConfirmRemoveStudent(null)}
+            onConfirm={() => {
+              handleRemove(confirmRemoveStudent.matriculaId);
+              setConfirmRemoveStudent(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

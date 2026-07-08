@@ -181,6 +181,7 @@ export interface ClassGroup {
   curso: string;
   instrutores: string;
   alunos: number;
+  capacidade: number;
   dataInicio: string;
   dataTermino: string;
   periodoLetivo: string;

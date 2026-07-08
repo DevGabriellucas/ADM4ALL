@@ -1725,6 +1725,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
+        t.capacidade,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1737,7 +1738,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
-      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query);
@@ -1752,6 +1753,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
+        t.capacidade,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1765,7 +1767,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.treinamento_id = $1
-      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query, [cursoId]);
@@ -1781,6 +1783,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
+        t.capacidade,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
@@ -1794,7 +1797,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN matriculas m ON m.turma_id = t.id
       LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.id = $1
-      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       `,
       [id],
     );
@@ -1976,6 +1979,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       curso: linha.curso,
       instrutores: linha.instrutores ?? "",
       alunos: Number(linha.alunos),
+      capacidade: Number(linha.capacidade),
       dataInicio: linha.data_inicio,
       dataTermino: linha.data_termino ?? null,
       periodoLetivo: linha.periodo_letivo ?? "",

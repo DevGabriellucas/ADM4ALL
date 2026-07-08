@@ -33,7 +33,7 @@ export const EditClassForm = ({
     nome: classGroup.nome,
     instrutoresSelecionados: classGroup.instrutores.split(", ").filter(Boolean),
     periodoLetivo: classGroup.periodoLetivo,
-    capacidade: String(classGroup.alunos > 0 ? classGroup.alunos : 30),
+    capacidade: String(classGroup.capacidade > 0 ? classGroup.capacidade : 30),
     status: classGroup.status,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

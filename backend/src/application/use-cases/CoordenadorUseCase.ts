@@ -113,7 +113,6 @@ const TURMA_STATUS_VALIDOS = [
   "cancelada",
 ];
 const SALT_ROUNDS = 10;
-const PERIODO_LETIVO_REGEX = /^\d{4}\.[12]$/;
 
 function derivarDatasDoPeriodo(periodoLetivo: string): { dataInicio: string; dataFim: string } {
   const ano = periodoLetivo.substring(0, 4);
@@ -1107,7 +1106,7 @@ export class CoordenadorUseCase {
       throw new BadRequestError("Selecione pelo menos um instrutor.");
     }
 
-    if (!input.periodoLetivo || !PERIODO_LETIVO_REGEX.test(input.periodoLetivo)) {
+    if (!input.periodoLetivo || !PERIODO_REGEX.test(input.periodoLetivo)) {
       throw new BadRequestError("Informe um periodo letivo valido no formato 2026.1 ou 2026.2.");
     }
 
@@ -1175,7 +1174,7 @@ export class CoordenadorUseCase {
       throw new BadRequestError("Selecione pelo menos um instrutor.");
     }
 
-    if (!input.periodoLetivo || !PERIODO_LETIVO_REGEX.test(input.periodoLetivo)) {
+    if (!input.periodoLetivo || !PERIODO_REGEX.test(input.periodoLetivo)) {
       throw new BadRequestError("Informe um periodo letivo valido no formato 2026.1 ou 2026.2.");
     }
 
