@@ -7,6 +7,7 @@ import { JwtService, TokenPayload } from "../../application/security/JwtService"
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
+import { ConfiguracoesUseCase } from "../../application/use-cases/ConfiguracoesUseCase";
 import { CoordenadorUseCase } from "../../application/use-cases/CoordenadorUseCase";
 import { InstrutorUseCase } from "../../application/use-cases/InstrutorUseCase";
 import type {
@@ -69,6 +70,7 @@ export class ExpressAdapter {
     private alunoUseCase: AlunoUseCase,
     private instrutorUseCase: InstrutorUseCase,
     private coordenadorUseCase: CoordenadorUseCase,
+    private configuracoeUseCase: ConfiguracoesUseCase,
     private jwtService: JwtService,
   ) {
     this.app.use(express.json({ limit: "60mb" }));
@@ -1394,6 +1396,80 @@ export class ExpressAdapter {
         await this.instrutorUseCase.atualizarAvatar(id, avatarUrl);
 
         res.status(200).json({ avatarUrl });
+      }),
+    );
+
+    // Configurações do sistema
+    this.app.get(
+      "/configuracoes",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const configuracoes = await this.configuracoeUseCase.obter();
+        res.status(200).json(configuracoes);
+      }),
+    );
+
+    this.app.patch(
+      "/configuracoes/instituicao",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { nome, email, telefone, cidade, uf } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        await this.configuracoeUseCase.atualizarInstituicao(
+          { nome, email, telefone, cidade, uf },
+          usuario.coordenadorId || usuario.sub,
+        );
+
+        res.status(200).json({ mensagem: "Dados da instituição atualizados com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/configuracoes/periodo-letivo",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { valor } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        await this.configuracoeUseCase.atualizarPeriodoLetivo(
+          valor,
+          usuario.coordenadorId || usuario.sub,
+        );
+
+        res.status(200).json({ mensagem: "Período letivo atualizado com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/configuracoes/certificado",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { maximoFaltas, apenasEncerrada } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        await this.configuracoeUseCase.atualizarRegrassCertificado(
+          { maximoFaltas, apenasEncerrada },
+          usuario.coordenadorId || usuario.sub,
+        );
+
+        res.status(200).json({ mensagem: "Regras de certificado atualizadas com sucesso." });
+      }),
+    );
+
+    this.app.patch(
+      "/configuracoes/preferencias",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { capacidadePadrao, statusPadrao, nomeExibido } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        await this.configuracoeUseCase.atualizarPreferenciasGerais(
+          { capacidadePadrao, statusPadrao, nomeExibido },
+          usuario.coordenadorId || usuario.sub,
+        );
+
+        res.status(200).json({ mensagem: "Preferências atualizadas com sucesso." });
       }),
     );
   }
