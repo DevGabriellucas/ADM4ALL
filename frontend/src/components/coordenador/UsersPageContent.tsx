@@ -367,7 +367,7 @@ export const UsersPageContent = ({
       )}
 
       {errorMessage && (
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center pt-4">
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-60 flex justify-center pt-4">
           <div
             role="alert"
             className="pointer-events-auto w-full max-w-md rounded-lg border border-red-200 bg-red-50 p-4 shadow-lg"
