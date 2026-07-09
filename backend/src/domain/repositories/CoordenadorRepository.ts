@@ -295,6 +295,7 @@ export interface CertificadoAlunoDetalhe {
   certificadoId: string | null;
   referenciaId: string;
   status: StatusCertificado | null;
+  urlArquivo: string | null;
   nomeAluno: string;
   cpfAluno: string;
   nomeCurso: string;
