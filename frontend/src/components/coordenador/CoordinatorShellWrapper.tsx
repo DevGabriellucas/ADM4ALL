@@ -79,14 +79,14 @@ export const CoordinatorShellWrapper = ({
   const avatarText = iniciaisUsuario || cargo.charAt(0) || "?";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#EDF1FB] font-poppins text-slate-950 lg:flex-row">
+    <div className="flex min-h-screen flex-col bg-[#EDF1FB] font-poppins text-slate-950 xl:flex-row">
       <CoordinatorSidebar
         nomeUsuario={nomeUsuario}
         perfilUsuario={perfilUsuario}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between bg-[#7579A9] px-4 py-3 text-slate-950 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between bg-[#7579A9] px-4 py-3 text-slate-950 xl:hidden">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-full bg-brand-dark font-semibold text-sm text-white">
               {avatarText}
@@ -123,14 +123,14 @@ export const CoordinatorShellWrapper = ({
 
         {isMenuOpen && (
           <div
-            className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-950/50 xl:hidden"
             onClick={fecharMenu}
             aria-hidden="true"
           />
         )}
 
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-brand-medium text-slate-950 shadow-xl transition-transform duration-200 lg:hidden ${
+          className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-brand-medium text-slate-950 shadow-xl transition-transform duration-200 xl:hidden ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
           role="dialog"
