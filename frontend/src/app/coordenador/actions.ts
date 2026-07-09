@@ -829,6 +829,7 @@ export async function atualizarInstituicaoAction(
   try {
     await configService.atualizarInstituicao(dados);
     revalidatePath("/coordenador/configuracoes");
+    revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
       mensagem: "Dados da instituição atualizados com sucesso.",
@@ -850,6 +851,8 @@ export async function atualizarPeriodoLetivoConfigAction(
   try {
     await configService.atualizarPeriodoLetivo(dados);
     revalidatePath("/coordenador/configuracoes");
+    revalidatePath("/coordenador/dashboard");
+    revalidatePath("/coordenador/turmas");
     return {
       sucesso: true,
       mensagem: "Período letivo atualizado com sucesso.",
@@ -871,6 +874,7 @@ export async function atualizarCertificadoAction(
   try {
     await configService.atualizarCertificado(dados);
     revalidatePath("/coordenador/configuracoes");
+    revalidatePath("/coordenador/certificados");
     return {
       sucesso: true,
       mensagem: "Regras de certificado atualizadas com sucesso.",
@@ -892,6 +896,8 @@ export async function atualizarPreferenciasAction(
   try {
     await configService.atualizarPreferencias(dados);
     revalidatePath("/coordenador/configuracoes");
+    revalidatePath("/coordenador/turmas");
+    revalidatePath("/coordenador/dashboard");
     return { sucesso: true, mensagem: "Preferências atualizadas com sucesso." };
   } catch (error) {
     return {

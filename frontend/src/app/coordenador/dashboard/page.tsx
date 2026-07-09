@@ -3,6 +3,7 @@ import { AttentionStudentsTable } from "@/components/coordenador/AttentionStuden
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { DashboardInfoCard } from "@/components/coordenador/DashboardInfoCard";
 import { PeriodoLetivoEditor } from "@/components/coordenador/PeriodoLetivoEditor";
+import { configService } from "@/services/configService";
 import {
   getAttendanceSummary,
   getCertificates,
@@ -12,14 +13,20 @@ import {
 import { getPeriodoLetivoSeguro } from "@/services/periodoLetivoService";
 
 export default async function CoordinatorDashboardPage() {
-  const [summary, classes, attendanceSummary, certificates, periodo] =
+  const [summary, classes, attendanceSummary, certificates, periodo, configs] =
     await Promise.all([
       getDashboardSummary(),
       getClasses(),
       getAttendanceSummary(),
       getCertificates(),
       getPeriodoLetivoSeguro(),
+      configService.obter().catch(() => null),
     ]);
+
+  const nomeExibido =
+    configs?.preferencias.nomeExibido ||
+    configs?.instituicao.nome ||
+    "ADM4All";
 
   const activeClasses = classes.filter(
     (classGroup) => classGroup.status === "em_andamento",
@@ -36,7 +43,7 @@ export default async function CoordinatorDashboardPage() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-lg bg-brand-medium/80 px-5 py-4 text-center text-slate-950">
           <p className="font-semibold text-xs uppercase tracking-[0.35em]">
-            ADM4All
+            {nomeExibido}
           </p>
           <h1 className="mt-1 font-semibold text-base">
             Painel do Coordenador

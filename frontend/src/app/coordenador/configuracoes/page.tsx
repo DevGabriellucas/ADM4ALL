@@ -74,7 +74,7 @@ export default function CoordinatorSettingsPage() {
       <BackButton className="mb-4" />
       <CoordinatorPageHeader
         title="Configurações do Sistema"
-        subtitle="Ajuste os parâmetros do ADM4All sem necessidade de alteração no código"
+        subtitle="Configure informações institucionais e preferências usadas na gestão acadêmica."
       />
 
       <div className="mt-6 space-y-6">

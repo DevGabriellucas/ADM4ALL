@@ -7,6 +7,22 @@ import { criarTurmaAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import type { ClassStatus, Course, Instructor } from "@/types/coordinator";
 
+interface ClassFormData {
+  curso: string;
+  nome: string;
+  instrutoresSelecionados: string[];
+  periodoLetivo: string;
+  horarios: string;
+  capacidade: string;
+  status: ClassStatus;
+}
+
+interface ClassDefaultValues {
+  periodoLetivo?: string;
+  capacidade?: string;
+  status?: ClassStatus;
+}
+
 interface NewClassFormProps {
   courses: Course[];
   instructors: Instructor[];
@@ -16,16 +32,7 @@ interface NewClassFormProps {
   defaultCourseName?: string;
   defaultCourseId?: string;
   lockCourse?: boolean;
-}
-
-interface ClassFormData {
-  curso: string;
-  nome: string;
-  instrutoresSelecionados: string[];
-  periodoLetivo: string;
-  horarios: string;
-  capacidade: string;
-  status: ClassStatus;
+  defaultValues?: ClassDefaultValues;
 }
 
 const INITIAL_FORM_DATA: ClassFormData = {
@@ -38,9 +45,17 @@ const INITIAL_FORM_DATA: ClassFormData = {
   status: "planejada",
 };
 
-const construirDadosIniciais = (defaultCourseName?: string): ClassFormData => ({
-  ...INITIAL_FORM_DATA,
-  ...(defaultCourseName ? { curso: defaultCourseName } : {}),
+const construirDadosIniciais = (
+  defaultCourseName?: string,
+  defaults?: ClassDefaultValues,
+): ClassFormData => ({
+  curso: defaultCourseName ?? "",
+  nome: "",
+  instrutoresSelecionados: [],
+  periodoLetivo: defaults?.periodoLetivo ?? "",
+  horarios: "",
+  capacidade: defaults?.capacidade ?? "",
+  status: defaults?.status ?? "planejada",
 });
 
 export const NewClassForm = ({
@@ -52,10 +67,11 @@ export const NewClassForm = ({
   defaultCourseName,
   defaultCourseId,
   lockCourse,
+  defaultValues,
 }: NewClassFormProps) => {
   const router = useRouter();
   const [formData, setFormData] = useState<ClassFormData>(
-    construirDadosIniciais(defaultCourseName),
+    construirDadosIniciais(defaultCourseName, defaultValues),
   );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -76,7 +92,7 @@ export const NewClassForm = ({
   };
 
   const handleCancel = () => {
-    setFormData(construirDadosIniciais(defaultCourseName));
+    setFormData(construirDadosIniciais(defaultCourseName, defaultValues));
     setSuccessMessage(null);
     setErrorMessage(null);
     onCancel();
@@ -112,7 +128,7 @@ export const NewClassForm = ({
     }
 
     setSuccessMessage(resultado.mensagem);
-    setFormData(construirDadosIniciais(defaultCourseName));
+    setFormData(construirDadosIniciais(defaultCourseName, defaultValues));
     router.refresh();
     onSuccess?.();
   };

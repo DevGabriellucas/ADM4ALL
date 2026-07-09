@@ -13,9 +13,5 @@ export const coordinatorNavItems: NavItem[] = [
   { label: "Certificados", href: "/coordenador/certificados" },
   { label: "Relatórios", href: "/coordenador/relatorios" },
   { label: "Usuários", href: "/coordenador/usuarios" },
-  {
-    label: "Configurações",
-    href: "/coordenador/configuracoes",
-    development: true,
-  },
+  { label: "Configurações", href: "/coordenador/configuracoes" },
 ];

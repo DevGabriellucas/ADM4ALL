@@ -9,18 +9,31 @@ import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCar
 import { EditClassForm } from "@/components/coordenador/EditClassForm";
 import { ManageClassStudentsModal } from "@/components/coordenador/ManageClassStudentsModal";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
-import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
+import type {
+  ClassGroup,
+  ClassStatus,
+  Course,
+  Instructor,
+} from "@/types/coordinator";
+
+interface DefaultClassValues {
+  periodoLetivo?: string;
+  capacidade?: string;
+  status?: ClassStatus;
+}
 
 interface ClassesPageContentProps {
   classes: ClassGroup[];
   courses: Course[];
   instructors: Instructor[];
+  defaultClassValues?: DefaultClassValues;
 }
 
 export const ClassesPageContent = ({
   classes,
   courses,
   instructors,
+  defaultClassValues,
 }: ClassesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassGroup | null>(null);
@@ -95,6 +108,7 @@ export const ClassesPageContent = ({
         instructors={instructors}
         isOpen={isFormOpen}
         onCancel={() => setIsFormOpen(false)}
+        defaultValues={defaultClassValues}
       />
 
       {editingClass && (

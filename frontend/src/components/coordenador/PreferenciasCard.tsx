@@ -113,7 +113,7 @@ export const PreferenciasCard = ({
                   className={`${SELECT_CLASS} ${errors.statusPadrao ? "border-red-500" : ""}`}
                 >
                   <option value="">Selecione um status</option>
-                  <option value="planejamento">Planejamento</option>
+                  <option value="planejada">Planejada</option>
                   <option value="em_andamento">Em Andamento</option>
                   <option value="encerrada">Encerrada</option>
                 </select>
