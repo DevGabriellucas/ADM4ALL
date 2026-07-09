@@ -5,6 +5,7 @@ import path from "path";
 import {
   CampoPendenteAtivacao,
 } from "../../domain/repositories/ActivationRepository";
+import { ConfiguracoesRepository } from "../../domain/repositories/ConfiguracoesRepository";
 import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
@@ -208,6 +209,7 @@ export class CoordenadorUseCase {
     private coordenadorRepository: CoordenadorRepository,
     private emailService: EmailService,
     private activationUseCase: ActivationUseCase,
+    private configuracoeRepository: ConfiguracoesRepository,
   ) {}
 
   async obterDashboard(): Promise<DashboardResumo> {
@@ -936,19 +938,31 @@ export class CoordenadorUseCase {
         "O certificado so pode ser emitido para uma matricula aprovada.",
       );
     }
-    if (candidato.statusTurma !== "concluida" && candidato.statusTurma !== "encerrada") {
-      throw new BadRequestError(
-        "O certificado so pode ser emitido apos a conclusao da turma.",
-      );
-    }
     if (candidato.statusUsuario !== "ativo") {
       throw new BadRequestError(
         "O certificado so pode ser emitido para um aluno ativo.",
       );
     }
-    if (candidato.faltas >= 3) {
+
+    const configMaxFaltas = parseInt(
+      (await this.configuracoeRepository.obterValor("certificado_maximo_faltas")) ?? "2",
+      10,
+    );
+    const configApenasEncerrada =
+      (await this.configuracoeRepository.obterValor("certificado_apenas_encerrada")) === "true";
+
+    if (
+      configApenasEncerrada &&
+      candidato.statusTurma !== "concluida" &&
+      candidato.statusTurma !== "encerrada"
+    ) {
       throw new BadRequestError(
-        "O certificado exige menos de 3 faltas.",
+        "O certificado so pode ser emitido apos a conclusao da turma.",
+      );
+    }
+    if (candidato.faltas > configMaxFaltas) {
+      throw new BadRequestError(
+        `O certificado exige no maximo ${configMaxFaltas} falta(s).`,
       );
     }
 

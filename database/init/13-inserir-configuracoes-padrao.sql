@@ -10,6 +10,6 @@ VALUES
   ('certificado_maximo_faltas', '2', 'Máximo de faltas permitido para certificado', NOW()),
   ('certificado_apenas_encerrada', 'false', 'Emitir certificado apenas para turmas encerradas', NOW()),
   ('preferencias_capacidade_padrao', '30', 'Capacidade padrão de nova turma', NOW()),
-  ('preferencias_status_padrao', 'planejamento', 'Status padrão de nova turma', NOW()),
+  ('preferencias_status_padrao', 'planejada', 'Status padrão de nova turma', NOW()),
   ('preferencias_nome_exibido', 'ADM4All', 'Nome exibido no painel', NOW())
 ON CONFLICT (chave) DO NOTHING;

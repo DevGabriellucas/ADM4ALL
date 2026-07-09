@@ -53,6 +53,7 @@ const coordenadorUseCase = new CoordenadorUseCase(
   coordenadorRepository,
   emailService,
   activationUseCase,
+  configuracoeRepository,
 );
 const configuracoeUseCase = new ConfiguracoesUseCase(configuracoeRepository);
 

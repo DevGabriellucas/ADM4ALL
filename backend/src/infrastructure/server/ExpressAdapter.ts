@@ -812,6 +812,9 @@ export class ExpressAdapter {
             periodoLetivo,
             usuario.sub,
           );
+        await this.configuracoeUseCase
+          .atualizarPeriodoLetivo(periodoLetivo, usuario.sub)
+          .catch(() => {});
         res.json(periodo);
       }),
     );
@@ -1485,7 +1488,7 @@ export class ExpressAdapter {
 
         await this.configuracoeUseCase.atualizarInstituicao(
           { nome, email, telefone, cidade, uf },
-          usuario.coordenadorId || usuario.sub,
+          usuario.sub,
         );
 
         res.status(200).json({ mensagem: "Dados da instituição atualizados com sucesso." });
@@ -1501,7 +1504,7 @@ export class ExpressAdapter {
 
         await this.configuracoeUseCase.atualizarPeriodoLetivo(
           valor,
-          usuario.coordenadorId || usuario.sub,
+          usuario.sub,
         );
 
         res.status(200).json({ mensagem: "Período letivo atualizado com sucesso." });
@@ -1517,7 +1520,7 @@ export class ExpressAdapter {
 
         await this.configuracoeUseCase.atualizarRegrassCertificado(
           { maximoFaltas, apenasEncerrada },
-          usuario.coordenadorId || usuario.sub,
+          usuario.sub,
         );
 
         res.status(200).json({ mensagem: "Regras de certificado atualizadas com sucesso." });
@@ -1533,7 +1536,7 @@ export class ExpressAdapter {
 
         await this.configuracoeUseCase.atualizarPreferenciasGerais(
           { capacidadePadrao, statusPadrao, nomeExibido },
-          usuario.coordenadorId || usuario.sub,
+          usuario.sub,
         );
 
         res.status(200).json({ mensagem: "Preferências atualizadas com sucesso." });

@@ -67,7 +67,10 @@ export class PostgresConfiguracoeRepository implements ConfiguracoesRepository {
   }
 
   async atualizarPeriodoLetivo(periodo: string, usuarioId: string): Promise<void> {
-    await this.definirValor(this.chaves.PERIODO_LETIVO, periodo, usuarioId);
+    await Promise.all([
+      this.definirValor(this.chaves.PERIODO_LETIVO, periodo, usuarioId),
+      this.definirValor("periodo_letivo_atual", periodo, usuarioId),
+    ]);
   }
 
   async atualizarRegrassCertificado(regras: RegrassCertificado, usuarioId: string): Promise<void> {
@@ -147,7 +150,8 @@ export class PostgresConfiguracoeRepository implements ConfiguracoesRepository {
       (await this.obterValor(this.chaves.PREFERENCIAS_CAPACIDADE_PADRAO)) ?? "30",
       10,
     );
-    const statusPadrao = (await this.obterValor(this.chaves.PREFERENCIAS_STATUS_PADRAO)) ?? "planejamento";
+    const statusPadraoRaw = (await this.obterValor(this.chaves.PREFERENCIAS_STATUS_PADRAO)) ?? "planejada";
+    const statusPadrao = statusPadraoRaw === "planejamento" ? "planejada" : statusPadraoRaw;
     const nomeExibido = (await this.obterValor(this.chaves.PREFERENCIAS_NOME_EXIBIDO)) ?? "";
 
     return { capacidadePadrao, statusPadrao, nomeExibido };
