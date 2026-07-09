@@ -79,9 +79,7 @@ export default async function InstrutorFrequenciaPage() {
             <thead>
               <tr className="border-slate-200 border-b text-slate-500 text-xs">
                 <th className="py-2 pr-3 font-medium">Aluno</th>
-                <th className="py-2 pr-3 text-center font-medium">
-                  Presencas
-                </th>
+                <th className="py-2 pr-3 text-center font-medium">Presencas</th>
                 <th className="py-2 pr-3 text-center font-medium">Faltas</th>
                 <th className="py-2 pr-3 text-center font-medium">
                   Aulas registradas
@@ -89,9 +87,7 @@ export default async function InstrutorFrequenciaPage() {
                 <th className="py-2 pr-3 text-center font-medium">
                   Frequencia
                 </th>
-                <th className="py-2 pr-3 text-center font-medium">
-                  Situacao
-                </th>
+                <th className="py-2 pr-3 text-center font-medium">Situacao</th>
               </tr>
             </thead>
             <tbody>

@@ -60,9 +60,7 @@ export const AlunoCompletionMessage = ({
           >
             {loading ? "Baixando..." : "Acessar certificado"}
           </button>
-          {error && (
-            <p className="mt-2 text-red-600">{error}</p>
-          )}
+          {error && <p className="mt-2 text-red-600">{error}</p>}
         </>
       ) : (
         <p className="mt-3">Seu certificado ainda nao esta disponivel.</p>

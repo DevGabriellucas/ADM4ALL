@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState, useTransition } from "react";
 import {
   adicionarMaterialAction,
   atualizarMaterialVisibilidadeAction,
   removerMaterialAction,
 } from "@/app/instrutor/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import type { AulaResumo, MaterialResumo, TipoMaterial } from "@/types/instrutor";
+import type {
+  AulaResumo,
+  MaterialResumo,
+  TipoMaterial,
+} from "@/types/instrutor";
 import { formatData, formatTamanho, formatTipoMaterial } from "@/utils/format";
 
 interface MateriaisPanelProps {
@@ -115,10 +119,10 @@ export const MateriaisPanel = ({
   const [isRemovendo, startRemocao] = useTransition();
   const [materialParaRemover, setMaterialParaRemover] =
     useState<MaterialResumo | null>(null);
-  const [alternandoVisibilidadeId, setAlternandoVisibilidadeId] =
-    useState<string | null>(null);
-  const [isAlternandoVisibilidade, startAlternarVisibilidade] =
-    useTransition();
+  const [alternandoVisibilidadeId, setAlternandoVisibilidadeId] = useState<
+    string | null
+  >(null);
+  const [isAlternandoVisibilidade, startAlternarVisibilidade] = useTransition();
 
   const materiaisFiltrados = useMemo(() => {
     const ordenados = [...materiaisSeguros].sort((a, b) => {
@@ -461,7 +465,9 @@ export const MateriaisPanel = ({
               <th className="py-2 pr-3 font-medium">Tipo</th>
               <th className="py-2 pr-3 text-center font-medium">Data</th>
               <th className="py-2 pr-3 text-center font-medium">Tamanho</th>
-              <th className="py-2 pr-3 text-center font-medium">Visibilidade</th>
+              <th className="py-2 pr-3 text-center font-medium">
+                Visibilidade
+              </th>
               <th className="py-2 text-center font-medium">Ações</th>
             </tr>
           </thead>

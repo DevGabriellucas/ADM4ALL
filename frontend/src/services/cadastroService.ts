@@ -48,7 +48,10 @@ export const listarTreinamentosPublicos = async (): Promise<
 
   if (!response.ok) {
     throw new Error(
-      await readApiError(response, "Nao foi possivel carregar os treinamentos."),
+      await readApiError(
+        response,
+        "Nao foi possivel carregar os treinamentos.",
+      ),
     );
   }
 

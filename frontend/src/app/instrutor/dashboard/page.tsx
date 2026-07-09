@@ -90,9 +90,7 @@ export default async function InstrutorDashboardPage() {
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-lg bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-900 text-sm">
-            Aula de hoje
-          </h2>
+          <h2 className="font-semibold text-slate-900 text-sm">Aula de hoje</h2>
           {aulaHoje ? (
             <div className="mt-3">
               <p className="font-medium text-slate-900 text-sm">

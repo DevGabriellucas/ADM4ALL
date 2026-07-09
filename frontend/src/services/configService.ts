@@ -1,11 +1,11 @@
-import { authenticatedRequest } from "./apiClient";
 import type {
+  CertificadoFormData,
+  ConfiguracoesData,
   InstituicaoFormData,
   PeriodoLetivoFormData,
-  CertificadoFormData,
   PreferenciasFormData,
-  ConfiguracoesData,
 } from "@/schemas/configuracionsSchema";
+import { authenticatedRequest } from "./apiClient";
 
 interface ApiResponse {
   mensagem: string;
@@ -37,9 +37,7 @@ export const configService = {
     });
   },
 
-  async atualizarCertificado(
-    dados: CertificadoFormData,
-  ): Promise<ApiResponse> {
+  async atualizarCertificado(dados: CertificadoFormData): Promise<ApiResponse> {
     return authenticatedRequest<ApiResponse>("/configuracoes/certificado", {
       method: "PATCH",
       body: JSON.stringify(dados),

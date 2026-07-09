@@ -1,15 +1,15 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  certificadoSchema,
-  type CertificadoFormData,
-} from "@/schemas/configuracionsSchema";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/Button";
 import { atualizarCertificadoAction } from "@/app/coordenador/actions";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import {
+  type CertificadoFormData,
+  certificadoSchema,
+} from "@/schemas/configuracionsSchema";
 
 interface CertificadoCardProps {
   initialData: CertificadoFormData;
@@ -24,7 +24,11 @@ export const CertificadoCard = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<CertificadoFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CertificadoFormData>({
     resolver: zodResolver(certificadoSchema),
     defaultValues: initialData,
   });
@@ -45,7 +49,7 @@ export const CertificadoCard = ({
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao atualizar regras"
+        error instanceof Error ? error.message : "Erro ao atualizar regras",
       );
     } finally {
       setIsSubmitting(false);
@@ -79,7 +83,7 @@ export const CertificadoCard = ({
                   value={field.value || ""}
                   onChange={(e) =>
                     field.onChange(
-                      e.target.value === "" ? "" : Number(e.target.value)
+                      e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
                   disabled={isSubmitting}

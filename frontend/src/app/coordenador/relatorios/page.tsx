@@ -16,7 +16,11 @@ export default async function CoordinatorReportsPage() {
   return (
     <>
       <BackButton className="mb-4" />
-      <ReportsPageContent reports={reports} courses={courses} classes={classes} />
+      <ReportsPageContent
+        reports={reports}
+        courses={courses}
+        classes={classes}
+      />
     </>
   );
 }

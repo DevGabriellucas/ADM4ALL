@@ -1,9 +1,6 @@
 export default function CoordinatorDashboardLoading() {
   return (
-    <section
-      aria-busy="true"
-      className="flex flex-col gap-y-8"
-    >
+    <section aria-busy="true" className="flex flex-col gap-y-8">
       <span className="sr-only">Carregando dashboard do coordenador...</span>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

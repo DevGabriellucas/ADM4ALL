@@ -1,24 +1,34 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { instituicaoSchema, type InstituicaoFormData } from "@/schemas/configuracionsSchema";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/Button";
 import { atualizarInstituicaoAction } from "@/app/coordenador/actions";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import {
+  type InstituicaoFormData,
+  instituicaoSchema,
+} from "@/schemas/configuracionsSchema";
 
 interface InstituicaoCardProps {
   initialData: InstituicaoFormData;
   onSuccess?: () => void;
 }
 
-export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps) => {
+export const InstituicaoCard = ({
+  initialData,
+  onSuccess,
+}: InstituicaoCardProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<InstituicaoFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<InstituicaoFormData>({
     resolver: zodResolver(instituicaoSchema),
     defaultValues: initialData,
   });
@@ -39,7 +49,7 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao atualizar dados"
+        error instanceof Error ? error.message : "Erro ao atualizar dados",
       );
     } finally {
       setIsSubmitting(false);
@@ -69,7 +79,9 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
                 className={errors.nome ? "border-red-500" : ""}
               />
               {errors.nome && (
-                <p className="mt-1 text-xs text-red-500">{errors.nome.message}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.nome.message}
+                </p>
               )}
             </div>
           )}
@@ -91,7 +103,9 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
                 className={errors.email ? "border-red-500" : ""}
               />
               {errors.email && (
-                <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.email.message}
+                </p>
               )}
             </div>
           )}
@@ -114,7 +128,9 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
                   className={errors.telefone ? "border-red-500" : ""}
                 />
                 {errors.telefone && (
-                  <p className="mt-1 text-xs text-red-500">{errors.telefone.message}</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.telefone.message}
+                  </p>
                 )}
               </div>
             )}
@@ -136,7 +152,9 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
                   className={errors.cidade ? "border-red-500" : ""}
                 />
                 {errors.cidade && (
-                  <p className="mt-1 text-xs text-red-500">{errors.cidade.message}</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.cidade.message}
+                  </p>
                 )}
               </div>
             )}
@@ -161,7 +179,9 @@ export const InstituicaoCard = ({ initialData, onSuccess }: InstituicaoCardProps
                   className={errors.uf ? "border-red-500" : ""}
                 />
                 {errors.uf && (
-                  <p className="mt-1 text-xs text-red-500">{errors.uf.message}</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.uf.message}
+                  </p>
                 )}
               </div>
             )}

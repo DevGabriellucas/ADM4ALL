@@ -1,13 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { atualizarStatusUsuarioAction } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { EditUserModal } from "@/components/coordenador/EditUserModal";
 import { NewUserModal } from "@/components/coordenador/NewUserModal";
 import { UserTable } from "@/components/coordenador/UserTable";
-import { atualizarStatusUsuarioAction } from "@/app/coordenador/actions";
-import type { BaseUser, ClassGroup, Course, UserRole, UserStatus } from "@/types/coordinator";
+import type {
+  BaseUser,
+  ClassGroup,
+  Course,
+  UserRole,
+  UserStatus,
+} from "@/types/coordinator";
 
 interface UsersPageContentProps {
   users: BaseUser[];
@@ -125,7 +131,9 @@ export const UsersPageContent = ({
         const searchDigits = searchTerm.replace(/\D/g, "");
 
         const matchesName = user.nome.toLowerCase().includes(normalizedSearch);
-        const matchesEmail = user.email.toLowerCase().includes(normalizedSearch);
+        const matchesEmail = user.email
+          .toLowerCase()
+          .includes(normalizedSearch);
         const matchesCpf =
           searchDigits.length > 0 &&
           user.cpf.replace(/\D/g, "").includes(searchDigits);
@@ -231,7 +239,10 @@ export const UsersPageContent = ({
 
       <section className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-[#D5DDEC] bg-white p-4 shadow-sm">
         <div className="min-w-48 flex-[1_1_0%]">
-          <label htmlFor="user-search" className="mb-1 block font-medium text-slate-700 text-xs">
+          <label
+            htmlFor="user-search"
+            className="mb-1 block font-medium text-slate-700 text-xs"
+          >
             Buscar
           </label>
           <input
@@ -245,7 +256,10 @@ export const UsersPageContent = ({
         </div>
 
         <div className="min-w-36">
-          <label htmlFor="role-filter" className="mb-1 block font-medium text-slate-700 text-xs">
+          <label
+            htmlFor="role-filter"
+            className="mb-1 block font-medium text-slate-700 text-xs"
+          >
             Perfil
           </label>
           <select
@@ -263,7 +277,10 @@ export const UsersPageContent = ({
         </div>
 
         <div className="min-w-36">
-          <label htmlFor="status-filter" className="mb-1 block font-medium text-slate-700 text-xs">
+          <label
+            htmlFor="status-filter"
+            className="mb-1 block font-medium text-slate-700 text-xs"
+          >
             Status
           </label>
           <select
@@ -281,7 +298,10 @@ export const UsersPageContent = ({
         </div>
 
         <div className="min-w-40">
-          <label htmlFor="sort-by" className="mb-1 block font-medium text-slate-700 text-xs">
+          <label
+            htmlFor="sort-by"
+            className="mb-1 block font-medium text-slate-700 text-xs"
+          >
             Ordenar por
           </label>
           <select

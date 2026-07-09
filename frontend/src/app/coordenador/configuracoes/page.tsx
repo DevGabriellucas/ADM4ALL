@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BackButton } from "@/components/shared/BackButton";
+import { obterConfiguracoesAction } from "@/app/coordenador/actions";
+import { CertificadoCard } from "@/components/coordenador/CertificadoCard";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { InstituicaoCard } from "@/components/coordenador/InstituicaoCard";
 import { PeriodoLetivoCard } from "@/components/coordenador/PeriodoLetivoCard";
-import { CertificadoCard } from "@/components/coordenador/CertificadoCard";
 import { PreferenciasCard } from "@/components/coordenador/PreferenciasCard";
-import { obterConfiguracoesAction } from "@/app/coordenador/actions";
+import { BackButton } from "@/components/shared/BackButton";
 import type { ConfiguracoesData } from "@/schemas/configuracionsSchema";
 
 export default function CoordinatorSettingsPage() {
-  const [configuracoes, setConfiguracoes] = useState<ConfiguracoesData | null>(null);
+  const [configuracoes, setConfiguracoes] = useState<ConfiguracoesData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +24,7 @@ export default function CoordinatorSettingsPage() {
         setConfiguracoes(dados);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Erro ao carregar configurações"
+          err instanceof Error ? err.message : "Erro ao carregar configurações",
         );
       } finally {
         setLoading(false);
@@ -38,7 +40,7 @@ export default function CoordinatorSettingsPage() {
       setConfiguracoes(dados);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Erro ao recarregar configurações"
+        err instanceof Error ? err.message : "Erro ao recarregar configurações",
       );
     }
   };
