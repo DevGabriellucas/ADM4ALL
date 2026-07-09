@@ -4,8 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { atualizarPeriodoLetivoConfigAction } from "@/app/coordenador/actions";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
 import {
   type PeriodoLetivoFormData,
   periodoLetivoSchema,
@@ -15,6 +13,9 @@ interface PeriodoLetivoCardProps {
   initialData: string;
   onSuccess?: () => void;
 }
+
+const INPUT_CLASS =
+  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
 
 export const PeriodoLetivoCard = ({
   initialData,
@@ -59,61 +60,59 @@ export const PeriodoLetivoCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-[#D5DDEC] bg-white p-6 shadow-sm">
-      <h2 className="mb-2 font-semibold text-lg text-slate-950">
+    <div className="rounded-lg border border-[#C9D2E6] bg-white p-5 shadow-sm">
+      <h2 className="font-semibold text-slate-900 text-sm tracking-[0.2em]">
         Período Letivo Atual
       </h2>
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mt-1 text-slate-500 text-xs">
         Este período será automaticamente preenchido ao criar novas turmas.
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
         <div className="max-w-xs">
           <Controller
             name="valor"
             control={control}
             render={({ field }) => (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Formato: YYYY.S (ex: 2026.1)
-                </label>
-                <Input
+              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+                Formato: YYYY.S (ex: 2026.1)
+                <input
                   {...field}
                   type="text"
                   placeholder="2026.1"
                   disabled={isSubmitting}
-                  className={errors.valor ? "border-red-500" : ""}
+                  className={`${INPUT_CLASS} ${errors.valor ? "border-red-500" : ""}`}
                 />
                 {errors.valor && (
-                  <p className="mt-1 text-xs text-red-500">
+                  <p className="text-xs text-red-500">
                     {errors.valor.message}
                   </p>
                 )}
-              </div>
+              </label>
             )}
           />
         </div>
 
         {successMessage && (
-          <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          <div className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
             {successMessage}
           </div>
         )}
 
         {errorMessage && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
             {errorMessage}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button
+        <div className="flex justify-end pt-2">
+          <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-brand-dark hover:bg-[#23275F]"
+            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Salvando..." : "Salvar"}
-          </Button>
+          </button>
         </div>
       </form>
     </div>

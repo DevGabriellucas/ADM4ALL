@@ -928,8 +928,8 @@ export class CoordenadorUseCase {
     if (!candidato) {
       throw new BadRequestError("Matricula nao encontrada.");
     }
-    if (candidato.certificadoId) {
-      throw new BadRequestError("Esta matricula ja possui um certificado.");
+    if (candidato.certificadoId && candidato.status !== "cancelado") {
+      throw new BadRequestError("Esta matricula ja possui um certificado pendente ou emitido.");
     }
     if (candidato.statusMatricula !== "aprovado") {
       throw new BadRequestError(
@@ -951,6 +951,8 @@ export class CoordenadorUseCase {
         "O certificado exige menos de 3 faltas.",
       );
     }
+
+    const oldUrlArquivo = candidato.urlArquivo;
 
     try {
       const certificado =
@@ -988,6 +990,10 @@ export class CoordenadorUseCase {
           "Falha ao salvar PDF do certificado:",
           erroPdf,
         );
+      }
+
+      if (oldUrlArquivo) {
+        this.removerPdfAntigoCertificado(oldUrlArquivo, certificado.codigo);
       }
 
       return certificado;
@@ -1444,6 +1450,29 @@ export class CoordenadorUseCase {
 
   async voltarPeriodoAutomatico(): Promise<void> {
     await this.coordenadorRepository.excluirPeriodoLetivoManual();
+  }
+
+  private async removerPdfAntigoCertificado(
+    oldUrlArquivo: string,
+    newCodigo: string | null,
+  ): Promise<void> {
+    try {
+      const storageBase = path.resolve(process.cwd(), "storage", "certificados");
+      const filename = path.basename(oldUrlArquivo);
+      const oldFilePath = path.join(storageBase, filename);
+
+      const expectedFile = newCodigo
+        ? path.join(storageBase, `cert-${newCodigo}.pdf`)
+        : null;
+
+      if (!oldFilePath.startsWith(storageBase)) return;
+
+      if (expectedFile && oldFilePath === expectedFile) return;
+
+      await fs.unlink(oldFilePath);
+    } catch {
+      // best-effort: falha ao deletar PDF antigo nao desfaz a reemissao
+    }
   }
 }
 

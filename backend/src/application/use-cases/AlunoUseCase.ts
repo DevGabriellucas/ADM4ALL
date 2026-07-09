@@ -250,6 +250,7 @@ export class AlunoUseCase {
       certificadoId: cert.certificadoId,
       referenciaId: "",
       status: "emitido",
+      urlArquivo: cert.urlArquivo ?? null,
       nomeAluno: cert.nomeAluno,
       cpfAluno: cert.cpfAluno,
       nomeCurso: cert.nomeCurso,

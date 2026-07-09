@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   baixarCertificadoPdfAction,
+  emitirCertificadoAlunoAction,
   visualizarCertificadoPdfAction,
 } from "@/app/coordenador/actions";
 import { CertificateCancelModal } from "@/components/coordenador/CertificateCancelModal";
 import { CertificateIssueModal } from "@/components/coordenador/CertificateIssueModal";
 import { CertificatePreviewModal } from "@/components/coordenador/CertificatePreviewModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type {
   CertificateDetail,
@@ -57,6 +59,8 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
   const [cancelTarget, setCancelTarget] = useState<CertificateRecord | null>(
     null,
   );
+  const [reissueTarget, setReissueTarget] =
+    useState<CertificateRecord | null>(null);
   const [loadingReference, setLoadingReference] = useState<string | null>(null);
   const [downloadingReference, setDownloadingReference] = useState<
     string | null
@@ -127,6 +131,21 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
   const handleCancelSuccess = (message: string) => {
     setCancelTarget(null);
     setFeedback({ type: "success", message });
+    router.refresh();
+  };
+
+  const handleReissue = async () => {
+    if (!reissueTarget) return;
+    setFeedback(null);
+    const result = await emitirCertificadoAlunoAction(
+      reissueTarget.referenciaId,
+    );
+    setReissueTarget(null);
+    if (!result.sucesso || !result.certificado) {
+      setFeedback({ type: "error", message: result.mensagem });
+      return;
+    }
+    setFeedback({ type: "success", message: "Certificado reemitido com sucesso." });
     router.refresh();
   };
 
@@ -248,6 +267,15 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                             </button>
                           </>
                         )}
+                        {certificateStatus === "cancelado" && (
+                          <button
+                            type="button"
+                            onClick={() => setReissueTarget(certificate)}
+                            className="cursor-pointer font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                          >
+                            Emitir novamente
+                          </button>
+                        )}
                         {(certificateStatus === "emitido" ||
                           certificateStatus === "pendente") &&
                           certificate.certificadoId && (
@@ -290,6 +318,16 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
           certificate={cancelTarget}
           onClose={() => setCancelTarget(null)}
           onSuccess={handleCancelSuccess}
+        />
+      )}
+      {reissueTarget && (
+        <ConfirmDialog
+          title="Reemitir certificado?"
+          description="Este certificado está cancelado. Ao confirmar, um novo certificado será gerado e o anterior será substituído."
+          confirmLabel="Emitir novamente"
+          tone="neutral"
+          onCancel={() => setReissueTarget(null)}
+          onConfirm={handleReissue}
         />
       )}
       {pdfPreview && (

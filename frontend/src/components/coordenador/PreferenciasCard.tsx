@@ -4,9 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { atualizarPreferenciasAction } from "@/app/coordenador/actions";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { Select } from "@/components/Select";
 import {
   type PreferenciasFormData,
   preferencesSchema,
@@ -16,6 +13,11 @@ interface PreferenciasCardProps {
   initialData: PreferenciasFormData;
   onSuccess?: () => void;
 }
+
+const INPUT_CLASS =
+  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
+const SELECT_CLASS =
+  "h-11 w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
 
 export const PreferenciasCard = ({
   initialData,
@@ -60,25 +62,23 @@ export const PreferenciasCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-[#D5DDEC] bg-white p-6 shadow-sm">
-      <h2 className="mb-2 font-semibold text-lg text-slate-950">
+    <div className="rounded-lg border border-[#C9D2E6] bg-white p-5 shadow-sm">
+      <h2 className="font-semibold text-slate-900 text-sm tracking-[0.2em]">
         Preferências Gerais
       </h2>
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mt-1 text-slate-500 text-xs">
         Configure valores padrão para novas turmas e outras preferências.
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="capacidadePadrao"
             control={control}
             render={({ field }) => (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Capacidade Padrão (alunos)
-                </label>
-                <Input
+              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+                Capacidade Padrão (alunos)
+                <input
                   {...field}
                   type="number"
                   min="1"
@@ -90,14 +90,14 @@ export const PreferenciasCard = ({
                     )
                   }
                   disabled={isSubmitting}
-                  className={errors.capacidadePadrao ? "border-red-500" : ""}
+                  className={`${INPUT_CLASS} ${errors.capacidadePadrao ? "border-red-500" : ""}`}
                 />
                 {errors.capacidadePadrao && (
-                  <p className="mt-1 text-xs text-red-500">
+                  <p className="text-xs text-red-500">
                     {errors.capacidadePadrao.message}
                   </p>
                 )}
-              </div>
+              </label>
             )}
           />
 
@@ -105,26 +105,24 @@ export const PreferenciasCard = ({
             name="statusPadrao"
             control={control}
             render={({ field }) => (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Status Padrão de Nova Turma
-                </label>
-                <Select
+              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+                Status Padrão de Nova Turma
+                <select
                   {...field}
                   disabled={isSubmitting}
-                  className={errors.statusPadrao ? "border-red-500" : ""}
+                  className={`${SELECT_CLASS} ${errors.statusPadrao ? "border-red-500" : ""}`}
                 >
                   <option value="">Selecione um status</option>
-                  <option value="planejamento">Planejamento</option>
+                  <option value="planejada">Planejada</option>
                   <option value="em_andamento">Em Andamento</option>
                   <option value="encerrada">Encerrada</option>
-                </Select>
+                </select>
                 {errors.statusPadrao && (
-                  <p className="mt-1 text-xs text-red-500">
+                  <p className="text-xs text-red-500">
                     {errors.statusPadrao.message}
                   </p>
                 )}
-              </div>
+              </label>
             )}
           />
         </div>
@@ -133,46 +131,44 @@ export const PreferenciasCard = ({
           name="nomeExibido"
           control={control}
           render={({ field }) => (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Nome Exibido no Painel (opcional)
-              </label>
-              <Input
+            <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
+              Nome Exibido no Painel (opcional)
+              <input
                 {...field}
                 type="text"
                 placeholder="ADM4All"
                 disabled={isSubmitting}
-                className={errors.nomeExibido ? "border-red-500" : ""}
+                className={`${INPUT_CLASS} ${errors.nomeExibido ? "border-red-500" : ""}`}
               />
               {errors.nomeExibido && (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="text-xs text-red-500">
                   {errors.nomeExibido.message}
                 </p>
               )}
-            </div>
+            </label>
           )}
         />
 
         {successMessage && (
-          <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          <div className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
             {successMessage}
           </div>
         )}
 
         {errorMessage && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
             {errorMessage}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button
+        <div className="flex justify-end pt-2">
+          <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-brand-dark hover:bg-[#23275F]"
+            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Salvando..." : "Salvar"}
-          </Button>
+          </button>
         </div>
       </form>
     </div>

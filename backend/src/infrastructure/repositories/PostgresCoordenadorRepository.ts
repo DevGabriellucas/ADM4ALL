@@ -1463,7 +1463,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         AND (tu.status = 'concluida' OR tu.status = 'encerrada')
           AND u.status = 'ativo'
           AND COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
-          AND (c.status IS NULL OR c.status NOT IN ('pendente', 'emitido'))
+          AND c.status IS NULL
         ) AS elegivel,
         CASE
           WHEN m.status <> 'aprovado' THEN 'Matrícula ainda não aprovada.'
@@ -1471,7 +1471,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           WHEN u.status <> 'ativo' THEN 'Conta do aluno não está ativa.'
           WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
             THEN 'Aluno possui 3 ou mais faltas.'
-          WHEN c.status IN ('pendente', 'emitido')
+          WHEN c.status IS NOT NULL
             THEN 'A matrícula já possui certificado pendente ou emitido.'
           ELSE NULL
         END AS motivo_inelegibilidade,
@@ -1547,6 +1547,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
         COALESCE(emissor.nome, 'Coordenação do Projeto') AS nome_coordenadora,
         c.codigo,
+        c.url_arquivo,
         m.status AS status_matricula,
         tu.status AS status_turma,
         u.status AS status_usuario,
@@ -1575,6 +1576,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       certificadoId: linha.certificado_id ?? null,
       referenciaId: linha.referencia_id,
       status: linha.status ?? null,
+      urlArquivo: linha.url_arquivo ?? null,
       nomeAluno: linha.nome_aluno,
       cpfAluno: linha.cpf_aluno,
       nomeCurso: linha.nome_curso,
@@ -1598,24 +1600,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   async emitirCertificadoAluno(
     input: EmitirCertificadoAlunoInput,
   ): Promise<CertificadoAlunoDetalhe | null> {
-    try {
-      await this.db.query(
-        `INSERT INTO certificados
-          (matricula_id, codigo, status, data_emissao, emitido_por_id, observacao)
-         VALUES ($1, $2, 'emitido', CURRENT_DATE, $3, $4)`,
-        [
-          input.matriculaId,
-          input.codigo,
-          input.emitidoPorId,
-          "Certificado emitido pelo painel do coordenador.",
-        ],
-      );
-    } catch (error: any) {
-      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
-        throw new Error("Esta matrícula já possui um certificado.");
-      }
-      throw error;
-    }
+    await this.db.query(
+      `INSERT INTO certificados
+         (matricula_id, codigo, status, data_emissao, emitido_por_id, observacao)
+       VALUES ($1, $2, 'emitido', CURRENT_DATE, $3, $4)
+       ON CONFLICT (matricula_id) DO UPDATE SET
+         status = 'emitido',
+         codigo = $2,
+         data_emissao = CURRENT_DATE,
+         emitido_por_id = $3,
+         observacao = $4,
+         url_arquivo = NULL`,
+      [
+        input.matriculaId,
+        input.codigo,
+        input.emitidoPorId,
+        "Certificado emitido pelo painel do coordenador.",
+      ],
+    );
 
     return await this.buscarCertificadoAluno(input.matriculaId);
   }

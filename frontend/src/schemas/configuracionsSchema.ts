@@ -21,7 +21,7 @@ export const certificadoSchema = z.object({
 
 export const preferencesSchema = z.object({
   capacidadePadrao: z.number().min(1, "Capacidade padrão deve ser maior que 0"),
-  statusPadrao: z.enum(["planejamento", "em_andamento", "encerrada"]),
+  statusPadrao: z.enum(["planejada", "em_andamento", "encerrada"]),
   nomeExibido: z.string().optional(),
 });
 
