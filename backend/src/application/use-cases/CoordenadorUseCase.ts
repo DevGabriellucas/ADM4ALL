@@ -7,6 +7,12 @@ import {
 } from "../../domain/repositories/ActivationRepository";
 import { ConfiguracoesRepository } from "../../domain/repositories/ConfiguracoesRepository";
 import {
+  buildRelatorioPath,
+  buildRelatorioRelativePath,
+  ensureRelatoriosDir,
+  removeRelatorioFile,
+} from "../../infrastructure/storage/relatoriosStorage";
+import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
   AlunoParaReenvioAtivacao,
@@ -31,6 +37,7 @@ import {
   MatriculaStatusAtualizado,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
+  RelatorioGerado,
   StatusMatriculaEditavel,
   TipoCertificado,
   TurmaDetalhe,
@@ -45,6 +52,10 @@ import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
+import {
+  gerarRelatorioCsv,
+  gerarRelatorioPdf,
+} from "../../infrastructure/reports/CoordinatorReportExportService";
 import {
   MENSAGEM_PERIODO_INVALIDO,
   PERIODO_REGEX,
@@ -203,6 +214,32 @@ const gerarCodigoCertificado = () =>
   `CERT-ALU-${new Date().getFullYear()}-${randomBytes(4)
     .toString("hex")
     .toUpperCase()}`;
+
+const formatarTimestampArquivo = (data = new Date()): string => {
+  const partes = new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  })
+    .format(data)
+    .replace(" ", "-")
+    .replace(/:/g, "");
+
+  return partes;
+};
+
+const montarNomeArquivoRelatorio = (
+  tipo: CoordinatorReportType,
+  extensao: "csv" | "pdf",
+): string =>
+  `relatorio-${tipo}-${formatarTimestampArquivo()}-${randomBytes(3).toString(
+    "hex",
+  )}.${extensao}`;
 
 export class CoordenadorUseCase {
   constructor(
@@ -878,6 +915,75 @@ export class CoordenadorUseCase {
 
     const filtrado: RelatorioCoordenador = { ...relatorio, rows };
     return { ...filtrado, metricValue: calcularMetricaRelatorio(filtrado) };
+  }
+
+  async gerarRelatorioPersistido(input: {
+    tipo: string;
+    filtros?: FiltrosRelatorioCoordenador;
+    geradoPorId: string;
+  }): Promise<RelatorioGerado> {
+    if (!UUID_PATTERN.test(input.geradoPorId)) {
+      throw new BadRequestError("O usuario gerador e invalido.");
+    }
+    if (!isTipoRelatorio(input.tipo)) {
+      throw new BadRequestError(
+        `Tipo de relatorio invalido. Use: ${TIPOS_RELATORIO.join(", ")}.`,
+      );
+    }
+
+    const filtros = input.filtros ?? {};
+    const relatorio = await this.obterRelatorioFiltrado(input.tipo, filtros);
+    const csv = gerarRelatorioCsv(relatorio, filtros);
+    const pdf = await gerarRelatorioPdf(relatorio, filtros);
+    const arquivoCsvNome = montarNomeArquivoRelatorio(input.tipo, "csv");
+    const arquivoPdfNome = montarNomeArquivoRelatorio(input.tipo, "pdf");
+    const caminhoCsv = buildRelatorioPath(arquivoCsvNome);
+    const caminhoPdf = buildRelatorioPath(arquivoPdfNome);
+
+    await ensureRelatoriosDir();
+    await Promise.all([fs.writeFile(caminhoCsv, csv), fs.writeFile(caminhoPdf, pdf)]);
+
+    try {
+      return await this.coordenadorRepository.criarRelatorioGerado({
+        tipo: input.tipo,
+        titulo: relatorio.title,
+        arquivoCsv: buildRelatorioRelativePath(arquivoCsvNome),
+        arquivoPdf: buildRelatorioRelativePath(arquivoPdfNome),
+        filtros,
+        geradoPorId: input.geradoPorId,
+      });
+    } catch (error) {
+      await Promise.allSettled([fs.unlink(caminhoCsv), fs.unlink(caminhoPdf)]);
+      throw error;
+    }
+  }
+
+  async listarRelatoriosGerados(limite?: number): Promise<RelatorioGerado[]> {
+    return await this.coordenadorRepository.listarRelatoriosGerados(limite);
+  }
+
+  async obterRelatorioGerado(id: string): Promise<RelatorioGerado> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do relatorio e invalido.");
+    }
+
+    const relatorio = await this.coordenadorRepository.buscarRelatorioGeradoPorId(
+      id,
+    );
+    if (!relatorio) {
+      throw new NotFoundError("Relatorio gerado nao encontrado.");
+    }
+
+    return relatorio;
+  }
+
+  async deletarRelatorioGerado(id: string): Promise<void> {
+    const relatorio = await this.obterRelatorioGerado(id);
+    await Promise.allSettled([
+      removeRelatorioFile(relatorio.arquivoCsv),
+      removeRelatorioFile(relatorio.arquivoPdf),
+    ]);
+    await this.coordenadorRepository.removerRelatorioGerado(id);
   }
 
   async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {

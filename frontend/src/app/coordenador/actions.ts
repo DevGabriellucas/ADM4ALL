@@ -20,6 +20,7 @@ import type {
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
+  GeneratedReport,
   Student,
   UserStatus,
 } from "@/types/coordinator";
@@ -51,6 +52,10 @@ interface ResultadoExportacaoRelatorioAction extends ResultadoAction {
     contentType: string;
     fileName: string;
   } | null;
+}
+
+interface ResultadoRelatorioGeradoAction extends ResultadoAction {
+  relatorio: GeneratedReport | null;
 }
 
 export async function criarCursoAction(input: {
@@ -589,6 +594,100 @@ export async function exportarRelatorioAction(
           ? error.message
           : "Não foi possível gerar o relatório.",
       arquivo: null,
+    };
+  }
+}
+
+export async function gerarRelatorioGeradoAction(
+  tipo: CoordinatorReportType,
+  filtros: CoordinatorReportFilters,
+): Promise<ResultadoRelatorioGeradoAction> {
+  try {
+    const relatorio = await coordinatorService.generateReport({
+      tipo,
+      filtros,
+    });
+    revalidatePath("/coordenador/relatorios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Relatório gerado e salvo com sucesso.",
+      relatorio,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar o relatório.",
+      relatorio: null,
+    };
+  }
+}
+
+export async function baixarRelatorioGeradoCsvAction(
+  id: string,
+): Promise<ResultadoExportacaoRelatorioAction> {
+  try {
+    const arquivo = await coordinatorService.downloadGeneratedReportCsv(id);
+    return {
+      sucesso: true,
+      mensagem: "CSV baixado com sucesso.",
+      arquivo,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível baixar o CSV.",
+      arquivo: null,
+    };
+  }
+}
+
+export async function baixarRelatorioGeradoPdfAction(
+  id: string,
+): Promise<ResultadoExportacaoRelatorioAction> {
+  try {
+    const arquivo = await coordinatorService.downloadGeneratedReportPdf(id);
+    return {
+      sucesso: true,
+      mensagem: "PDF baixado com sucesso.",
+      arquivo,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível baixar o PDF.",
+      arquivo: null,
+    };
+  }
+}
+
+export async function deletarRelatorioGeradoAction(
+  id: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteGeneratedReport(id);
+    revalidatePath("/coordenador/relatorios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Relatório excluído com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir o relatório.",
     };
   }
 }

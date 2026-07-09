@@ -1,7 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { exportarRelatorioAction } from "@/app/coordenador/actions";
+import {
+  exportarRelatorioAction,
+  gerarRelatorioGeradoAction,
+} from "@/app/coordenador/actions";
 import type {
   CoordinatorReportData,
   CoordinatorReportFilters,
@@ -63,16 +67,20 @@ export const ReportPreviewPanel = ({
   rows,
   filters,
 }: ReportPreviewPanelProps) => {
+  const router = useRouter();
   const [loadingFormat, setLoadingFormat] = useState<"pdf" | "csv" | null>(
     null,
   );
+  const [isGenerating, setIsGenerating] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const metricValue = getMetricValue(report, rows, filters);
   const maxChartValue = Math.max(...rows.map((row) => row.chartValue), 1);
 
   const handleExport = async (format: "pdf" | "csv") => {
     setLoadingFormat(format);
     setExportError("");
+    setSuccessMessage("");
     const result = await exportarRelatorioAction(report.type, format, filters);
     setLoadingFormat(null);
 
@@ -93,6 +101,23 @@ export const ReportPreviewPanel = ({
     link.download = result.arquivo.fileName;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setExportError("");
+    setSuccessMessage("");
+
+    const result = await gerarRelatorioGeradoAction(report.type, filters);
+    setIsGenerating(false);
+
+    if (!result.sucesso || !result.relatorio) {
+      setExportError(result.mensagem);
+      return;
+    }
+
+    setSuccessMessage(result.mensagem);
+    router.refresh();
   };
 
   return (
@@ -188,8 +213,16 @@ export const ReportPreviewPanel = ({
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
+              onClick={handleGenerate}
+              disabled={loadingFormat !== null || isGenerating}
+              className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isGenerating ? "Gerando..." : "Gerar relatório"}
+            </button>
+            <button
+              type="button"
               onClick={() => handleExport("pdf")}
-              disabled={loadingFormat !== null}
+              disabled={loadingFormat !== null || isGenerating}
               className="h-10 cursor-pointer rounded-lg border border-brand-dark bg-white px-4 font-semibold text-brand-dark text-xs transition-colors hover:bg-[#E7ECF8] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingFormat === "pdf" ? "Gerando PDF..." : "Gerar PDF"}
@@ -197,8 +230,8 @@ export const ReportPreviewPanel = ({
             <button
               type="button"
               onClick={() => handleExport("csv")}
-              disabled={loadingFormat !== null}
-              className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={loadingFormat !== null || isGenerating}
+              className="h-10 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 font-semibold text-slate-700 text-xs transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingFormat === "csv" ? "Exportando..." : "Exportar"}
             </button>
@@ -208,6 +241,11 @@ export const ReportPreviewPanel = ({
         {exportError && (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
             {exportError}
+          </p>
+        )}
+        {successMessage && (
+          <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700 text-sm">
+            {successMessage}
           </p>
         )}
 

@@ -3,30 +3,38 @@ import { AttentionStudentsTable } from "@/components/coordenador/AttentionStuden
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { DashboardInfoCard } from "@/components/coordenador/DashboardInfoCard";
 import { PeriodoLetivoEditor } from "@/components/coordenador/PeriodoLetivoEditor";
+import { RecentGeneratedReports } from "@/components/coordenador/RecentGeneratedReports";
 import { configService } from "@/services/configService";
 import {
   getAttendanceSummary,
   getCertificates,
   getClasses,
   getDashboardSummary,
+  getGeneratedReports,
 } from "@/services/coordinatorService";
 import { getPeriodoLetivoSeguro } from "@/services/periodoLetivoService";
 
 export default async function CoordinatorDashboardPage() {
-  const [summary, classes, attendanceSummary, certificates, periodo, configs] =
-    await Promise.all([
-      getDashboardSummary(),
-      getClasses(),
-      getAttendanceSummary(),
-      getCertificates(),
-      getPeriodoLetivoSeguro(),
-      configService.obter().catch(() => null),
-    ]);
+  const [
+    summary,
+    classes,
+    attendanceSummary,
+    certificates,
+    periodo,
+    configs,
+    recentReports,
+  ] = await Promise.all([
+    getDashboardSummary(),
+    getClasses(),
+    getAttendanceSummary(),
+    getCertificates(),
+    getPeriodoLetivoSeguro(),
+    configService.obter().catch(() => null),
+    getGeneratedReports(3).catch(() => []),
+  ]);
 
   const nomeExibido =
-    configs?.preferencias.nomeExibido ||
-    configs?.instituicao.nome ||
-    "ADM4All";
+    configs?.preferencias.nomeExibido || configs?.instituicao.nome || "ADM4All";
 
   const activeClasses = classes.filter(
     (classGroup) => classGroup.status === "em_andamento",
@@ -103,22 +111,8 @@ export default async function CoordinatorDashboardPage() {
             Relatórios recentes
           </p>
 
-          {summary.relatorios.length > 0 ? (
-            <div className="mt-4 flex flex-col gap-y-3">
-              {summary.relatorios.slice(0, 3).map((report) => (
-                <div
-                  key={report.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
-                >
-                  <p className="font-semibold text-slate-900 text-sm">
-                    {report.titulo}
-                  </p>
-                  <p className="mt-1 text-slate-500 text-xs leading-5">
-                    {report.descricao}
-                  </p>
-                </div>
-              ))}
-            </div>
+          {recentReports.length > 0 ? (
+            <RecentGeneratedReports reports={recentReports} />
           ) : (
             <div className="mt-4 flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 px-4 py-6 text-center">
               <p className="text-slate-500 text-sm">

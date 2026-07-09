@@ -282,10 +282,13 @@ export interface ProcessRecord {
 
 export interface ReportPreview {
   id: string;
-  tipo: ReportType;
+  tipo: ReportType | CoordinatorReportType;
   titulo: string;
   descricao: string;
   ultimaAtualizacao: string;
+  arquivoCsv?: string | null;
+  arquivoPdf?: string | null;
+  criadoEm?: string;
 }
 
 export interface ReportTableColumn {
@@ -322,6 +325,17 @@ export interface CoordinatorReportData {
   aggregation: ReportAggregation;
   columns: ReportTableColumn[];
   rows: ReportDataRow[];
+}
+
+export interface GeneratedReport {
+  id: string;
+  tipo: CoordinatorReportType;
+  titulo: string;
+  arquivoCsv: string | null;
+  arquivoPdf: string | null;
+  filtros: CoordinatorReportFilters | null;
+  geradoPorId: string | null;
+  criadoEm: string;
 }
 
 export interface AccessProfileSetting {

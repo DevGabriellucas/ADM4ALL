@@ -272,6 +272,26 @@ export interface RelatorioCoordenador {
   rows: ReportDataRow[];
 }
 
+export interface RelatorioGerado {
+  id: string;
+  tipo: CoordinatorReportType;
+  titulo: string;
+  arquivoCsv: string | null;
+  arquivoPdf: string | null;
+  filtros: FiltrosRelatorioCoordenador | null;
+  geradoPorId: string | null;
+  criadoEm: string;
+}
+
+export interface CriarRelatorioGeradoInput {
+  tipo: CoordinatorReportType;
+  titulo: string;
+  arquivoCsv: string;
+  arquivoPdf: string;
+  filtros: FiltrosRelatorioCoordenador;
+  geradoPorId: string;
+}
+
 export interface CertificadoListagemCoordenador {
   referenciaId: string;
   certificadoId: string | null;
@@ -500,6 +520,12 @@ export interface CoordenadorRepository {
     filtros: FiltrosFrequenciaCoordenador,
   ): Promise<FrequenciaCoordenador[]>;
   listarRelatorios(): Promise<RelatorioCoordenador[]>;
+  criarRelatorioGerado(
+    input: CriarRelatorioGeradoInput,
+  ): Promise<RelatorioGerado>;
+  listarRelatoriosGerados(limite?: number): Promise<RelatorioGerado[]>;
+  buscarRelatorioGeradoPorId(id: string): Promise<RelatorioGerado | null>;
+  removerRelatorioGerado(id: string): Promise<boolean>;
   listarCertificados(): Promise<CertificadoListagemCoordenador[]>;
   buscarCertificadoAluno(
     matriculaId: string,
