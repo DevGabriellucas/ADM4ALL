@@ -241,8 +241,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
         <ol className="mt-4 flex flex-col gap-y-2">
           {aulasSeguras.map((aula) => {
             const removendoEsta = isRemovendo && removendoId === aula.id;
-            const atualizandoEsta =
-              isAtualizando && atualizandoId === aula.id;
+            const atualizandoEsta = isAtualizando && atualizandoId === aula.id;
 
             return (
               <li

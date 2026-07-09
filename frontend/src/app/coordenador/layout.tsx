@@ -52,10 +52,7 @@ export default async function CoordinatorRouteLayout({
   const perfilUsuario = jwtPayload?.perfil ?? session.perfil;
 
   return (
-    <CoordinatorLayout
-      nomeUsuario={nomeUsuario}
-      perfilUsuario={perfilUsuario}
-    >
+    <CoordinatorLayout nomeUsuario={nomeUsuario} perfilUsuario={perfilUsuario}>
       {children}
     </CoordinatorLayout>
   );

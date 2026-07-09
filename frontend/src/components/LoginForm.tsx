@@ -8,10 +8,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
-import {
-  type SessionProfile,
-  saveSession,
-} from "@/services/sessionService";
+import { type SessionProfile, saveSession } from "@/services/sessionService";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 

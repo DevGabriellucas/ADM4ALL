@@ -1,16 +1,16 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  preferencesSchema,
-  type PreferenciasFormData,
-} from "@/schemas/configuracionsSchema";
+import { atualizarPreferenciasAction } from "@/app/coordenador/actions";
+import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Select } from "@/components/Select";
-import { Button } from "@/components/Button";
-import { atualizarPreferenciasAction } from "@/app/coordenador/actions";
+import {
+  type PreferenciasFormData,
+  preferencesSchema,
+} from "@/schemas/configuracionsSchema";
 
 interface PreferenciasCardProps {
   initialData: PreferenciasFormData;
@@ -25,7 +25,11 @@ export const PreferenciasCard = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<PreferenciasFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<PreferenciasFormData>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: initialData,
   });
@@ -46,7 +50,9 @@ export const PreferenciasCard = ({
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao atualizar preferências"
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar preferências",
       );
     } finally {
       setIsSubmitting(false);
@@ -80,7 +86,7 @@ export const PreferenciasCard = ({
                   value={field.value || ""}
                   onChange={(e) =>
                     field.onChange(
-                      e.target.value === "" ? "" : Number(e.target.value)
+                      e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
                   disabled={isSubmitting}

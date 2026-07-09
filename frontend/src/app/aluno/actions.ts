@@ -1,8 +1,8 @@
 "use server";
 
-import { authenticatedFileRequest } from "@/services/apiClient";
 import { downloadMaterialAluno } from "@/services/alunoService";
 import type { AuthenticatedFileResponse } from "@/services/apiClient";
+import { authenticatedFileRequest } from "@/services/apiClient";
 
 export async function baixarCertificadoAlunoAction(): Promise<AuthenticatedFileResponse> {
   return await authenticatedFileRequest(

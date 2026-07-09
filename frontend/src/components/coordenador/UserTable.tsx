@@ -4,6 +4,9 @@ import type { BaseUser, UserRole } from "@/types/coordinator";
 interface UserTableProps {
   users: BaseUser[];
   showActions?: boolean;
+  onEdit?: (user: BaseUser) => void;
+  onStatusChange?: (user: BaseUser, targetStatus: "ativo" | "inativo") => void;
+  currentUserId?: string | null;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -37,7 +40,13 @@ const formatLastAccess = (lastAccess: string | null) => {
   }).format(new Date(lastAccess));
 };
 
-export const UserTable = ({ users, showActions = true }: UserTableProps) => {
+export const UserTable = ({
+  users,
+  showActions = true,
+  onEdit,
+  onStatusChange,
+  currentUserId,
+}: UserTableProps) => {
   return (
     <section
       aria-labelledby="users-table-heading"
@@ -111,38 +120,37 @@ export const UserTable = ({ users, showActions = true }: UserTableProps) => {
                       <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                        >
-                          Visualizar
-                        </button>
-                        <button
-                          type="button"
-                          className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                          onClick={() => onEdit?.(user)}
+                          className="cursor-pointer font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
                         >
                           Editar perfil
                         </button>
-                        {user.status === "pendente_ativacao" && (
-                          <button
-                            type="button"
-                            className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
-                          >
-                            Reenviar ativação
-                          </button>
-                        )}
                         {user.status === "ativo" && (
                           <button
                             type="button"
-                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
+                            onClick={() => onStatusChange?.(user, "inativo")}
+                            disabled={currentUserId === user.id}
+                            title={
+                              currentUserId === user.id
+                                ? "Você não pode desativar sua própria conta."
+                                : undefined
+                            }
+                            className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Desativar ${user.nome}`}
                           >
                             Desativar
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
-                        >
-                          Excluir
-                        </button>
+                        {user.status === "inativo" && (
+                          <button
+                            type="button"
+                            onClick={() => onStatusChange?.(user, "ativo")}
+                            className="cursor-pointer font-semibold text-emerald-600 text-xs transition-colors hover:text-emerald-800"
+                            aria-label={`Ativar ${user.nome}`}
+                          >
+                            Ativar
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

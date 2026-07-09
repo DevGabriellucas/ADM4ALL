@@ -6,14 +6,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
+  type CadastroFormData,
+  cadastroFormDataSchema,
+} from "@/schemas/cadastroSchema";
+import {
   cadastrarAluno,
   listarTreinamentosPublicos,
   type TreinamentoPublico,
 } from "@/services/cadastroService";
-import {
-  type CadastroFormData,
-  cadastroFormDataSchema,
-} from "@/schemas/cadastroSchema";
 
 type Feedback = { tipo: "ok" | "erro"; texto: string; link?: string } | null;
 
@@ -220,7 +220,10 @@ export default function Cadastro() {
       </section>
 
       <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-y-auto rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:px-6 sm:py-7 xl:min-h-152 xl:min-w-139">
-        <form onSubmit={handleSubmit(cadastroSubmit)} className="flex flex-1 flex-col">
+        <form
+          onSubmit={handleSubmit(cadastroSubmit)}
+          className="flex flex-1 flex-col"
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-slate-600 text-xs sm:col-span-2">
               Nome completo

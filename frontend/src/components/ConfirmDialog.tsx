@@ -54,7 +54,7 @@ export const ConfirmDialog = ({
             type="button"
             disabled={isLoading}
             onClick={onCancel}
-            className="cursor-pointer h-10 rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 cursor-pointer rounded-lg border border-slate-300 px-4 font-semibold text-slate-700 text-sm transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -62,7 +62,7 @@ export const ConfirmDialog = ({
             type="button"
             disabled={isLoading}
             onClick={onConfirm}
-            className={`cursor-pointer h-10 rounded-lg px-4 font-semibold text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${CONFIRM_BUTTON_CLASS[tone]}`}
+            className={`h-10 cursor-pointer rounded-lg px-4 font-semibold text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${CONFIRM_BUTTON_CLASS[tone]}`}
           >
             {isLoading ? "Processando..." : confirmLabel}
           </button>

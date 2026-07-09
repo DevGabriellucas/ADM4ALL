@@ -1,15 +1,15 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  periodoLetivoSchema,
-  type PeriodoLetivoFormData,
-} from "@/schemas/configuracionsSchema";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/Button";
 import { atualizarPeriodoLetivoConfigAction } from "@/app/coordenador/actions";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import {
+  type PeriodoLetivoFormData,
+  periodoLetivoSchema,
+} from "@/schemas/configuracionsSchema";
 
 interface PeriodoLetivoCardProps {
   initialData: string;
@@ -24,7 +24,11 @@ export const PeriodoLetivoCard = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<PeriodoLetivoFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<PeriodoLetivoFormData>({
     resolver: zodResolver(periodoLetivoSchema),
     defaultValues: { valor: initialData },
   });
@@ -45,7 +49,9 @@ export const PeriodoLetivoCard = ({
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Erro ao atualizar período letivo"
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar período letivo",
       );
     } finally {
       setIsSubmitting(false);
@@ -79,7 +85,9 @@ export const PeriodoLetivoCard = ({
                   className={errors.valor ? "border-red-500" : ""}
                 />
                 {errors.valor && (
-                  <p className="mt-1 text-xs text-red-500">{errors.valor.message}</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.valor.message}
+                  </p>
                 )}
               </div>
             )}
