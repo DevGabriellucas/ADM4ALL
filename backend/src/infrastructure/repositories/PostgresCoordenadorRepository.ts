@@ -18,6 +18,7 @@ import {
   ConvidarInstrutorInput,
   ConviteCriado,
   CoordenadorRepository,
+  CriarRelatorioGeradoInput,
   CriarCursoInput,
   CriarTurmaInput,
   CursoResumo,
@@ -34,6 +35,7 @@ import {
   MatriculaStatusAtualizado,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
+  RelatorioGerado,
   ReportDataRow,
   TurmaDetalhe,
   TurmaListagem,
@@ -1054,6 +1056,93 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       matriculasCurso,
       turmasAndamento,
     ];
+  }
+
+  async criarRelatorioGerado(
+    input: CriarRelatorioGeradoInput,
+  ): Promise<RelatorioGerado> {
+    const resultado = await this.db.query(
+      `INSERT INTO relatorios_gerados (
+         tipo, titulo, arquivo_csv, arquivo_pdf, filtros_json, gerado_por_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING
+         id,
+         tipo,
+         titulo,
+         arquivo_csv,
+         arquivo_pdf,
+         filtros_json,
+         gerado_por_id,
+         criado_em`,
+      [
+        input.tipo,
+        input.titulo,
+        input.arquivoCsv,
+        input.arquivoPdf,
+        JSON.stringify(input.filtros),
+        input.geradoPorId,
+      ],
+    );
+
+    return this.mapearRelatorioGerado(resultado.rows[0]);
+  }
+
+  async listarRelatoriosGerados(limite?: number): Promise<RelatorioGerado[]> {
+    const limiteSeguro =
+      typeof limite === "number" && Number.isFinite(limite) && limite > 0
+        ? Math.min(Math.floor(limite), 50)
+        : null;
+
+    const resultado = await this.db.query(
+      `SELECT
+         id,
+         tipo,
+         titulo,
+         arquivo_csv,
+         arquivo_pdf,
+         filtros_json,
+         gerado_por_id,
+         criado_em
+       FROM relatorios_gerados
+       ORDER BY criado_em DESC
+       ${limiteSeguro ? "LIMIT $1" : ""}`,
+      limiteSeguro ? [limiteSeguro] : [],
+    );
+
+    return resultado.rows.map((linha) => this.mapearRelatorioGerado(linha));
+  }
+
+  async buscarRelatorioGeradoPorId(
+    id: string,
+  ): Promise<RelatorioGerado | null> {
+    const resultado = await this.db.query(
+      `SELECT
+         id,
+         tipo,
+         titulo,
+         arquivo_csv,
+         arquivo_pdf,
+         filtros_json,
+         gerado_por_id,
+         criado_em
+       FROM relatorios_gerados
+       WHERE id = $1
+       LIMIT 1`,
+      [id],
+    );
+
+    return resultado.rows[0]
+      ? this.mapearRelatorioGerado(resultado.rows[0])
+      : null;
+  }
+
+  async removerRelatorioGerado(id: string): Promise<boolean> {
+    const resultado = await this.db.query(
+      "DELETE FROM relatorios_gerados WHERE id = $1",
+      [id],
+    );
+    return (resultado.rowCount ?? 0) > 0;
   }
 
   private async relatorioFrequenciaTurma(): Promise<RelatorioCoordenador> {
@@ -2220,6 +2309,22 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       titulo: linha.titulo,
       data: linha.data_aula,
       status: linha.status,
+    };
+  }
+
+  private mapearRelatorioGerado(linha: any): RelatorioGerado {
+    return {
+      id: linha.id,
+      tipo: linha.tipo,
+      titulo: linha.titulo,
+      arquivoCsv: linha.arquivo_csv ?? null,
+      arquivoPdf: linha.arquivo_pdf ?? null,
+      filtros: linha.filtros_json ?? null,
+      geradoPorId: linha.gerado_por_id ?? null,
+      criadoEm:
+        linha.criado_em instanceof Date
+          ? linha.criado_em.toISOString()
+          : String(linha.criado_em),
     };
   }
 

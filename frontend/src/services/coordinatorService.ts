@@ -22,6 +22,7 @@ import type {
   Course,
   EditableEnrollmentStatus,
   EnrollmentClassOption,
+  GeneratedReport,
   Instructor,
   InstructorDetail,
   Lesson,
@@ -1058,4 +1059,60 @@ export const exportReport = async (
     `/coordenador/relatorios/${type}/${format}${query ? `?${query}` : ""}`,
     `Falha ao gerar o relatório em ${format === "pdf" ? "PDF" : "CSV"}.`,
   );
+};
+
+export const getGeneratedReports = async (
+  limite?: number,
+): Promise<GeneratedReport[]> => {
+  const params = new URLSearchParams();
+  if (limite) params.set("limite", String(limite));
+  const query = params.toString();
+
+  const resposta = await authenticatedRequest<{
+    relatorios: GeneratedReport[];
+  }>(`/coordenador/relatorios/gerados${query ? `?${query}` : ""}`, {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os relatórios gerados.",
+  });
+
+  return resposta.relatorios;
+};
+
+export const generateReport = async (input: {
+  tipo: CoordinatorReportType;
+  filtros: CoordinatorReportFilters;
+}): Promise<GeneratedReport> => {
+  return await authenticatedRequest<GeneratedReport>(
+    "/coordenador/relatorios/gerados",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      fallbackError: "Falha ao gerar o relatório.",
+    },
+  );
+};
+
+export const downloadGeneratedReportCsv = async (
+  id: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/relatorios/gerados/${id}/csv`,
+    "Falha ao baixar o CSV do relatório.",
+  );
+};
+
+export const downloadGeneratedReportPdf = async (
+  id: string,
+): Promise<AuthenticatedFileResponse> => {
+  return await authenticatedFileRequest(
+    `/coordenador/relatorios/gerados/${id}/pdf`,
+    "Falha ao baixar o PDF do relatório.",
+  );
+};
+
+export const deleteGeneratedReport = async (id: string): Promise<void> => {
+  await authenticatedRequest<void>(`/coordenador/relatorios/gerados/${id}`, {
+    method: "DELETE",
+    fallbackError: "Falha ao excluir o relatório.",
+  });
 };

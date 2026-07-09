@@ -2,24 +2,28 @@
 
 import { useState } from "react";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
+import { GeneratedReportsTable } from "@/components/coordenador/GeneratedReportsTable";
 import { ReportPreviewPanel } from "@/components/coordenador/ReportPreviewPanel";
 import type {
   ClassGroup,
   CoordinatorReportData,
   CoordinatorReportType,
   Course,
+  GeneratedReport,
 } from "@/types/coordinator";
 
 interface ReportsPageContentProps {
   reports: CoordinatorReportData[];
   courses: Course[];
   classes: ClassGroup[];
+  generatedReports: GeneratedReport[];
 }
 
 export const ReportsPageContent = ({
   reports,
   courses,
   classes,
+  generatedReports,
 }: ReportsPageContentProps) => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -150,6 +154,8 @@ export const ReportsPageContent = ({
           turma: classFilter,
         }}
       />
+
+      <GeneratedReportsTable reports={generatedReports} />
     </>
   );
 };

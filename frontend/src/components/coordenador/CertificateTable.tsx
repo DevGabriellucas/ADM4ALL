@@ -7,10 +7,10 @@ import {
   emitirCertificadoAlunoAction,
   visualizarCertificadoPdfAction,
 } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CertificateCancelModal } from "@/components/coordenador/CertificateCancelModal";
 import { CertificateIssueModal } from "@/components/coordenador/CertificateIssueModal";
 import { CertificatePreviewModal } from "@/components/coordenador/CertificatePreviewModal";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import type {
   CertificateDetail,
@@ -31,13 +31,14 @@ interface PdfPreviewData {
 
 const getStatusInfo = (status: CertificateDisplayStatus) => {
   if (status === "elegivel")
-    return { label: "Elegível", tone: "blue" as const };
+    return { label: "Elegível", tone: "greenSoft" as const };
   if (status === "pendente")
     return { label: "Pendente", tone: "amber" as const };
-  if (status === "emitido") return { label: "Emitido", tone: "green" as const };
+  if (status === "emitido")
+    return { label: "Emitido", tone: "greenStrong" as const };
   if (status === "cancelado")
     return { label: "Cancelado", tone: "red" as const };
-  return { label: "Não elegível", tone: "red" as const };
+  return { label: "Não elegível", tone: "slate" as const };
 };
 
 const getCertificateLabel = (
@@ -59,8 +60,9 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
   const [cancelTarget, setCancelTarget] = useState<CertificateRecord | null>(
     null,
   );
-  const [reissueTarget, setReissueTarget] =
-    useState<CertificateRecord | null>(null);
+  const [reissueTarget, setReissueTarget] = useState<CertificateRecord | null>(
+    null,
+  );
   const [loadingReference, setLoadingReference] = useState<string | null>(null);
   const [downloadingReference, setDownloadingReference] = useState<
     string | null
@@ -145,7 +147,10 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
       setFeedback({ type: "error", message: result.mensagem });
       return;
     }
-    setFeedback({ type: "success", message: "Certificado reemitido com sucesso." });
+    setFeedback({
+      type: "success",
+      message: "Certificado reemitido com sucesso.",
+    });
     router.refresh();
   };
 
@@ -226,12 +231,6 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                         label={status.label}
                         tone={status.tone}
                       />
-                      {certificateStatus === "nao_elegivel" &&
-                        certificate.motivoInelegibilidade && (
-                          <p className="mt-1 max-w-52 text-red-700 text-xs">
-                            {certificate.motivoInelegibilidade}
-                          </p>
-                        )}
                     </td>
                     <td className="border-slate-100 border-b px-3 py-3 text-slate-600 text-xs">
                       {getCertificateLabel(certificate, certificateStatus)}

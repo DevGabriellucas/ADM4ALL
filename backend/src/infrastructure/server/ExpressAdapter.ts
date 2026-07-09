@@ -16,6 +16,7 @@ import type {
 } from "../../domain/repositories/CoordenadorRepository";
 import { getRequiredEnv } from "../config/env";
 import { BadRequestError } from "../errors/BadRequestError";
+import { NotFoundError } from "../errors/NotFoundError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { errorMiddleware } from "../middleware/errorMiddleware";
@@ -24,6 +25,7 @@ import {
   gerarRelatorioCsv,
   gerarRelatorioPdf,
 } from "../reports/CoordinatorReportExportService";
+import { resolveRelatorioPathOrThrow } from "../storage/relatoriosStorage";
 
 type Perfil = "aluno" | "instrutor" | "coordenador" | "admin";
 
@@ -825,6 +827,96 @@ export class ExpressAdapter {
       asyncHandler(async (_req: Request, res: Response) => {
         const relatorios = await this.coordenadorUseCase.listarRelatorios();
         res.json({ relatorios });
+      }),
+    );
+
+    this.app.post(
+      "/coordenador/relatorios/gerados",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        const { tipo, filtros } = req.body ?? {};
+        const relatorio =
+          await this.coordenadorUseCase.gerarRelatorioPersistido({
+            tipo,
+            filtros: filtros ?? {},
+            geradoPorId: usuario.sub,
+          });
+
+        res.status(201).json(relatorio);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/gerados",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const limite =
+          typeof req.query.limite === "string"
+            ? Number(req.query.limite)
+            : undefined;
+        const relatorios =
+          await this.coordenadorUseCase.listarRelatoriosGerados(limite);
+
+        res.json({ relatorios });
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/gerados/:id/csv",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const relatorio = await this.coordenadorUseCase.obterRelatorioGerado(
+          id,
+        );
+        const { caminho, nomeArquivo } = resolveRelatorioPathOrThrow(
+          relatorio.arquivoCsv,
+        );
+        const arquivo = await fs.readFile(caminho).catch(() => {
+          throw new NotFoundError("Arquivo CSV do relatorio nao encontrado.");
+        });
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${nomeArquivo}"`,
+        );
+        res.status(200).send(arquivo);
+      }),
+    );
+
+    this.app.get(
+      "/coordenador/relatorios/gerados/:id/pdf",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const relatorio = await this.coordenadorUseCase.obterRelatorioGerado(
+          id,
+        );
+        const { caminho, nomeArquivo } = resolveRelatorioPathOrThrow(
+          relatorio.arquivoPdf,
+        );
+        const arquivo = await fs.readFile(caminho).catch(() => {
+          throw new NotFoundError("Arquivo PDF do relatorio nao encontrado.");
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${nomeArquivo}"`,
+        );
+        res.status(200).send(arquivo);
+      }),
+    );
+
+    this.app.delete(
+      "/coordenador/relatorios/gerados/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        await this.coordenadorUseCase.deletarRelatorioGerado(id);
+        res.status(204).send();
       }),
     );
 

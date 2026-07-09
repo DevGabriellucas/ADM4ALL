@@ -65,13 +65,13 @@ const getLessonStatus = (status: Lesson["status"]) => {
 
 const getCertificateStatus = (status: CertificateDisplayStatus) => {
   if (status === "emitido") {
-    return { label: "Emitido", tone: "green" as const };
+    return { label: "Emitido", tone: "greenStrong" as const };
   }
   if (status === "nao_elegivel") {
-    return { label: "Não elegível", tone: "red" as const };
+    return { label: "Não elegível", tone: "slate" as const };
   }
   if (status === "elegivel") {
-    return { label: "Elegível", tone: "blue" as const };
+    return { label: "Elegível", tone: "greenSoft" as const };
   }
   if (status === "cancelado") {
     return { label: "Cancelado", tone: "red" as const };
