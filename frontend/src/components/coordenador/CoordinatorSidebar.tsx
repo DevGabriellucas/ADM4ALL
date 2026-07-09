@@ -4,34 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { coordinatorNavItems } from "@/components/coordenador/coordinatorNavItems";
 import { clearSession } from "@/services/sessionService";
-
-interface NavItem {
-  label: string;
-  href: string;
-  development?: boolean;
-}
 
 interface CoordinatorSidebarProps {
   nomeUsuario: string;
   perfilUsuario: string;
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/coordenador/dashboard" },
-  { label: "Cursos", href: "/coordenador/cursos" },
-  { label: "Turmas", href: "/coordenador/turmas" },
-  { label: "Alunos", href: "/coordenador/alunos" },
-  { label: "Instrutores", href: "/coordenador/instrutores" },
-  { label: "Certificados", href: "/coordenador/certificados" },
-  { label: "Relatórios", href: "/coordenador/relatorios" },
-  { label: "Usuários", href: "/coordenador/usuarios" },
-  {
-    label: "Configurações",
-    href: "/coordenador/configuracoes",
-    development: true,
-  },
-];
 
 const getIniciais = (nome?: string) => {
   if (!nome) return "";
@@ -68,7 +47,7 @@ export const CoordinatorSidebar = ({
   const avatarText = iniciaisUsuario || cargo.charAt(0) || "?";
 
   return (
-    <aside className="flex w-full flex-col gap-y-5 bg-brand-medium px-4 py-5 text-slate-950 sm:px-6 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:gap-y-8 lg:overflow-y-auto lg:px-6 lg:py-8">
+    <aside className="hidden bg-brand-medium text-slate-950 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:gap-y-8 lg:overflow-y-auto lg:px-6 lg:py-8">
       <div className="flex items-center gap-x-4 lg:flex-col lg:gap-y-3 lg:text-center">
         <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-[#E7ECF8] bg-brand-dark font-semibold text-lg text-white shadow-md lg:size-18">
           {avatarText}
@@ -86,7 +65,7 @@ export const CoordinatorSidebar = ({
         aria-label="Menu do coordenador"
         className="-mx-2 flex gap-1 overflow-x-auto px-2 pb-2 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
       >
-        {NAV_ITEMS.map((item) => {
+        {coordinatorNavItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
 

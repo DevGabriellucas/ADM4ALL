@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CoordinatorSidebar } from "@/components/coordenador/CoordinatorSidebar";
+import { CoordinatorShellWrapper } from "@/components/coordenador/CoordinatorShellWrapper";
 
 interface CoordinatorLayoutProps {
   children: ReactNode;
@@ -13,17 +13,11 @@ export const CoordinatorLayout = ({
   perfilUsuario,
 }: CoordinatorLayoutProps) => {
   return (
-    <div className="flex min-h-screen flex-col bg-[#EDF1FB] font-poppins text-slate-950 lg:flex-row">
-      <CoordinatorSidebar
-        nomeUsuario={nomeUsuario}
-        perfilUsuario={perfilUsuario}
-      />
-
-      <main className="flex-1 px-4 py-6 sm:px-6 xl:px-10">
-        <div className="flex w-full max-w-none flex-col gap-y-6">
-          {children}
-        </div>
-      </main>
-    </div>
+    <CoordinatorShellWrapper
+      nomeUsuario={nomeUsuario}
+      perfilUsuario={perfilUsuario}
+    >
+      {children}
+    </CoordinatorShellWrapper>
   );
 };
