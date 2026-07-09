@@ -464,6 +464,45 @@ export class CoordenadorUseCase {
     }
   }
 
+  async atualizarStatusUsuario(
+    id: string,
+    status: string,
+    usuarioLogadoId?: string,
+  ): Promise<UsuarioListagemCoordenador> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do usuario e invalido.");
+    }
+
+    if (status !== "ativo" && status !== "inativo") {
+      throw new BadRequestError(
+        "Status invalido. Use apenas 'ativo' ou 'inativo'.",
+      );
+    }
+
+    const usuario = await this.coordenadorRepository.buscarUsuarioPorId(id);
+    if (!usuario) {
+      throw new NotFoundError("Usuario nao encontrado.");
+    }
+
+    if (usuarioLogadoId && usuarioLogadoId === id && status === "inativo") {
+      throw new BadRequestError(
+        "Voce nao pode desativar a propria conta.",
+      );
+    }
+
+    const atualizado =
+      await this.coordenadorRepository.atualizarStatusUsuario(
+        id,
+        status as "ativo" | "inativo",
+      );
+
+    if (!atualizado) {
+      throw new NotFoundError("Usuario nao encontrado.");
+    }
+
+    return atualizado;
+  }
+
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
     return await this.coordenadorRepository.listarAlunos();
   }

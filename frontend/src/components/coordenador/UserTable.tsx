@@ -5,6 +5,8 @@ interface UserTableProps {
   users: BaseUser[];
   showActions?: boolean;
   onEdit?: (user: BaseUser) => void;
+  onStatusChange?: (user: BaseUser, targetStatus: "ativo" | "inativo") => void;
+  currentUserId?: string | null;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -42,6 +44,8 @@ export const UserTable = ({
   users,
   showActions = true,
   onEdit,
+  onStatusChange,
+  currentUserId,
 }: UserTableProps) => {
   return (
     <section
@@ -117,10 +121,36 @@ export const UserTable = ({
                         <button
                           type="button"
                           onClick={() => onEdit?.(user)}
-                          className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
+                          className="cursor-pointer font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
                         >
                           Editar perfil
                         </button>
+                        {user.status === "ativo" && (
+                          <button
+                            type="button"
+                            onClick={() => onStatusChange?.(user, "inativo")}
+                            disabled={currentUserId === user.id}
+                            title={
+                              currentUserId === user.id
+                                ? "Você não pode desativar sua própria conta."
+                                : undefined
+                            }
+                            className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Desativar ${user.nome}`}
+                          >
+                            Desativar
+                          </button>
+                        )}
+                        {user.status === "inativo" && (
+                          <button
+                            type="button"
+                            onClick={() => onStatusChange?.(user, "ativo")}
+                            className="cursor-pointer font-semibold text-emerald-600 text-xs transition-colors hover:text-emerald-800"
+                            aria-label={`Ativar ${user.nome}`}
+                          >
+                            Ativar
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

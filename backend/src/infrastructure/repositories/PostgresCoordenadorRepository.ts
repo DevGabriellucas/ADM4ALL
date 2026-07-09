@@ -423,6 +423,26 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       : null;
   }
 
+  async atualizarStatusUsuario(
+    id: string,
+    status: "ativo" | "inativo",
+  ): Promise<UsuarioListagemCoordenador | null> {
+    const resultado = await this.db.query(
+      `UPDATE usuarios SET status = $1 WHERE id = $2 RETURNING id`,
+      [status, id],
+    );
+
+    if (resultado.rows.length === 0) return null;
+
+    return await this.buscarUsuarioListagemPorId(id);
+  }
+
+  async buscarUsuarioPorId(
+    id: string,
+  ): Promise<UsuarioListagemCoordenador | null> {
+    return await this.buscarUsuarioListagemPorId(id);
+  }
+
   async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
     const query = `
       SELECT

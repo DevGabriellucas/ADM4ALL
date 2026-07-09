@@ -709,6 +709,29 @@ export async function atualizarUsuarioAction(
   }
 }
 
+export async function atualizarStatusUsuarioAction(
+  id: string,
+  status: "ativo" | "inativo",
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateUserStatus(id, status);
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Status do usuario atualizado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o status do usuario.",
+    };
+  }
+}
+
 interface AlunosDaTurmaResultado extends ResultadoAction {
   students: Student[];
 }

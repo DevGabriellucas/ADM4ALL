@@ -458,6 +458,13 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarUsuarioInput,
   ): Promise<UsuarioListagemCoordenador | null>;
+  atualizarStatusUsuario(
+    id: string,
+    status: "ativo" | "inativo",
+  ): Promise<UsuarioListagemCoordenador | null>;
+  buscarUsuarioPorId(
+    id: string,
+  ): Promise<UsuarioListagemCoordenador | null>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
   atualizarAluno(
