@@ -603,7 +603,7 @@ VALUES
         '21:00',
         'planejada'
     ),
-    -- Diego: dashboard aprovado, turma concluida e certificado emitido.
+    -- Diego: dashboard aprovado, turma concluida e elegivel para certificado.
     (
         '16507083-1f0c-4939-9b73-8f3bf4226a45',
         '8856e6f0-efad-47f3-88f5-ec58e8e9bbfc',
@@ -816,17 +816,3 @@ VALUES
     )
 ON CONFLICT (aluno_id, tipo) DO NOTHING;
 
-INSERT INTO certificados
-    (id, matricula_id, codigo, status, data_emissao, url_arquivo, emitido_por_id, observacao)
-VALUES
-    (
-        '1451f3ea-8766-423b-a3ab-758baa8299ac',
-        '20b0624a-0d58-46db-bf19-ce4f548c1a6f',
-        'CERT-ADM-2026-0001',
-        'emitido',
-        '2026-05-02',
-        '/certificados/cert-adm-2026-0001.pdf',
-        '0befab74-8720-40e2-8a9a-14530f9f7f08',
-        'Certificado emitido apos conclusao do curso'
-    )
-ON CONFLICT (codigo) DO NOTHING;
