@@ -1048,6 +1048,23 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.patch(
+      "/coordenador/usuarios/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { nome, email, cpf } = req.body ?? {};
+
+        const usuario = await this.coordenadorUseCase.atualizarUsuario(id, {
+          nome,
+          email,
+          cpf,
+        });
+
+        res.json(usuario);
+      }),
+    );
+
     this.app.post(
       "/coordenador/coordenadores",
       this.exigirPerfis(["coordenador", "admin"]),

@@ -70,6 +70,7 @@ export interface BaseUser {
   id: string;
   nome: string;
   email: string;
+  cpf: string;
   role: UserRole;
   status: UserStatus;
   dataCriacao: string;

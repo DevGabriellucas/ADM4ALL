@@ -9,6 +9,7 @@ import {
   AtualizarInstrutorCoordenadorInput,
   AtualizarTurmaInput,
   AtualizarStatusMatriculaInput,
+  AtualizarUsuarioInput,
   AulaResumo,
   CertificadoAlunoDetalhe,
   CertificadoListagemCoordenador,
@@ -428,6 +429,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         u.id,
         u.nome,
         u.email,
+        u.cpf,
         CASE
           WHEN p.nome = 'admin' THEN 'administrador'
           ELSE p.nome
@@ -445,6 +447,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       id: linha.id,
       nome: linha.nome,
       email: linha.email,
+      cpf: linha.cpf,
       role: linha.role,
       status: linha.status,
       dataCriacao: linha.data_criacao.toISOString(),
@@ -452,6 +455,40 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         ? linha.ultimo_login.toISOString()
         : null,
     }));
+  }
+
+  async atualizarUsuario(
+    id: string,
+    input: AtualizarUsuarioInput,
+  ): Promise<UsuarioListagemCoordenador | null> {
+    const query = `
+      UPDATE usuarios
+      SET nome = $1, email = $2, cpf = $3
+      WHERE id = $4
+      RETURNING id
+    `;
+
+    try {
+      const resultado = await this.db.query(query, [
+        input.nome,
+        input.email,
+        input.cpf,
+        id,
+      ]);
+
+      if (resultado.rows.length === 0) return null;
+
+      const usuario = await this.buscarUsuarioListagemPorId(id);
+      return usuario;
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
+        if (error?.constraint === "usuarios_cpf_key") {
+          throw new Error("Ja existe um usuario com este CPF.");
+        }
+        throw new Error("Ja existe um usuario com este e-mail.");
+      }
+      throw error;
+    }
   }
 
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
@@ -1612,6 +1649,46 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       [cpf],
     );
     return resultado.rows[0] ? { id: resultado.rows[0].id } : null;
+  }
+
+  private async buscarUsuarioListagemPorId(
+    id: string,
+  ): Promise<UsuarioListagemCoordenador | null> {
+    const query = `
+      SELECT
+        u.id,
+        u.nome,
+        u.email,
+        u.cpf,
+        CASE
+          WHEN p.nome = 'admin' THEN 'administrador'
+          ELSE p.nome
+        END AS role,
+        u.status,
+        u.data_criacao,
+        u.ultimo_login
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      WHERE u.id = $1
+      LIMIT 1
+    `;
+    const resultado = await this.db.query(query, [id]);
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          id: linha.id,
+          nome: linha.nome,
+          email: linha.email,
+          cpf: linha.cpf,
+          role: linha.role,
+          status: linha.status,
+          dataCriacao: linha.data_criacao.toISOString(),
+          ultimoAcesso: linha.ultimo_login
+            ? linha.ultimo_login.toISOString()
+            : null,
+        }
+      : null;
   }
 
   async convidarInstrutor(

@@ -12,6 +12,7 @@ import {
   AtualizarInstrutorCoordenadorInput,
   AtualizarStatusMatriculaInput,
   AtualizarAlunoCoordenadorInput,
+  AtualizarUsuarioInput,
   CertificadoDetalhe,
   CertificadoListagemCoordenador,
   CoordinatorReportType,
@@ -41,6 +42,7 @@ import { Telefone } from "../../domain/value-objects/Telefone";
 import { getRequiredEnv } from "../../infrastructure/config/env";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
 import {
   MENSAGEM_PERIODO_INVALIDO,
@@ -468,6 +470,61 @@ export class CoordenadorUseCase {
 
   async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
     return await this.coordenadorRepository.listarUsuarios();
+  }
+
+  async atualizarUsuario(
+    id: string,
+    input: AtualizarUsuarioInput,
+  ): Promise<UsuarioListagemCoordenador> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do usuario e invalido.");
+    }
+
+    if (!input.nome?.trim()) {
+      throw new BadRequestError("O nome do usuario e obrigatorio.");
+    }
+
+    let email: string;
+    let cpf: string;
+    try {
+      email = new Email(input.email).value;
+      cpf = new Cpf(input.cpf).value;
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Dados do usuario invalidos.",
+      );
+    }
+
+    const usuarioComEmail =
+      await this.coordenadorRepository.buscarUsuarioPorEmail(email);
+    if (usuarioComEmail && usuarioComEmail.id !== id) {
+      throw new BadRequestError("Ja existe um usuario com este e-mail.");
+    }
+
+    const usuarioComCpf =
+      await this.coordenadorRepository.buscarUsuarioPorCpf(cpf);
+    if (usuarioComCpf && usuarioComCpf.id !== id) {
+      throw new BadRequestError("Ja existe um usuario com este CPF.");
+    }
+
+    try {
+      const usuario = await this.coordenadorRepository.atualizarUsuario(id, {
+        nome: input.nome.trim(),
+        email,
+        cpf,
+      });
+
+      if (!usuario) {
+        throw new NotFoundError("Usuario nao encontrado.");
+      }
+
+      return usuario;
+    } catch (error: any) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        throw error;
+      }
+      throw new BadRequestError(error.message);
+    }
   }
 
   async buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador> {

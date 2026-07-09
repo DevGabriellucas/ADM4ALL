@@ -4,6 +4,7 @@ import type { BaseUser, UserRole } from "@/types/coordinator";
 interface UserTableProps {
   users: BaseUser[];
   showActions?: boolean;
+  onEdit?: (user: BaseUser) => void;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -37,7 +38,11 @@ const formatLastAccess = (lastAccess: string | null) => {
   }).format(new Date(lastAccess));
 };
 
-export const UserTable = ({ users, showActions = true }: UserTableProps) => {
+export const UserTable = ({
+  users,
+  showActions = true,
+  onEdit,
+}: UserTableProps) => {
   return (
     <section
       aria-labelledby="users-table-heading"
@@ -111,37 +116,10 @@ export const UserTable = ({ users, showActions = true }: UserTableProps) => {
                       <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                         <button
                           type="button"
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                        >
-                          Visualizar
-                        </button>
-                        <button
-                          type="button"
+                          onClick={() => onEdit?.(user)}
                           className="font-semibold text-blue-700 text-xs transition-colors hover:text-blue-900"
                         >
                           Editar perfil
-                        </button>
-                        {user.status === "pendente_ativacao" && (
-                          <button
-                            type="button"
-                            className="font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900"
-                          >
-                            Reenviar ativação
-                          </button>
-                        )}
-                        {user.status === "ativo" && (
-                          <button
-                            type="button"
-                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
-                          >
-                            Desativar
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
-                        >
-                          Excluir
                         </button>
                       </div>
                     </td>

@@ -1,17 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type {
+  CertificadoFormData,
+  ConfiguracoesData,
+  InstituicaoFormData,
+  PeriodoLetivoFormData,
+  PreferenciasFormData,
+} from "@/schemas/configuracionsSchema";
+import { configService } from "@/services/configService";
 import * as coordinatorService from "@/services/coordinatorService";
 import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
-import { configService } from "@/services/configService";
-import type {
-  InstituicaoFormData,
-  PeriodoLetivoFormData,
-  CertificadoFormData,
-  PreferenciasFormData,
-  ConfiguracoesData,
-} from "@/schemas/configuracionsSchema";
 import type {
   CertificateDetail,
   ClassGroup,
@@ -682,6 +682,33 @@ export async function atualizarPeriodoLetivoAction(
   return await atualizarPeriodoLetivo(periodoLetivo);
 }
 
+export async function atualizarUsuarioAction(
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    cpf: string;
+  },
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.updateUser(id, input);
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/dashboard");
+    return {
+      sucesso: true,
+      mensagem: "Usuario atualizado com sucesso.",
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem:
+        error instanceof Error
+          ? error.message
+          : "Falha ao atualizar o usuario.",
+    };
+  }
+}
+
 interface AlunosDaTurmaResultado extends ResultadoAction {
   students: Student[];
 }
@@ -779,7 +806,10 @@ export async function atualizarInstituicaoAction(
   try {
     await configService.atualizarInstituicao(dados);
     revalidatePath("/coordenador/configuracoes");
-    return { sucesso: true, mensagem: "Dados da instituição atualizados com sucesso." };
+    return {
+      sucesso: true,
+      mensagem: "Dados da instituição atualizados com sucesso.",
+    };
   } catch (error) {
     return {
       sucesso: false,
@@ -797,7 +827,10 @@ export async function atualizarPeriodoLetivoConfigAction(
   try {
     await configService.atualizarPeriodoLetivo(dados);
     revalidatePath("/coordenador/configuracoes");
-    return { sucesso: true, mensagem: "Período letivo atualizado com sucesso." };
+    return {
+      sucesso: true,
+      mensagem: "Período letivo atualizado com sucesso.",
+    };
   } catch (error) {
     return {
       sucesso: false,

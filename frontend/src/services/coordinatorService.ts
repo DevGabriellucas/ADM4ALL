@@ -746,6 +746,21 @@ export const getUsers = async (): Promise<BaseUser[]> => {
   });
 };
 
+export const updateUser = async (
+  id: string,
+  input: {
+    nome: string;
+    email: string;
+    cpf: string;
+  },
+): Promise<BaseUser> => {
+  return await authenticatedRequest<BaseUser>(`/coordenador/usuarios/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+    fallbackError: "Falha ao atualizar o usuario.",
+  });
+};
+
 export const updateStudent = async (
   id: string,
   input: {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
+import { EditUserModal } from "@/components/coordenador/EditUserModal";
 import { NewUserModal } from "@/components/coordenador/NewUserModal";
 import { UserTable } from "@/components/coordenador/UserTable";
 import type { BaseUser, ClassGroup, Course } from "@/types/coordinator";
@@ -18,6 +19,11 @@ export const UsersPageContent = ({
   classes,
 }: UsersPageContentProps) => {
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<BaseUser | null>(null);
+
+  const handleCloseEditModal = () => {
+    setSelectedUser(null);
+  };
 
   return (
     <>
@@ -42,7 +48,13 @@ export const UsersPageContent = ({
         classes={classes}
       />
 
-      <UserTable users={users} showActions={false} />
+      <EditUserModal
+        isOpen={selectedUser !== null}
+        user={selectedUser}
+        onClose={handleCloseEditModal}
+      />
+
+      <UserTable users={users} showActions onEdit={setSelectedUser} />
     </>
   );
 };
