@@ -82,7 +82,7 @@ export class ConfiguracoesUseCase {
       throw new BadRequestError("Status padrão é obrigatório.");
     }
 
-    const statusValidos = ["planejamento", "em_andamento", "encerrada"];
+    const statusValidos = ["planejada", "em_andamento", "encerrada"];
     if (!statusValidos.includes(preferencias.statusPadrao)) {
       throw new BadRequestError(
         `Status padrão deve ser um de: ${statusValidos.join(", ")}`,

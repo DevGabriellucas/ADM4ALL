@@ -1443,6 +1443,19 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+    const { maximoFaltas, apenasEncerrada } =
+      await this.obterConfigCertificado();
+
+    const maxFaltas = maximoFaltas;
+    const turmaFinalizada =
+      "(tu.status = 'concluida' OR tu.status = 'encerrada')";
+    const turmaStatusElegivel = apenasEncerrada
+      ? `AND ${turmaFinalizada}`
+      : "";
+    const turmaStatusMotivo = apenasEncerrada
+      ? `WHEN tu.status <> 'concluida' AND tu.status <> 'encerrada' THEN 'Turma ainda nao finalizada.'`
+      : "";
+
     const resultado = await this.db.query(`
       SELECT
         m.id AS referencia_id,
@@ -1460,17 +1473,17 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         ) AS frequencia,
         (
           m.status = 'aprovado'
-        AND (tu.status = 'concluida' OR tu.status = 'encerrada')
+          ${turmaStatusElegivel}
           AND u.status = 'ativo'
-          AND COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
+          AND COUNT(f.id) FILTER (WHERE NOT f.presente) <= ${maxFaltas}
           AND c.status IS NULL
         ) AS elegivel,
         CASE
           WHEN m.status <> 'aprovado' THEN 'Matrícula ainda não aprovada.'
-          WHEN tu.status <> 'concluida' AND tu.status <> 'encerrada' THEN 'Turma ainda nao finalizada.'
+          ${turmaStatusMotivo}
           WHEN u.status <> 'ativo' THEN 'Conta do aluno não está ativa.'
-          WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
-            THEN 'Aluno possui 3 ou mais faltas.'
+          WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) > ${maxFaltas}
+            THEN 'Aluno excede o máximo permitido de ${maxFaltas} falta(s).'
           WHEN c.status IS NOT NULL
             THEN 'A matrícula já possui certificado pendente ou emitido.'
           ELSE NULL
@@ -1524,6 +1537,23 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       cargaHoraria:
         linha.carga_horaria === null ? null : Number(linha.carga_horaria),
     }));
+  }
+
+  private async obterConfigCertificado(): Promise<{
+    maximoFaltas: number;
+    apenasEncerrada: boolean;
+  }> {
+    const faltaRes = await this.db.query(
+      `SELECT valor FROM configuracoes_sistema WHERE chave = 'certificado_maximo_faltas'`,
+    );
+    const maximoFaltas = parseInt(faltaRes.rows[0]?.valor ?? "2", 10);
+
+    const encerradaRes = await this.db.query(
+      `SELECT valor FROM configuracoes_sistema WHERE chave = 'certificado_apenas_encerrada'`,
+    );
+    const apenasEncerrada = encerradaRes.rows[0]?.valor === "true";
+
+    return { maximoFaltas, apenasEncerrada };
   }
 
   async buscarCertificadoAluno(
