@@ -5,6 +5,7 @@ import {
   adicionarAula,
   adicionarMaterial,
   atualizarAula,
+  atualizarAvatarInstrutor,
   atualizarMaterialVisibilidade,
   getPresencasPorAula,
   registrarPresencas,
@@ -15,6 +16,7 @@ import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  ArquivoUpload,
   AtualizarAulaInput,
   AulaResumo,
   RegistrarPresencasInput,
@@ -38,6 +40,8 @@ const revalidarInstrutor = () => {
   revalidatePath("/instrutor/presenca");
   revalidatePath("/instrutor/frequencia");
   revalidatePath("/instrutor/materiais");
+  revalidatePath("/instrutor/perfil");
+  revalidatePath("/instrutor/configuracoes");
 };
 
 export const salvarPresencasAction = async (
@@ -168,6 +172,26 @@ export const buscarPresencasPorAulaAction = async (
     return {
       ok: false,
       erro: traduzirErro(error, "Falha ao consultar a presenca da aula."),
+    };
+  }
+};
+
+export const atualizarAvatarAction = async (
+  instrutorId: string,
+  arquivo: ArquivoUpload,
+): Promise<ActionResult & { avatarUrl?: string }> => {
+  try {
+    const resultado = await atualizarAvatarInstrutor(instrutorId, arquivo);
+    revalidarInstrutor();
+    return {
+      ok: true,
+      mensagem: "Foto de perfil atualizada com sucesso!",
+      avatarUrl: resultado.avatarUrl,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: traduzirErro(error, "Falha ao atualizar a foto de perfil."),
     };
   }
 };

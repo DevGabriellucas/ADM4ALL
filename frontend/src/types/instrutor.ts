@@ -9,6 +9,12 @@ export type TipoMaterial =
   | "link"
   | "outro";
 
+export interface ArquivoUpload {
+  nome: string;
+  tipoMime: string;
+  conteudoBase64: string;
+}
+
 export interface InstrutorResumo {
   id: string;
   usuarioId: string;
@@ -31,6 +37,8 @@ export interface AulaResumo {
   numero: number;
   titulo: string;
   data: string; // YYYY-MM-DD
+  horaInicio: string | null;
+  horaFim: string | null;
   status: StatusAula;
 }
 
@@ -94,11 +102,7 @@ export interface AdicionarMaterialInput {
   publicadoPorId?: string | null;
   aulaId?: string | null;
   visibilidade?: "visivel" | "oculto";
-  arquivo?: {
-    nome: string;
-    tipoMime: string;
-    conteudoBase64: string;
-  } | null;
+  arquivo?: ArquivoUpload | null;
 }
 
 export interface AdicionarAulaInput {

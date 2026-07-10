@@ -58,7 +58,10 @@ export const AlunoMateriaisPanel = ({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-semibold text-slate-900 text-sm">
+                    <h3
+                      className="font-semibold text-slate-900 text-sm"
+                      data-testid="aluno-material-title"
+                    >
                       {material.titulo}
                     </h3>
                     <p className="mt-1 text-slate-500 text-xs">

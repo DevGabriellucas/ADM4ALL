@@ -35,16 +35,6 @@ interface NewClassFormProps {
   defaultValues?: ClassDefaultValues;
 }
 
-const INITIAL_FORM_DATA: ClassFormData = {
-  curso: "",
-  nome: "",
-  instrutoresSelecionados: [],
-  periodoLetivo: "",
-  horarios: "",
-  capacidade: "",
-  status: "planejada",
-};
-
 const construirDadosIniciais = (
   defaultCourseName?: string,
   defaults?: ClassDefaultValues,

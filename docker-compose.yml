@@ -44,13 +44,16 @@ services:
       PORT: 8000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me_32_chars}
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev_admin_api_key_change_me}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       EMAIL_HOST: ${EMAIL_HOST:-}
       EMAIL_PORT: ${EMAIL_PORT:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-ADM Para Todos}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       EMAIL_TLS_REJECT_UNAUTHORIZED: ${EMAIL_TLS_REJECT_UNAUTHORIZED:-true}
       EXPOSE_ACTIVATION_LINK: ${EXPOSE_ACTIVATION_LINK:-false}
+      UPLOADS_DIR: ${UPLOADS_DIR:-/usr/src/app/uploads}
+      STORAGE_DIR: ${STORAGE_DIR:-/usr/src/app/storage}
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
       - ./backend/storage:/usr/src/app/storage
@@ -63,10 +66,13 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://backend:8000}
     container_name: adm4all_frontend
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://backend:8000}
+      ADM4ALL_RUNTIME: docker
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:

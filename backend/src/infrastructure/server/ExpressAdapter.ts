@@ -15,6 +15,11 @@ import type {
   FiltrosRelatorioCoordenador,
 } from "../../domain/repositories/CoordenadorRepository";
 import { getRequiredEnv } from "../config/env";
+import {
+  getAvataresUploadsDir,
+  getMateriaisUploadsDir,
+  getUploadsDir,
+} from "../config/storage";
 import { BadRequestError } from "../errors/BadRequestError";
 import { NotFoundError } from "../errors/NotFoundError";
 import { UnauthorizedError } from "../errors/UnauthorizedError";
@@ -52,6 +57,35 @@ const obterFiltrosRelatorio = (req: Request): FiltrosRelatorioCoordenador => {
   return filtros;
 };
 
+const criarCorsOptions = () => {
+  const frontendUrl = getRequiredEnv("FRONTEND_URL");
+  const allowedOrigins = new Set([
+    frontendUrl,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
+
+  return {
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      const isLocalDev =
+        process.env.NODE_ENV !== "production" &&
+        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
+      if (isLocalDev) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origem nao permitida pelo CORS: ${origin}`));
+    },
+  };
+};
+
 // Remove o CPF do payload enviado ao frontend. O PDF continua usando o
 // certificado completo (com cpfAluno) internamente, pois o CPF e parte do
 // documento oficial. Apenas as respostas JSON sao sanitizadas.
@@ -64,7 +98,8 @@ const toPublicCertificadoDetalhe = (
 
 export class ExpressAdapter {
   private app = express();
-  private uploadsDir = path.resolve(process.cwd(), "uploads", "materiais");
+  private uploadsRootDir = getUploadsDir();
+  private uploadsDir = getMateriaisUploadsDir();
 
   constructor(
     private authUseCase: AuthUseCase,
@@ -76,26 +111,13 @@ export class ExpressAdapter {
     private jwtService: JwtService,
   ) {
     this.app.use(express.json({ limit: "60mb" }));
-    this.app.use(cors({ origin: getRequiredEnv("FRONTEND_URL") }));
-    this.app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+    this.app.use(cors(criarCorsOptions()));
+    this.app.use(
+      "/uploads",
+      express.static(this.uploadsRootDir),
+    );
     this.configurarRotas();
     this.app.use(errorMiddleware);
-  }
-
-  private exigirApiKey(req: Request, _res: Response, next: NextFunction) {
-    const apiKeyEsperada = process.env.ADMIN_API_KEY;
-
-    if (!apiKeyEsperada) {
-      next(new BadRequestError("ADMIN_API_KEY nao configurada."));
-      return;
-    }
-
-    if (req.header("x-api-key") !== apiKeyEsperada) {
-      next(new UnauthorizedError("Nao autorizado."));
-      return;
-    }
-
-    next();
   }
 
   private autenticar(req: Request, _res: Response, next: NextFunction) {
@@ -203,7 +225,7 @@ export class ExpressAdapter {
       throw new BadRequestError("A foto deve ter ate 5MB.");
     }
 
-    const avataresDir = path.resolve(process.cwd(), "uploads", "avatares");
+    const avataresDir = getAvataresUploadsDir();
     await fs.mkdir(avataresDir, { recursive: true });
 
     const extensaoOriginal = path.extname(arquivo.nome).toLowerCase();
@@ -432,7 +454,7 @@ export class ExpressAdapter {
           return;
         }
 
-        const uploadsBase = path.resolve(process.cwd(), "uploads", "materiais");
+        const uploadsBase = this.uploadsDir;
         const caminhoRelativo = material.urlArquivo.replace(
           /^\/uploads\/materiais\//,
           "",
@@ -484,7 +506,7 @@ export class ExpressAdapter {
 
     this.app.get(
       "/alunos",
-      this.exigirApiKey,
+      this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (_req: Request, res: Response) => {
         const alunos = await this.alunoUseCase.listar();
         res.json(alunos.map((aluno) => aluno.toJSON()));
@@ -493,7 +515,7 @@ export class ExpressAdapter {
 
     this.app.get(
       "/alunos/:id",
-      this.exigirApiKey,
+      this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         if (!id || typeof id !== "string") {
@@ -507,7 +529,7 @@ export class ExpressAdapter {
 
     this.app.put(
       "/alunos/:id",
-      this.exigirApiKey,
+      this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 
@@ -526,7 +548,7 @@ export class ExpressAdapter {
 
     this.app.delete(
       "/alunos/:id",
-      this.exigirApiKey,
+      this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 

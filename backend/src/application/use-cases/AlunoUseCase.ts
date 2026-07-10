@@ -16,6 +16,7 @@ import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import { getRequiredEnv } from "../../infrastructure/config/env";
+import { getCertificadosStorageDir } from "../../infrastructure/config/storage";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
@@ -216,11 +217,7 @@ export class AlunoUseCase {
     );
     const nomeArquivo = `certificado-aluno-${codigoSeguro}.pdf`;
 
-    const certificadosDir = path.resolve(
-      process.cwd(),
-      "storage",
-      "certificados",
-    );
+    const certificadosDir = getCertificadosStorageDir();
 
     const ehLegado =
       cert.urlArquivo?.startsWith("/uploads/certificados/") === true;

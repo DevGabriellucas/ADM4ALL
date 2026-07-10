@@ -420,16 +420,14 @@ export const ClassDetailsTabs = ({
                         />
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3">
-                        <button
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          className="cursor-not-allowed font-semibold text-slate-400 text-xs"
+                        <Link
+                          href="/coordenador/certificados"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
                         >
                           {certificateStatus === "emitido"
                             ? "Visualizar"
                             : "Analisar"}
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );

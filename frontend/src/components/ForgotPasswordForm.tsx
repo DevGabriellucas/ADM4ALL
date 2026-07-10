@@ -54,7 +54,7 @@ export const ForgotPasswordForm = ({
       <Input
         id="email"
         label="E-mail"
-        className="mt-4 w-full bg-[#B6AEAE] px-6 py-3 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-xl autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] md:w-[75%] xl:w-220"
+        className="w-full rounded-lg bg-[#B6AEAE] px-4 py-3 opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] autofill:shadow-[inset_0_0_0_1000px_#B6AEAE]"
         placeholder="E-mail"
         type="email"
         {...register("email")}
@@ -72,7 +72,7 @@ export const ForgotPasswordForm = ({
 
       {!isSuccess ? (
         <Button
-          className="w-full cursor-pointer rounded-[5rem] bg-[#456CA9E5] py-3 font-medium text-xl hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 md:max-w-[35%] xl:w-[20rem]"
+          className="w-full cursor-pointer rounded-lg bg-[#456CA9E5] py-3 font-medium hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:max-w-xs"
           disabled={isSubmitting}
           type="submit"
         >
@@ -81,7 +81,7 @@ export const ForgotPasswordForm = ({
       ) : (
         <Link
           href="/"
-          className="w-full cursor-pointer rounded-[5rem] bg-[#456CA9E5] py-3 text-center font-medium text-xl hover:brightness-110 md:max-w-[35%] xl:w-[20rem]"
+          className="w-full cursor-pointer rounded-lg bg-[#456CA9E5] py-3 text-center font-medium text-base hover:brightness-110 sm:max-w-xs"
         >
           Voltar ao login
         </Link>

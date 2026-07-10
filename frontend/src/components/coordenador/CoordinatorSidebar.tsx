@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { coordinatorNavItems } from "@/components/coordenador/coordinatorNavItems";
-import { clearSession } from "@/services/sessionService";
 
 interface CoordinatorSidebarProps {
   nomeUsuario: string;
@@ -39,8 +38,7 @@ export const CoordinatorSidebar = ({
   const cargo = PERFIL_LABEL[perfilUsuario] ?? "Coordenador";
 
   const confirmarSaida = () => {
-    clearSession();
-    router.replace("/");
+    router.replace("/logout");
   };
 
   const iniciaisUsuario = getIniciais(nomeUsuario);

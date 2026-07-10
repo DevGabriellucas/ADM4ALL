@@ -1,23 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { atualizarInstituicaoAction } from "@/app/coordenador/actions";
+import {
+  getSettingsFieldClass,
+  SettingsSectionCard,
+  settingsErrorClass,
+  settingsLabelClass,
+  settingsSubmitButtonClass,
+} from "@/components/coordenador/SettingsSectionCard";
 import {
   type InstituicaoFormData,
   instituicaoSchema,
 } from "@/schemas/configuracionsSchema";
 
 interface InstituicaoCardProps {
+  className?: string;
   initialData: InstituicaoFormData;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
 }
 
-const INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
-
 export const InstituicaoCard = ({
+  className,
   initialData,
   onSuccess,
 }: InstituicaoCardProps) => {
@@ -28,11 +34,16 @@ export const InstituicaoCard = ({
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<InstituicaoFormData>({
     resolver: zodResolver(instituicaoSchema),
     defaultValues: initialData,
   });
+
+  useEffect(() => {
+    reset(initialData);
+  }, [initialData, reset]);
 
   const onSubmit = async (data: InstituicaoFormData) => {
     setIsSubmitting(true);
@@ -46,7 +57,7 @@ export const InstituicaoCard = ({
         return;
       }
       setSuccessMessage(resultado.mensagem);
-      onSuccess?.();
+      await onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
@@ -58,143 +69,180 @@ export const InstituicaoCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-[#C9D2E6] bg-white p-5 shadow-sm">
-      <h2 className="font-semibold text-slate-900 text-sm tracking-[0.2em]">
-        Dados da Instituição
-      </h2>
+    <SettingsSectionCard
+      className={className}
+      eyebrow="Identidade"
+      title="Dados da instituição"
+      description="Informações exibidas em comunicações, relatórios e certificados."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Controller
+            name="nome"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label
+                  htmlFor="institution-name"
+                  className={settingsLabelClass}
+                >
+                  Nome da instituição
+                </label>
+                <input
+                  {...field}
+                  id="institution-name"
+                  type="text"
+                  placeholder="Administração para Todos"
+                  disabled={isSubmitting}
+                  className={getSettingsFieldClass(Boolean(errors.nome))}
+                />
+                {errors.nome && (
+                  <p className={settingsErrorClass}>{errors.nome.message}</p>
+                )}
+              </div>
+            )}
+          />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
-        <Controller
-          name="nome"
-          control={control}
-          render={({ field }) => (
-            <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-              Nome da Instituição
-              <input
-                {...field}
-                type="text"
-                placeholder="Digite o nome da instituição"
-                disabled={isSubmitting}
-                className={`${INPUT_CLASS} ${errors.nome ? "border-red-500" : ""}`}
-              />
-              {errors.nome && (
-                <p className="text-xs text-red-500">{errors.nome.message}</p>
-              )}
-            </label>
-          )}
-        />
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label
+                  htmlFor="institution-email"
+                  className={settingsLabelClass}
+                >
+                  E-mail de contato
+                </label>
+                <input
+                  {...field}
+                  id="institution-email"
+                  type="email"
+                  placeholder="contato@instituicao.edu.br"
+                  disabled={isSubmitting}
+                  className={getSettingsFieldClass(Boolean(errors.email))}
+                />
+                {errors.email && (
+                  <p className={settingsErrorClass}>{errors.email.message}</p>
+                )}
+              </div>
+            )}
+          />
 
-        <Controller
-          name="email"
-          control={control}
-          render={({ field }) => (
-            <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-              E-mail de Contato
-              <input
-                {...field}
-                type="email"
-                placeholder="contato@instituicao.com"
-                disabled={isSubmitting}
-                className={`${INPUT_CLASS} ${errors.email ? "border-red-500" : ""}`}
-              />
-              {errors.email && (
-                <p className="text-xs text-red-500">{errors.email.message}</p>
-              )}
-            </label>
-          )}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="telefone"
             control={control}
             render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                Telefone
+              <div>
+                <label
+                  htmlFor="institution-phone"
+                  className={settingsLabelClass}
+                >
+                  Telefone
+                </label>
                 <input
                   {...field}
+                  id="institution-phone"
                   type="tel"
-                  placeholder="(11) 9999-9999"
+                  placeholder="(83) 99999-9999"
                   disabled={isSubmitting}
-                  className={`${INPUT_CLASS} ${errors.telefone ? "border-red-500" : ""}`}
+                  className={getSettingsFieldClass(Boolean(errors.telefone))}
                 />
                 {errors.telefone && (
-                  <p className="text-xs text-red-500">
+                  <p className={settingsErrorClass}>
                     {errors.telefone.message}
                   </p>
                 )}
-              </label>
+              </div>
             )}
           />
 
-          <Controller
-            name="cidade"
-            control={control}
-            render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                Cidade
-                <input
-                  {...field}
-                  type="text"
-                  placeholder="São Paulo"
-                  disabled={isSubmitting}
-                  className={`${INPUT_CLASS} ${errors.cidade ? "border-red-500" : ""}`}
-                />
-                {errors.cidade && (
-                  <p className="text-xs text-red-500">
-                    {errors.cidade.message}
-                  </p>
-                )}
-              </label>
-            )}
-          />
-        </div>
+          <div className="grid grid-cols-[1fr_5rem] gap-4">
+            <Controller
+              name="cidade"
+              control={control}
+              render={({ field }) => (
+                <div>
+                  <label
+                    htmlFor="institution-city"
+                    className={settingsLabelClass}
+                  >
+                    Cidade
+                  </label>
+                  <input
+                    {...field}
+                    id="institution-city"
+                    type="text"
+                    placeholder="João Pessoa"
+                    disabled={isSubmitting}
+                    className={getSettingsFieldClass(Boolean(errors.cidade))}
+                  />
+                  {errors.cidade && (
+                    <p className={settingsErrorClass}>
+                      {errors.cidade.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
 
-        <div className="max-w-xs">
-          <Controller
-            name="uf"
-            control={control}
-            render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                UF
-                <input
-                  {...field}
-                  type="text"
-                  placeholder="SP"
-                  maxLength={2}
-                  disabled={isSubmitting}
-                  className={`${INPUT_CLASS} ${errors.uf ? "border-red-500" : ""}`}
-                />
-                {errors.uf && (
-                  <p className="text-xs text-red-500">{errors.uf.message}</p>
-                )}
-              </label>
-            )}
-          />
+            <Controller
+              name="uf"
+              control={control}
+              render={({ field }) => (
+                <div>
+                  <label
+                    htmlFor="institution-uf"
+                    className={settingsLabelClass}
+                  >
+                    UF
+                  </label>
+                  <input
+                    {...field}
+                    id="institution-uf"
+                    type="text"
+                    placeholder="PB"
+                    maxLength={2}
+                    disabled={isSubmitting}
+                    className={getSettingsFieldClass(Boolean(errors.uf))}
+                  />
+                  {errors.uf && (
+                    <p className={settingsErrorClass}>{errors.uf.message}</p>
+                  )}
+                </div>
+              )}
+            />
+          </div>
         </div>
 
         {successMessage && (
-          <div className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-800 text-sm"
+          >
             {successMessage}
-          </div>
+          </output>
         )}
 
         {errorMessage && (
-          <div className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 text-sm"
+          >
             {errorMessage}
-          </div>
+          </output>
         )}
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+            className={settingsSubmitButtonClass}
           >
-            {isSubmitting ? "Salvando..." : "Salvar"}
+            {isSubmitting ? "Salvando..." : "Salvar instituição"}
           </button>
         </div>
       </form>
-    </div>
+    </SettingsSectionCard>
   );
 };

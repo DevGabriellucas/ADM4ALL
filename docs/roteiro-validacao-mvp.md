@@ -1,131 +1,187 @@
-# Roteiro de Validação do MVP — ADM4All
+# Roteiro de Validacao do MVP - ADM4All
 
-> Versão para apresentação ao PO/tech lead. Duração estimada: 30-40 minutos.
+> Versao para apresentacao ao PO/tech lead. Duracao estimada: 30-40 minutos.
 
-## 1. Preparação do ambiente
+## 1. Preparacao do ambiente
 
 - [ ] Docker Desktop ativo.
 - [ ] `docker compose up -d --build` executado, banco `healthy`.
 - [ ] Backend respondendo em `http://localhost:8000`.
 - [ ] Frontend rodando em `http://localhost:3000`.
-- [ ] Credenciais de teste conferidas (ver `docs/seed-casos-teste.md`).
+- [ ] Credenciais de teste conferidas em `docs/seed-casos-teste.md`.
+- [ ] `.env` com SMTP configurado para ativacao de conta e recuperacao de senha.
 
-## 2. Login como coordenador
+## 2. Fluxos publicos
 
-**Usuário:** `amanda.souza@example.com` / `Coordenador@123`
+### Login
+
+- [ ] Tela responsiva em desktop, tablet e celular.
+- [ ] Imagem/logo aparece corretamente no mobile.
+- [ ] Login invalido mostra erro sem quebrar a tela.
+- [ ] Login valido redireciona para a area correta por perfil.
+
+### Cadastro de aluno
+
+- [ ] Lista de treinamentos publicos carrega no select.
+- [ ] Treinamento pode ser selecionado no desktop e no mobile.
+- [ ] Cadastro valido cria conta pendente de ativacao.
+- [ ] E-mail de ativacao e enviado para o aluno cadastrado.
+
+### Recuperar senha
+
+- [ ] Tela responsiva em desktop, tablet e celular.
+- [ ] Botao voltar retorna ao login.
+- [ ] E-mail valido dispara link de redefinicao.
+- [ ] Mensagem de sucesso aparece sem quebrar o layout.
+
+### Redefinir senha
+
+- [ ] Tela usa o mesmo visual da recuperacao de senha.
+- [ ] Botao voltar retorna para recuperacao de senha.
+- [ ] Link invalido/expirado orienta solicitar novo link.
+- [ ] Senha valida e confirmacao igual salvam e retornam ao login.
+
+## 3. Login como coordenador
+
+**Usuario:** `amanda.souza@example.com` / `Coordenador@123`
 
 - [ ] Dashboard carrega com indicadores reais.
-- [ ] Período letivo exibe valor calculado automaticamente.
-- [ ] Clicar no lápis do período → editar → valor inválido mostra erro.
-- [ ] Editar para valor válido (ex: 2027.1) → persiste após reload.
-- [ ] Sidebar mostra todas as áreas, com badge "Dev" em Cronograma, Processos,
-  Usuários e Configurações.
-- [ ] Alunos em atenção — "Risco de reprovação" em laranja, "Reprovado por
-  falta" em vermelho.
-- [ ] Relatórios recentes mostra empty state ou dados reais.
-- [ ] **Nenhum dado mockado** ("Próximas aulas" e "Processos em andamento"
-  removidos).
+- [ ] Periodo letivo exibe valor calculado automaticamente.
+- [ ] Clicar no lapis do periodo -> editar -> valor invalido mostra erro.
+- [ ] Editar para valor valido, por exemplo `2027.1`, persiste apos reload.
+- [ ] Menu mostra as areas reais do MVP: Dashboard, Cursos, Turmas, Alunos,
+  Instrutores, Certificados, Relatorios, Usuarios e Configuracoes.
+- [ ] Nenhum menu exibe badge "Dev".
+- [ ] Nenhum dado mockado aparece no dashboard do coordenador.
 
 ### Cursos
+
 - [ ] Lista de cursos carrega.
-- [ ] Criar novo curso → persiste.
+- [ ] Criar novo curso persiste.
 
 ### Turmas
+
 - [ ] Lista de turmas carrega com filtros.
-- [ ] Criar nova turma → persiste.
-- [ ] Abrir detalhe de turma → abas de alunos e cronograma.
+- [ ] Criar nova turma persiste.
+- [ ] Abrir detalhe de turma mostra abas de alunos, cronograma, frequencia,
+  materiais e certificados.
+- [ ] Aba Certificados envia para a tela real de certificados.
 
 ### Alunos
+
 - [ ] Lista de alunos carrega com filtros.
-- [ ] Abrir detalhe → editar dados → salvar.
-- [ ] Convidar novo aluno → persiste como pendente.
-- [ ] Alterar status de matrícula.
-- [ ] Cancelar matrícula.
+- [ ] Abrir detalhe permite editar dados e salvar.
+- [ ] Convidar novo aluno persiste como pendente.
+- [ ] Alterar status de matricula funciona.
+- [ ] Cancelar matricula funciona.
 
 ### Instrutores
-- [ ] Lista de instrutores carrega.
-- [ ] Convidar novo instrutor → persiste como pendente.
 
-### Frequência
-- [ ] Consolidado carrega com filtros por curso, turma e situação.
-- [ ] Badges seguem o padrão: regular (verde), atenção (âmbar), risco
-  (laranja), reprovado (vermelho).
+- [ ] Lista de instrutores carrega.
+- [ ] Convidar novo instrutor persiste como pendente.
+- [ ] Reenviar ativacao funciona quando o instrutor esta pendente.
+- [ ] Ativar/desativar instrutor reflete na listagem.
 
 ### Certificados
+
 - [ ] Lista carrega com filtros.
-- [ ] Diego Martins aparece como "Emitido" ou "Cancelado" (depende do estado
-  atual).
-- [ ] Se houver aluno elegível, botão "Emitir" funciona.
-- [ ] Visualizar e Baixar PDF funcionam para certificado emitido.
-- [ ] Cancelar funciona.
+- [ ] Diego Martins aparece como "Emitido" ou "Cancelado", conforme o estado
+  atual do banco.
+- [ ] Se houver aluno elegivel, botao "Emitir" funciona.
+- [ ] Visualizar e baixar PDF funcionam para certificado emitido.
+- [ ] Cancelar certificado funciona.
 
-### Relatórios
-- [ ] Seis tipos de relatório carregam.
-- [ ] Filtros (curso, turma, data) funcionam.
-- [ ] Gráfico e tabela atualizam.
-- [ ] Gerar PDF → arquivo abre corretamente.
-- [ ] Exportar CSV → arquivo abre no Excel com acentos corretos.
+### Relatorios
 
-## 3. Login como instrutor
+- [ ] Tipos de relatorio carregam.
+- [ ] Filtros por curso, turma e data funcionam.
+- [ ] Grafico e tabela atualizam.
+- [ ] Gerar PDF abre corretamente.
+- [ ] Exportar CSV abre no Excel com acentos corretos.
 
-**Usuário:** `eduardo.lima@example.com` / `Instrutor@123`
+### Usuarios
+
+- [ ] Lista de usuarios carrega.
+- [ ] Filtros por perfil/status funcionam.
+- [ ] Convidar coordenador cria usuario pendente.
+- [ ] Reenviar ativacao funciona para usuarios pendentes.
+- [ ] Ativar/desativar usuario atualiza a tela sem erro.
+
+### Configuracoes
+
+- [ ] Dados da instituicao carregam.
+- [ ] Periodo letivo pode ser atualizado.
+- [ ] Regra de certificado pode ser atualizada.
+- [ ] Preferencias padrao persistem apos reload.
+
+## 4. Login como instrutor
+
+**Usuario:** `eduardo.lima@example.com` / `Instrutor@123`
 
 - [ ] Dashboard carrega com indicadores da turma.
-- [ ] Cronograma: criar aula → persiste.
-- [ ] Cronograma: remover aula recém-criada.
-- [ ] Presença: registrar presença/falta para uma aula.
-- [ ] Materiais: adicionar material com título, tipo e URL.
-- [ ] Materiais: remover material recém-criado.
-- [ ] Avatar: atualizar foto de perfil.
+- [ ] Menu mobile/tablet abre pelo icone de hamburguer e fecha corretamente.
+- [ ] Cronograma: criar aula persiste.
+- [ ] Cronograma: editar aula abre modal/formulario, sem `window.prompt`.
+- [ ] Cronograma: cancelar aula envia notificacao aos alunos ativos.
+- [ ] Cronograma: remover aula recem-criada.
+- [ ] Presenca: registrar presenca/falta para uma aula.
+- [ ] Materiais: adicionar material com titulo, tipo e URL/arquivo.
+- [ ] Materiais: remover material recem-criado.
+- [ ] Perfil: atualizar foto de perfil por upload.
+- [ ] Configuracoes nao aparece no menu principal do instrutor; rota direta
+  explica que as preferencias do MVP ficam no perfil.
 
-## 4. Login como aluno
+## 5. Login como aluno
 
 ### Aluno em andamento
-**Usuário:** `priscilla.cahino@example.com` / `Aluno@123`
 
-- [ ] Dashboard mostra progresso, frequência e status "em andamento".
-- [ ] Materiais visíveis da turma aparecem.
+**Usuario:** `priscilla.cahino@example.com` / `Aluno@123`
+
+- [ ] Dashboard mostra progresso, frequencia e status "em andamento".
+- [ ] Materiais visiveis da turma aparecem uma unica vez.
 - [ ] Download de material funciona.
 
 ### Aluno aprovado com certificado
-**Usuário:** `diego.martins@example.com` / `Aluno@123`
+
+**Usuario:** `diego.martins@example.com` / `Aluno@123`
 
 - [ ] Dashboard mostra status "aprovado" e progresso 100%.
-- [ ] Se certificado estiver emitido, botão "Acessar certificado" aparece.
-- [ ] Clicar → PDF baixa (não navega para URL pública).
-- [ ] Se certificado estiver cancelado, botão não aparece.
+- [ ] Se certificado estiver emitido, botao "Acessar certificado" aparece.
+- [ ] Clicar baixa o PDF via endpoint autenticado.
+- [ ] Se certificado estiver cancelado, botao nao aparece.
 
 ### Aluno reprovado por falta
-**Usuário:** `jose.santos@example.com` / `Aluno@123`
+
+**Usuario:** `jose.santos@example.com` / `Aluno@123`
 
 - [ ] Dashboard mostra status "reprovado por falta".
-- [ ] Alerta de reprovação visível.
-- [ ] Sem botão de certificado.
+- [ ] Alerta de reprovacao visivel.
+- [ ] Sem botao de certificado.
 
-## 5. Critérios de aceite
+## 6. Criterios de aceite
 
 - [ ] Nenhum dado mockado no dashboard do coordenador.
-- [ ] Período letivo dinâmico, não hardcoded.
-- [ ] Certificado baixado via endpoint autenticado, não URL pública.
-- [ ] PDF de certificado não acessível sem autenticação.
+- [ ] Periodo letivo dinamico, nao hardcoded.
+- [ ] Cadastro, ativacao, recuperar senha e redefinir senha com e-mail real em
+  ambiente configurado.
+- [ ] Certificado baixado via endpoint autenticado, nao URL publica.
+- [ ] PDF de certificado nao acessivel sem autenticacao.
 - [ ] CPF nunca exposto em respostas JSON.
-- [ ] Badge "Dev" visível na sidebar para áreas em desenvolvimento.
-- [ ] Páginas em desenvolvimento sem dados mockados.
-- [ ] Badges de situação com cores distintas (regular/atenção/risco/reprovado).
+- [ ] Badges de situacao com cores distintas: regular, atencao, risco e
+  reprovado.
+- [ ] Telas principais responsivas em desktop, tablet e celular.
 
-## 6. Pontos a explicar durante a apresentação
+## 7. Pontos a explicar durante a apresentacao
 
-1. **Áreas com badge "Dev":** Cronograma, Processos, Usuários e Configurações
-   estão planejadas para V2. As páginas existem com mensagem honesta, sem
-   dados falsos.
-2. **Certificado manual:** O coordenador emite manualmente. A automação
-   depende da confirmação da regra de elegibilidade pelo PO.
-3. **Regra de elegibilidade:** Atualmente faltas < 3. O Documento de Visão
-   mencionava frequência >= 80%. Aguardando decisão do PO (ver
-   `docs/decisoes-produto.md` DEC-004).
-4. **Período letivo:** Calculado automaticamente (corte em 15/07) e editável
-   pelo coordenador.
-5. **Storage privado:** Certificados em `storage/certificados/`, não servidos
-   publicamente.
-6. **Pendências pós-MVP:** Ver `docs/pendencias-pos-mvp.md` para a lista
-   completa.
+1. **Usuarios e Configuracoes:** ja sao paginas reais no MVP, nao placeholders.
+2. **Cronograma/Processos do coordenador:** ficaram fora do menu do MVP. O
+   cronograma operacional fica no instrutor e no detalhe da turma.
+3. **Certificado manual:** o coordenador emite manualmente. A automacao depende
+   da confirmacao final da regra de elegibilidade pelo PO.
+4. **Regra de elegibilidade:** atualmente usa a regra implementada no sistema.
+   Caso o PO confirme outra regra, ajustar conforme `docs/decisoes-produto.md`.
+5. **Periodo letivo:** calculado automaticamente e editavel pelo coordenador.
+6. **Storage privado:** certificados ficam em `storage/certificados/`, nao
+   servidos publicamente.
+7. **Pendencias pos-MVP:** testes E2E mais amplos, storage externo e operacao
+   de SMTP em producao continuam documentados em `docs/pendencias-pos-mvp.md`.

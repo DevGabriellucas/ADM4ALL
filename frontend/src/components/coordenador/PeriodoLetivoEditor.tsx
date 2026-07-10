@@ -105,7 +105,7 @@ export const PeriodoLetivoEditor = ({
               type="button"
               onClick={salvar}
               disabled={loading}
-              className="cursor-pointer rounded-md bg-brand-dark px-2.5 py-1 text-xs text-white transition-colors hover:bg-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-md bg-brand-dark px-2.5 py-1 text-white text-xs transition-colors hover:bg-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar"}
             </button>
@@ -113,7 +113,7 @@ export const PeriodoLetivoEditor = ({
               type="button"
               onClick={cancelar}
               disabled={loading}
-              className="cursor-pointer rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-md border border-slate-300 px-2.5 py-1 text-slate-600 text-xs transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancelar
             </button>

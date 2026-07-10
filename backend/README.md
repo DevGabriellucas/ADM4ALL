@@ -30,7 +30,11 @@ Variaveis usadas pelo backend:
 | `DATABASE_URL` | String de conexao do PostgreSQL |
 | `FRONTEND_URL` | Origem liberada no CORS e base do link de recuperacao de senha |
 | `JWT_SECRET` | Segredo usado para assinar tokens de login |
-| `ADMIN_API_KEY` | Chave simples para proteger rotas administrativas legadas |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | Credenciais Gmail para envio em desenvolvimento |
+| `EMAIL_HOST` / `EMAIL_PORT` | SMTP customizado para homologacao/producao |
+| `EMAIL_FROM_NAME` / `EMAIL_FROM` | Nome e remetente dos e-mails enviados |
+| `UPLOADS_DIR` | Diretorio persistente para uploads de materiais e avatares |
+| `STORAGE_DIR` | Diretorio persistente para certificados gerados |
 
 ## Autorizacao
 
@@ -41,14 +45,6 @@ Nas rotas protegidas por perfil, envie:
 Authorization: Bearer token_recebido_no_login
 ```
 
-As rotas administrativas antigas de alunos ainda aceitam provisoriamente:
-
-```http
-x-api-key: valor_do_ADMIN_API_KEY
-```
-
-> A transicao de `x-api-key` para JWT por perfil esta pendente para pos-MVP.
-
 ## Contrato da API
 
 | Metodo | Endpoint | Protecao | Descricao |
@@ -57,10 +53,10 @@ x-api-key: valor_do_ADMIN_API_KEY
 | POST | `/auth/recuperar-senha` | Publica | Solicita recuperacao de senha |
 | POST | `/auth/redefinir-senha` | Publica | Redefine a senha a partir do token recebido por e-mail |
 | POST | `/alunos` | Publica | Cadastra novo aluno |
-| GET | `/alunos` | `x-api-key` | Lista alunos |
-| GET | `/alunos/:id` | `x-api-key` | Busca aluno por ID |
-| PUT | `/alunos/:id` | `x-api-key` | Atualiza cadastro de aluno |
-| DELETE | `/alunos/:id` | `x-api-key` | Remove aluno |
+| GET | `/alunos` | `Bearer` coordenador/admin | Lista alunos |
+| GET | `/alunos/:id` | `Bearer` coordenador/admin | Busca aluno por ID |
+| PUT | `/alunos/:id` | `Bearer` coordenador/admin | Atualiza cadastro de aluno |
+| DELETE | `/alunos/:id` | `Bearer` coordenador/admin | Remove aluno |
 | GET | `/alunos/me/dashboard` | `Bearer` aluno | Dashboard do aluno |
 | GET | `/alunos/me/materiais` | `Bearer` aluno | Lista materiais visiveis do aluno |
 | GET | `/alunos/me/materiais/:materialId/download` | `Bearer` aluno | Download autenticado de material |

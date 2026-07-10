@@ -1,4 +1,5 @@
 import type { CadastroFormData } from "@/schemas/cadastroSchema";
+import { getPublicApiUrl } from "@/services/apiUrl";
 
 export interface TreinamentoPublico {
   id: string;
@@ -20,16 +21,6 @@ interface ApiErrorResponse {
   mensagem?: string;
 }
 
-const getApiUrl = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("URL da API nao configurada.");
-  }
-
-  return apiUrl.replace(/\/$/, "");
-};
-
 const readApiError = async (response: Response, fallback: string) => {
   try {
     const error = (await response.json()) as ApiErrorResponse;
@@ -42,9 +33,17 @@ const readApiError = async (response: Response, fallback: string) => {
 export const listarTreinamentosPublicos = async (): Promise<
   TreinamentoPublico[]
 > => {
-  const response = await fetch(`${getApiUrl()}/treinamentos/publicos`, {
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getPublicApiUrl()}/treinamentos/publicos`, {
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(
+      "Nao foi possivel conectar a API para carregar os treinamentos. Verifique se o backend esta rodando.",
+    );
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -61,22 +60,30 @@ export const listarTreinamentosPublicos = async (): Promise<
 export const cadastrarAluno = async (
   data: CadastroFormData,
 ): Promise<CadastroAlunoResponse> => {
-  const response = await fetch(`${getApiUrl()}/alunos`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      nome: data.nome,
-      cpf: data.cpf,
-      telefone: data.telefone,
-      email: data.email,
-      dataNascimento: data.dataNascimento,
-      isAlunoUnipe: data.isAlunoUnipe,
-      cursoUnipe: data.isAlunoUnipe ? data.cursoUnipe : undefined,
-      senha: data.senha,
-      treinamento: data.treinamento,
-      rgm: data.isAlunoUnipe ? data.rgm : undefined,
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getPublicApiUrl()}/alunos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: data.nome,
+        cpf: data.cpf,
+        telefone: data.telefone,
+        email: data.email,
+        dataNascimento: data.dataNascimento,
+        isAlunoUnipe: data.isAlunoUnipe,
+        cursoUnipe: data.isAlunoUnipe ? data.cursoUnipe : undefined,
+        senha: data.senha,
+        treinamento: data.treinamento,
+        rgm: data.isAlunoUnipe ? data.rgm : undefined,
+      }),
+    });
+  } catch {
+    throw new Error(
+      "Nao foi possivel conectar a API para realizar o cadastro. Verifique se o backend esta rodando.",
+    );
+  }
 
   if (!response.ok) {
     throw new Error(

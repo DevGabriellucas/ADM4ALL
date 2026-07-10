@@ -39,7 +39,24 @@ const emailService = new EmailService(
   emailHost,
   emailPort,
   process.env.EMAIL_TLS_REJECT_UNAUTHORIZED !== "false",
+  process.env.EMAIL_FROM_NAME?.trim() || "ADM Para Todos",
+  process.env.EMAIL_FROM?.trim() || undefined,
 );
+
+if (emailService.isConfigurado()) {
+  emailService
+    .verificar()
+    .then(() => {
+      console.log("Servico de e-mail configurado e autenticado.");
+    })
+    .catch((error) => {
+      console.error("Falha ao validar SMTP de e-mail:", error);
+    });
+} else {
+  console.warn(
+    "Servico de e-mail nao configurado. Cadastros e recuperacao de senha nao enviarao mensagens.",
+  );
+}
 
 const authUseCase = new AuthUseCase(authRepository, jwtService);
 const activationUseCase = new ActivationUseCase(activationRepository);

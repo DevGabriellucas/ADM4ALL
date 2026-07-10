@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorSidebar } from "@/components/coordenador/CoordinatorSidebar";
 import { coordinatorNavItems } from "@/components/coordenador/coordinatorNavItems";
-import { clearSession } from "@/services/sessionService";
 
 interface CoordinatorShellWrapperProps {
   children: React.ReactNode;
@@ -71,8 +70,7 @@ export const CoordinatorShellWrapper = ({
   }, [isMenuOpen]);
 
   const confirmarSaida = () => {
-    clearSession();
-    router.replace("/");
+    router.replace("/logout");
   };
 
   const iniciaisUsuario = getIniciais(nomeUsuario);
@@ -91,9 +89,7 @@ export const CoordinatorShellWrapper = ({
             <span className="flex size-9 items-center justify-center rounded-full bg-brand-dark font-semibold text-sm text-white">
               {avatarText}
             </span>
-            <span className="font-semibold text-sm">
-              {cargo}
-            </span>
+            <span className="font-semibold text-sm">{cargo}</span>
           </div>
 
           <button
@@ -137,15 +133,15 @@ export const CoordinatorShellWrapper = ({
           aria-modal="true"
           aria-label="Menu de navegação"
         >
-          <div className="flex items-center justify-between border-b border-white/20 px-5 py-4">
+          <div className="flex items-center justify-between border-white/20 border-b px-5 py-4">
             <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-full bg-brand-dark font-semibold text-sm text-white">
                 {avatarText}
               </span>
               <div>
-                <p className="font-semibold text-sm text-slate-950">{cargo}</p>
+                <p className="font-semibold text-slate-950 text-sm">{cargo}</p>
                 {nomeUsuario && (
-                  <p className="truncate text-xs text-slate-950">
+                  <p className="truncate text-slate-950 text-xs">
                     {nomeUsuario}
                   </p>
                 )}
@@ -210,7 +206,7 @@ export const CoordinatorShellWrapper = ({
             })}
           </nav>
 
-          <div className="border-t border-white/20 px-3 py-3">
+          <div className="border-white/20 border-t px-3 py-3">
             <button
               type="button"
               onClick={() => setConfirmandoSaida(true)}

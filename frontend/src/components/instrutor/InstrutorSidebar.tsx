@@ -4,21 +4,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { clearSession } from "@/services/sessionService";
 import type { InstrutorResumo } from "@/types/instrutor";
 
 interface InstrutorSidebarProps {
   instrutor: InstrutorResumo;
 }
 
-const NAV_ITENS = [
+export const instrutorNavItems = [
   { label: "Dashboard", href: "/instrutor/dashboard" },
   { label: "Presenca", href: "/instrutor/presenca" },
   { label: "Frequencia", href: "/instrutor/frequencia" },
   { label: "Cronograma", href: "/instrutor/cronograma" },
   { label: "Materiais", href: "/instrutor/materiais" },
   { label: "Perfil", href: "/instrutor/perfil" },
-  { label: "Configuracoes", href: "/instrutor/configuracoes" },
 ];
 
 const getIniciais = (nome?: string | null) => {
@@ -32,26 +30,38 @@ const getIniciais = (nome?: string | null) => {
   return `${primeira}${ultima || primeira}`.toUpperCase();
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+const resolverAvatarUrl = (url: string | null) => {
+  if (!url) return null;
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+};
+
 export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const avatarUrl = resolverAvatarUrl(instrutor.avatarUrl);
 
   const confirmarSaida = () => {
-    clearSession();
-    router.replace("/");
+    router.replace("/logout");
   };
 
   return (
-    <aside className="flex w-full flex-col gap-y-5 bg-brand-medium px-4 py-5 text-slate-950 sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-64 lg:shrink-0 lg:gap-y-8 lg:overflow-y-auto lg:px-6 lg:py-8">
-      <div className="flex items-center gap-x-4 lg:flex-col lg:gap-y-3 lg:text-center">
-        <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-[#E7ECF8] bg-brand-dark font-semibold text-lg text-white shadow-md lg:size-18">
-          {getIniciais(instrutor.nome)}
+    <aside className="hidden bg-brand-medium px-4 py-5 text-slate-950 xl:sticky xl:top-0 xl:flex xl:h-screen xl:w-64 xl:shrink-0 xl:flex-col xl:gap-y-8 xl:overflow-y-auto xl:px-6 xl:py-8">
+      <div className="flex items-center gap-x-4 xl:flex-col xl:gap-y-3 xl:text-center">
+        <span
+          className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#E7ECF8] bg-brand-dark bg-center bg-cover font-semibold text-lg text-white shadow-md xl:size-18"
+          style={
+            avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined
+          }
+        >
+          {!avatarUrl && getIniciais(instrutor.nome)}
         </span>
 
-        <div className="flex min-w-0 flex-col lg:items-center">
+        <div className="flex min-w-0 flex-col xl:items-center">
           <span className="font-semibold text-base">Instrutor</span>
-          <span className="truncate text-sm lg:whitespace-normal">
+          <span className="truncate text-sm xl:whitespace-normal">
             {instrutor.nome}
           </span>
         </div>
@@ -59,10 +69,11 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
 
       <nav
         aria-label="Menu do instrutor"
-        className="-mx-2 flex gap-1 overflow-x-auto px-2 pb-2 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+        className="-mx-2 flex gap-1 overflow-x-auto px-2 pb-2 xl:mx-0 xl:flex-col xl:overflow-visible xl:px-0 xl:pb-0"
       >
-        {NAV_ITENS.map((item) => {
-          const ativo = pathname === item.href;
+        {instrutorNavItems.map((item) => {
+          const ativo =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
@@ -81,7 +92,7 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
         <button
           type="button"
           onClick={() => setConfirmandoSaida(true)}
-          className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-red-700 text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 lg:mt-2"
+          className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-red-700 text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 xl:mt-2"
         >
           <svg
             viewBox="0 0 24 24"

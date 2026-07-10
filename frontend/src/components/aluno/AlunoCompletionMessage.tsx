@@ -44,10 +44,7 @@ export const AlunoCompletionMessage = ({
   };
 
   return (
-    <section
-      className="mx-auto max-w-3xl text-center font-medium text-xs leading-6 tracking-[0.25em]"
-      role="status"
-    >
+    <output className="mx-auto block max-w-3xl text-center font-medium text-xs leading-6 tracking-[0.25em]">
       <p>Parabens! Voce concluiu o curso {curso} com sucesso.</p>
 
       {certificadoDisponivel ? (
@@ -65,6 +62,6 @@ export const AlunoCompletionMessage = ({
       ) : (
         <p className="mt-3">Seu certificado ainda nao esta disponivel.</p>
       )}
-    </section>
+    </output>
   );
 };

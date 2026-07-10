@@ -14,7 +14,7 @@ export const BackButton = ({ className = "" }: BackButtonProps) => {
       type="button"
       onClick={() => router.back()}
       aria-label="Voltar para a pagina anterior"
-      className={`inline-flex w-fit items-center gap-x-1.5 rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 text-xs tracking-[0.2em] transition-colors hover:border-slate-400 hover:bg-slate-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-medium focus-visible:outline-offset-2 ${className}`}
+      className={`inline-flex w-fit cursor-pointer items-center gap-x-1.5 rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 text-xs tracking-[0.2em] transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-medium focus-visible:outline-offset-2 ${className}`}
     >
       <svg
         aria-hidden

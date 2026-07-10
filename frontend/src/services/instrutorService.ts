@@ -7,6 +7,7 @@ import type {
   AdicionarAulaInput,
   AdicionarMaterialInput,
   AlunoPresenca,
+  ArquivoUpload,
   AtualizarAulaInput,
   AulaResumo,
   InstrutorDashboard,
@@ -154,6 +155,20 @@ export const removerAula = async (
     method: "DELETE",
     fallbackError: "Falha ao remover a aula.",
   });
+};
+
+export const atualizarAvatarInstrutor = async (
+  instrutorId: string,
+  arquivo: ArquivoUpload,
+): Promise<{ avatarUrl: string }> => {
+  return await authenticatedRequest<{ avatarUrl: string }>(
+    `/instrutores/${instrutorId}/avatar`,
+    {
+      method: "POST",
+      body: JSON.stringify({ arquivo }),
+      fallbackError: "Falha ao atualizar a foto de perfil.",
+    },
+  );
 };
 
 export const getPresencasPorAula = async (

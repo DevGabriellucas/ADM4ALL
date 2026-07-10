@@ -175,29 +175,34 @@ export class PostgresAlunoRepository implements AlunoRepository {
     alunoId: string,
   ): Promise<MaterialVisivelAluno[]> {
     const query = `
-      SELECT
-        mat.id,
-        t.id AS turma_id,
-        t.nome AS turma,
-        tr.nome AS curso,
-        au.id AS aula_id,
-        au.titulo AS aula_titulo,
-        mat.titulo,
-        mat.descricao,
-        mat.tipo,
-        mat.url_arquivo,
-        mat.tamanho_bytes,
-        to_char(mat.data_publicacao, 'YYYY-MM-DD') AS data_publicacao
-      FROM matriculas m
-      JOIN turmas t ON t.id = m.turma_id
-      JOIN treinamentos tr ON tr.id = t.treinamento_id
-      JOIN materiais mat ON mat.turma_id = t.id
-      LEFT JOIN aulas au ON au.id = mat.aula_id
-      WHERE m.aluno_id = $1
-        AND m.status <> 'cancelado'
-        AND mat.status = 'ativo'
-        AND mat.visibilidade = 'visivel'
-      ORDER BY mat.data_publicacao DESC, mat.titulo ASC
+      WITH materiais_visiveis AS (
+        SELECT DISTINCT ON (mat.id)
+          mat.id,
+          t.id AS turma_id,
+          t.nome AS turma,
+          tr.nome AS curso,
+          au.id AS aula_id,
+          au.titulo AS aula_titulo,
+          mat.titulo,
+          mat.descricao,
+          mat.tipo,
+          mat.url_arquivo,
+          mat.tamanho_bytes,
+          to_char(mat.data_publicacao, 'YYYY-MM-DD') AS data_publicacao
+        FROM matriculas m
+        JOIN turmas t ON t.id = m.turma_id
+        JOIN treinamentos tr ON tr.id = t.treinamento_id
+        JOIN materiais mat ON mat.turma_id = t.id
+        LEFT JOIN aulas au ON au.id = mat.aula_id
+        WHERE m.aluno_id = $1
+          AND m.status <> 'cancelado'
+          AND mat.status = 'ativo'
+          AND mat.visibilidade = 'visivel'
+        ORDER BY mat.id, mat.data_publicacao DESC
+      )
+      SELECT *
+      FROM materiais_visiveis
+      ORDER BY data_publicacao DESC, titulo ASC
     `;
     const resultado = await this.db.query(query, [alunoId]);
 
@@ -549,26 +554,31 @@ export class PostgresAlunoRepository implements AlunoRepository {
     alunoId: string,
   ): Promise<MaterialAluno[]> {
     const query = `
-      SELECT
-        m.id,
-        m.titulo,
-        m.tipo,
-        m.url_arquivo,
-        m.data_publicacao,
-        t.id AS turma_id,
-        t.nome AS turma_nome
-      FROM materiais m
-      JOIN turmas t ON t.id = m.turma_id
-      WHERE m.status = 'ativo'
-        AND m.visivel_aluno = TRUE
-        AND m.turma_id IN (
-          SELECT mat.turma_id
-          FROM matriculas mat
-          WHERE mat.aluno_id = $1
-            AND mat.turma_id IS NOT NULL
-            AND mat.status <> 'cancelado'
-        )
-      ORDER BY m.data_publicacao DESC
+      WITH materiais_aluno AS (
+        SELECT DISTINCT ON (m.id)
+          m.id,
+          m.titulo,
+          m.tipo,
+          m.url_arquivo,
+          m.data_publicacao,
+          t.id AS turma_id,
+          t.nome AS turma_nome
+        FROM materiais m
+        JOIN turmas t ON t.id = m.turma_id
+        WHERE m.status = 'ativo'
+          AND m.visivel_aluno = TRUE
+          AND m.turma_id IN (
+            SELECT mat.turma_id
+            FROM matriculas mat
+            WHERE mat.aluno_id = $1
+              AND mat.turma_id IS NOT NULL
+              AND mat.status <> 'cancelado'
+          )
+        ORDER BY m.id, m.data_publicacao DESC
+      )
+      SELECT *
+      FROM materiais_aluno
+      ORDER BY data_publicacao DESC, titulo ASC
     `;
 
     const resultado = await this.db.query(query, [alunoId]);

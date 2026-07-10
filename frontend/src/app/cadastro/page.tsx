@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   type CadastroFormData,
@@ -88,39 +88,28 @@ export default function Cadastro() {
     [treinamentoSelecionado, treinamentos],
   );
 
-  useEffect(() => {
-    let ativo = true;
+  const carregarTreinamentos = useCallback(async () => {
+    setCarregandoTreinamentos(true);
+    setErroTreinamentos(null);
 
-    listarTreinamentosPublicos()
-      .then((lista) => {
-        if (!ativo) {
-          return;
-        }
-
-        setTreinamentos(lista);
-        setErroTreinamentos(null);
-      })
-      .catch((error: unknown) => {
-        if (!ativo) {
-          return;
-        }
-
-        setErroTreinamentos(
-          error instanceof Error
-            ? error.message
-            : "Nao foi possivel carregar os treinamentos.",
-        );
-      })
-      .finally(() => {
-        if (ativo) {
-          setCarregandoTreinamentos(false);
-        }
-      });
-
-    return () => {
-      ativo = false;
-    };
+    try {
+      const lista = await listarTreinamentosPublicos();
+      setTreinamentos(lista);
+    } catch (error: unknown) {
+      setTreinamentos([]);
+      setErroTreinamentos(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel carregar os treinamentos.",
+      );
+    } finally {
+      setCarregandoTreinamentos(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void carregarTreinamentos();
+  }, [carregarTreinamentos]);
 
   useEffect(() => {
     if (!isAlunoUnipe) {
@@ -202,12 +191,12 @@ export default function Cadastro() {
     ) : null;
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-start gap-y-8 overflow-y-auto bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 py-6 font-poppins text-slate-950 sm:justify-center xl:flex-row xl:gap-x-20 xl:gap-y-0">
-      <section className="flex flex-col items-center justify-center gap-y-8 text-center xl:gap-y-8 xl:text-left">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-5 overflow-y-auto overflow-x-hidden bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 py-6 font-poppins text-slate-950 sm:gap-y-7 xl:flex-row xl:gap-x-20 xl:gap-y-0">
+      <section className="flex w-full max-w-[300px] flex-col items-center justify-center gap-y-4 text-center sm:max-w-md xl:max-w-xl xl:items-start xl:gap-y-8 xl:text-left">
         <h1 className="font-medium text-3xl tracking-[0.1em] xl:text-4xl">
           Cadastro
         </h1>
-        <div className="relative h-[10rem] w-full max-w-[37.5rem] sm:h-[20.5rem] sm:w-[37.5rem]">
+        <div className="relative h-32 w-full max-w-[280px] sm:h-48 sm:max-w-sm xl:h-[20.5rem] xl:max-w-[37.5rem]">
           <Image
             src="/login-page-illustration.png"
             alt="Ilustracao conceitual de planejamento estrategico e analise de dados"
@@ -219,7 +208,7 @@ export default function Cadastro() {
         </div>
       </section>
 
-      <section className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-y-auto rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:px-6 sm:py-7 xl:min-h-152 xl:min-w-139">
+      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-xl sm:px-6 sm:py-7 xl:max-h-[calc(100vh-2rem)] xl:min-h-152 xl:overflow-y-auto">
         <form
           onSubmit={handleSubmit(cadastroSubmit)}
           className="flex flex-1 flex-col"
@@ -338,7 +327,7 @@ export default function Cadastro() {
               Treinamento
               <select
                 className={selectClass}
-                disabled={carregandoTreinamentos || !!erroTreinamentos}
+                disabled={carregandoTreinamentos}
                 {...register("treinamento")}
               >
                 <option value="">
@@ -361,9 +350,19 @@ export default function Cadastro() {
                 </span>
               )}
               {erroTreinamentos && (
-                <span className="text-red-700 text-xs" role="alert">
-                  {erroTreinamentos}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-red-700 text-xs" role="alert">
+                    {erroTreinamentos}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={carregarTreinamentos}
+                    disabled={carregandoTreinamentos}
+                    className="font-semibold text-brand-dark text-xs underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
               )}
               {errorText(errors.treinamento?.message)}
             </label>
@@ -435,17 +434,17 @@ export default function Cadastro() {
             </div>
           )}
 
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-6">
+          <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Link
               href="/"
-              className="font-medium text-slate-800 text-sm underline-offset-2 hover:underline"
+              className="text-center font-medium text-slate-800 text-sm underline-offset-2 hover:underline sm:text-left"
             >
               Ja tenho acesso
             </Link>
             <button
               type="submit"
               disabled={isSubmitting || carregandoTreinamentos}
-              className="rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-8 py-3 font-semibold text-sm text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-8 py-3 font-semibold text-slate-950 text-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isSubmitting ? "Enviando..." : "Cadastrar"}
             </button>

@@ -215,12 +215,13 @@ export const ManageClassStudentsModal = ({
                         <button
                           type="button"
                           disabled={isRemoving === student.matriculaId}
-                          onClick={() =>
+                          onClick={() => {
+                            if (!student.matriculaId) return;
                             setConfirmRemoveStudent({
-                              matriculaId: student.matriculaId!,
+                              matriculaId: student.matriculaId,
                               nome: student.nome,
-                            })
-                          }
+                            });
+                          }}
                           className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {isRemoving === student.matriculaId

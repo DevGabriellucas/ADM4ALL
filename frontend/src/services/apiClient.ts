@@ -1,3 +1,4 @@
+import { getApiUrl } from "@/services/apiUrl";
 import { getServerSession } from "@/services/serverSessionService";
 
 interface AuthenticatedRequestInit extends RequestInit {
@@ -24,16 +25,6 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-
-const getApiUrl = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("URL da API nao configurada.");
-  }
-
-  return apiUrl.replace(/\/$/, "");
-};
 
 const readErrorMessage = async (response: Response, fallback: string) => {
   try {
@@ -66,10 +57,19 @@ export const authenticatedRequest = async <T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${getApiUrl()}${path}`, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiUrl()}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch {
+    throw new ApiError(
+      "Nao foi possivel conectar a API. Verifique se o backend esta rodando e se as URLs do .env estao corretas.",
+      503,
+    );
+  }
 
   if (response.status === 401) {
     throw new ApiError(
@@ -116,10 +116,19 @@ export const authenticatedFileRequest = async (
     throw new ApiError("Sessao nao encontrada.", 401);
   }
 
-  const response = await fetch(`${getApiUrl()}${path}`, {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${session.token}` },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiUrl()}${path}`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+  } catch {
+    throw new ApiError(
+      "Nao foi possivel conectar a API para baixar o arquivo.",
+      503,
+    );
+  }
 
   if (!response.ok) {
     throw new ApiError(

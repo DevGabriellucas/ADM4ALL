@@ -81,6 +81,8 @@ describe("InstrutorUseCase", () => {
         numero: 1,
         titulo: "Aula de contratos",
         data: "2026-07-08",
+        horaInicio: null,
+        horaFim: null,
         status: "planejada",
         turma: "ADM 2026.1",
         curso: "Assistente Administrativo",
@@ -90,6 +92,8 @@ describe("InstrutorUseCase", () => {
         numero: 1,
         titulo: "Aula de contratos",
         data: "2026-07-08",
+        horaInicio: null,
+        horaFim: null,
         status: "cancelada",
       });
       mockInstrutorRepository.listarAlunosParaNotificacaoAula.mockResolvedValue([
@@ -129,6 +133,8 @@ describe("InstrutorUseCase", () => {
         numero: 1,
         titulo: "Aula de contratos",
         data: "2026-07-08",
+        horaInicio: null,
+        horaFim: null,
         status: "cancelada",
         turma: "ADM 2026.1",
         curso: "Assistente Administrativo",
@@ -138,6 +144,8 @@ describe("InstrutorUseCase", () => {
         numero: 1,
         titulo: "Aula de contratos",
         data: "2026-07-08",
+        horaInicio: null,
+        horaFim: null,
         status: "cancelada",
       });
 

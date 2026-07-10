@@ -12,7 +12,7 @@ export default function InstrutorDashboardError({
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#EDF1FB] px-4">
       <div className="w-full max-w-lg rounded-lg border border-red-200 bg-white p-6 shadow-sm">
-        <h2 className="font-semibold text-slate-950 text-lg">
+        <h2 className="font-semibold text-lg text-slate-950">
           Nao foi possivel carregar a area do instrutor
         </h2>
         <p className="mt-2 text-red-700 text-sm">{error.message}</p>

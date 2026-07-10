@@ -3,15 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { clearSession } from "@/services/sessionService";
 
 export const AlunoLogoutButton = () => {
   const router = useRouter();
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const confirmarSaida = () => {
-    clearSession();
-    router.replace("/");
+    router.replace("/logout");
   };
 
   return (

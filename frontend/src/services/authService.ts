@@ -1,3 +1,4 @@
+import { getApiUrl } from "@/services/apiUrl";
 import type {
   ActivateAccountPayload,
   ActivateAccountResponse,
@@ -20,7 +21,6 @@ interface ResetPasswordPayload {
 
 export interface LoginResponse {
   mensagem: string;
-  token: string;
   usuario: {
     id: string;
     nome: string;
@@ -44,16 +44,6 @@ interface ApiErrorResponse {
   erro?: string;
   mensagem?: string;
 }
-
-const getApiUrl = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("URL da API nao configurada.");
-  }
-
-  return apiUrl;
-};
 
 const readApiError = async (response: Response, fallback: string) => {
   try {
@@ -104,7 +94,7 @@ export const activateAccount = async (
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  const response = await fetch(`${getApiUrl()}/auth/login`, {
+  const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

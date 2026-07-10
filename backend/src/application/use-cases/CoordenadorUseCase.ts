@@ -48,6 +48,7 @@ import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import { getRequiredEnv } from "../../infrastructure/config/env";
+import { getCertificadosStorageDir } from "../../infrastructure/config/storage";
 import { EmailService } from "../../infrastructure/email/EmailService";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
@@ -1091,11 +1092,7 @@ export class CoordenadorUseCase {
 
       try {
         const pdf = await gerarCertificadoPdf(certificado);
-        const certificadosDir = path.resolve(
-          process.cwd(),
-          "storage",
-          "certificados",
-        );
+        const certificadosDir = getCertificadosStorageDir();
         await fs.mkdir(certificadosDir, { recursive: true });
         const arquivoNome = `cert-${certificado.codigo}.pdf`;
         const arquivoCaminho = path.join(certificadosDir, arquivoNome);
@@ -1577,7 +1574,7 @@ export class CoordenadorUseCase {
     newCodigo: string | null,
   ): Promise<void> {
     try {
-      const storageBase = path.resolve(process.cwd(), "storage", "certificados");
+      const storageBase = getCertificadosStorageDir();
       const filename = path.basename(oldUrlArquivo);
       const oldFilePath = path.join(storageBase, filename);
 

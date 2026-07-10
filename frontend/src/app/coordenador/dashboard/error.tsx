@@ -18,7 +18,7 @@ export default function CoordinatorDashboardError({
 
   return (
     <section className="flex flex-col items-center justify-center rounded-lg border border-[#D5DDEC] bg-white px-6 py-16 text-center shadow-sm">
-      <h1 className="font-semibold text-xl text-slate-950">
+      <h1 className="font-semibold text-slate-950 text-xl">
         Não foi possível carregar o dashboard
       </h1>
       <p className="mt-3 max-w-md text-slate-600 text-sm leading-relaxed">

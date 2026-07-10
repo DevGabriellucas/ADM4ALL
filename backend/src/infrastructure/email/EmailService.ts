@@ -3,16 +3,20 @@ import nodemailer, { type Transporter } from "nodemailer";
 export class EmailService {
   private transporter: Transporter;
   private configurado: boolean;
+  private remetente: string;
 
   constructor(
-    private usuario: string,
+    usuario: string,
     senhaApp: string,
     host?: string,
     port?: number,
     rejectUnauthorized = true,
+    fromName = "ADM Para Todos",
+    fromAddress?: string,
   ) {
     const smtpPort = port ?? 587;
     this.configurado = Boolean(usuario && senhaApp);
+    this.remetente = `${fromName} <${fromAddress?.trim() || usuario}>`;
 
     this.transporter = nodemailer.createTransport({
       host: host ?? "smtp.gmail.com",
@@ -24,6 +28,20 @@ export class EmailService {
       greetingTimeout: 15000,
       socketTimeout: 15000,
     });
+  }
+
+  isConfigurado(): boolean {
+    return this.configurado;
+  }
+
+  async verificar(): Promise<void> {
+    if (!this.configurado) {
+      throw new Error(
+        "Servico de e-mail nao configurado. Defina GMAIL_USER e GMAIL_APP_PASSWORD no .env.",
+      );
+    }
+
+    await this.transporter.verify();
   }
 
   async enviar(
@@ -38,7 +56,7 @@ export class EmailService {
     }
 
     await this.transporter.sendMail({
-      from: `ADM Para Todos <${this.usuario}>`,
+      from: this.remetente,
       to: destinatario,
       subject: assunto,
       html,

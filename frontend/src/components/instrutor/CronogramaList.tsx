@@ -47,6 +47,11 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
   const [atualizandoId, setAtualizandoId] = useState<string | null>(null);
   const [isAtualizando, startAtualizacao] = useTransition();
   const [confirmacao, setConfirmacao] = useState<Confirmacao>(null);
+  const [aulaEmEdicao, setAulaEmEdicao] = useState<AulaResumo | null>(null);
+  const [edicaoTitulo, setEdicaoTitulo] = useState("");
+  const [edicaoData, setEdicaoData] = useState("");
+  const [edicaoHoraInicio, setEdicaoHoraInicio] = useState("");
+  const [edicaoHoraFim, setEdicaoHoraFim] = useState("");
 
   const enviar = () => {
     if (!turmaId) return;
@@ -104,7 +109,11 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
     });
   };
 
-  const atualizar = (aula: AulaResumo, input: DadosAtualizacaoAula) => {
+  const atualizar = (
+    aula: AulaResumo,
+    input: DadosAtualizacaoAula,
+    aoConcluir?: () => void,
+  ) => {
     if (!turmaId) return;
 
     setAtualizandoId(aula.id);
@@ -122,22 +131,44 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
       );
       setAtualizandoId(null);
       if (resultado.ok) {
+        aoConcluir?.();
         router.refresh();
       }
     });
   };
 
-  const editar = (aula: AulaResumo) => {
-    const novoTitulo = window.prompt("Titulo da aula", aula.titulo);
-    if (novoTitulo === null) return;
+  const abrirEdicao = (aula: AulaResumo) => {
+    setFeedback(null);
+    setAulaEmEdicao(aula);
+    setEdicaoTitulo(aula.titulo);
+    setEdicaoData(aula.data);
+    setEdicaoHoraInicio(aula.horaInicio ?? "");
+    setEdicaoHoraFim(aula.horaFim ?? "");
+  };
 
-    const novaData = window.prompt("Data da aula (AAAA-MM-DD)", aula.data);
-    if (novaData === null) return;
+  const salvarEdicao = () => {
+    if (!aulaEmEdicao) return;
 
-    atualizar(aula, {
-      titulo: novoTitulo.trim(),
-      data: novaData.trim(),
-    });
+    if (edicaoTitulo.trim() === "") {
+      setFeedback({ tipo: "erro", texto: "Informe o titulo da aula." });
+      return;
+    }
+
+    if (edicaoData.trim() === "") {
+      setFeedback({ tipo: "erro", texto: "Informe a data da aula." });
+      return;
+    }
+
+    atualizar(
+      aulaEmEdicao,
+      {
+        titulo: edicaoTitulo.trim(),
+        data: edicaoData.trim(),
+        horaInicio: edicaoHoraInicio || null,
+        horaFim: edicaoHoraFim || null,
+      },
+      () => setAulaEmEdicao(null),
+    );
   };
 
   return (
@@ -258,6 +289,13 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                   </span>
                   <span className="text-[0.7rem] text-slate-500">
                     {formatData(aula.data)}
+                    {aula.horaInicio && (
+                      <>
+                        {" "}
+                        - {aula.horaInicio}
+                        {aula.horaFim ? ` as ${aula.horaFim}` : ""}
+                      </>
+                    )}
                   </span>
                 </div>
 
@@ -275,7 +313,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => editar(aula)}
+                      onClick={() => abrirEdicao(aula)}
                       disabled={atualizandoEsta}
                       className="cursor-pointer rounded-md border border-slate-200 px-2.5 py-1 font-medium text-slate-700 text-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -328,6 +366,121 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
             );
           })}
         </ol>
+      )}
+
+      {aulaEmEdicao && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="editar-aula-heading"
+        >
+          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3
+                  id="editar-aula-heading"
+                  className="font-semibold text-base text-slate-950"
+                >
+                  Editar aula
+                </h3>
+                <p className="mt-1 text-slate-500 text-sm">
+                  Atualize os dados do cronograma da turma.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAulaEmEdicao(null)}
+                disabled={isAtualizando}
+                aria-label="Fechar modal"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                >
+                  <title>Fechar</title>
+                  <path d="M18 6L6 18" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3">
+              <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+                Titulo da aula
+                <input
+                  type="text"
+                  value={edicaoTitulo}
+                  onChange={(evento) => setEdicaoTitulo(evento.target.value)}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+                />
+              </label>
+
+              <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+                Data
+                <input
+                  type="date"
+                  value={edicaoData}
+                  onChange={(evento) => setEdicaoData(evento.target.value)}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+                />
+              </label>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+                  Inicio (opcional)
+                  <input
+                    type="time"
+                    value={edicaoHoraInicio}
+                    onChange={(evento) =>
+                      setEdicaoHoraInicio(evento.target.value)
+                    }
+                    className="min-w-0 rounded-md border border-slate-300 px-2 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
+                  Fim (opcional)
+                  <input
+                    type="time"
+                    value={edicaoHoraFim}
+                    onChange={(evento) => setEdicaoHoraFim(evento.target.value)}
+                    className="min-w-0 rounded-md border border-slate-300 px-2 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setAulaEmEdicao(null)}
+                disabled={isAtualizando}
+                className="cursor-pointer rounded-md border border-slate-200 px-4 py-2 font-medium text-slate-700 text-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={salvarEdicao}
+                disabled={isAtualizando}
+                className="cursor-pointer rounded-md bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isAtualizando && atualizandoId === aulaEmEdicao.id
+                  ? "Salvando..."
+                  : "Salvar alteracoes"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmacao && (

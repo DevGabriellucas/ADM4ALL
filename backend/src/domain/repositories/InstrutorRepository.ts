@@ -37,6 +37,8 @@ export interface AulaResumo {
   numero: number;
   titulo: string;
   data: string; // YYYY-MM-DD
+  horaInicio: string | null;
+  horaFim: string | null;
   status: string;
 }
 

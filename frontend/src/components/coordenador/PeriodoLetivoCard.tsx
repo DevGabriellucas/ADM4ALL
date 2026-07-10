@@ -1,23 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { atualizarPeriodoLetivoConfigAction } from "@/app/coordenador/actions";
+import {
+  getSettingsFieldClass,
+  SettingsSectionCard,
+  settingsErrorClass,
+  settingsLabelClass,
+  settingsSubmitButtonClass,
+} from "@/components/coordenador/SettingsSectionCard";
 import {
   type PeriodoLetivoFormData,
   periodoLetivoSchema,
 } from "@/schemas/configuracionsSchema";
 
 interface PeriodoLetivoCardProps {
+  className?: string;
   initialData: string;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
 }
 
-const INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
-
 export const PeriodoLetivoCard = ({
+  className,
   initialData,
   onSuccess,
 }: PeriodoLetivoCardProps) => {
@@ -28,11 +34,16 @@ export const PeriodoLetivoCard = ({
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<PeriodoLetivoFormData>({
     resolver: zodResolver(periodoLetivoSchema),
     defaultValues: { valor: initialData },
   });
+
+  useEffect(() => {
+    reset({ valor: initialData });
+  }, [initialData, reset]);
 
   const onSubmit = async (data: PeriodoLetivoFormData) => {
     setIsSubmitting(true);
@@ -46,7 +57,7 @@ export const PeriodoLetivoCard = ({
         return;
       }
       setSuccessMessage(resultado.mensagem);
-      onSuccess?.();
+      await onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
@@ -60,61 +71,67 @@ export const PeriodoLetivoCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-[#C9D2E6] bg-white p-5 shadow-sm">
-      <h2 className="font-semibold text-slate-900 text-sm tracking-[0.2em]">
-        Período Letivo Atual
-      </h2>
-      <p className="mt-1 text-slate-500 text-xs">
-        Este período será automaticamente preenchido ao criar novas turmas.
-      </p>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
-        <div className="max-w-xs">
-          <Controller
-            name="valor"
-            control={control}
-            render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                Formato: YYYY.S (ex: 2026.1)
-                <input
-                  {...field}
-                  type="text"
-                  placeholder="2026.1"
-                  disabled={isSubmitting}
-                  className={`${INPUT_CLASS} ${errors.valor ? "border-red-500" : ""}`}
-                />
-                {errors.valor && (
-                  <p className="text-xs text-red-500">
-                    {errors.valor.message}
-                  </p>
-                )}
+    <SettingsSectionCard
+      className={className}
+      eyebrow="Calendário"
+      title="Período letivo"
+      description="Valor aplicado em novas turmas e indicadores acadêmicos."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <Controller
+          name="valor"
+          control={control}
+          render={({ field }) => (
+            <div>
+              <label htmlFor="school-period" className={settingsLabelClass}>
+                Formato
               </label>
-            )}
-          />
-        </div>
+              <input
+                {...field}
+                id="school-period"
+                type="text"
+                placeholder="2026.1"
+                disabled={isSubmitting}
+                className={getSettingsFieldClass(Boolean(errors.valor))}
+              />
+              <p className="mt-1 text-slate-500 text-xs">
+                Use o padrão YYYY.S, como 2026.1 ou 2026.2.
+              </p>
+              {errors.valor && (
+                <p className={settingsErrorClass}>{errors.valor.message}</p>
+              )}
+            </div>
+          )}
+        />
 
         {successMessage && (
-          <div className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-800 text-sm"
+          >
             {successMessage}
-          </div>
+          </output>
         )}
 
         {errorMessage && (
-          <div className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 text-sm"
+          >
             {errorMessage}
-          </div>
+          </output>
         )}
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+            className={settingsSubmitButtonClass}
           >
-            {isSubmitting ? "Salvando..." : "Salvar"}
+            {isSubmitting ? "Salvando..." : "Salvar período"}
           </button>
         </div>
       </form>
-    </div>
+    </SettingsSectionCard>
   );
 };

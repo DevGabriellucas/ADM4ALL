@@ -14,8 +14,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={id}
-          className={`h-[5.22rem] w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-10 py-4 text-xl opacity-60 outline-none placeholder:font-normal placeholder:text-xl autofill:shadow-[0_0_0_1000px_#BFD0EC_inset] autofill:[-webkit-text-fill-color:#334155]
-          ${className}`}
+          className={`h-12 w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 py-3 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-base autofill:shadow-[0_0_0_1000px_#BFD0EC_inset] sm:h-[5.22rem] sm:px-10 sm:py-4 sm:text-xl sm:placeholder:text-xl autofill:[-webkit-text-fill-color:#334155] ${className}`}
           {...props}
         />
         {error && (

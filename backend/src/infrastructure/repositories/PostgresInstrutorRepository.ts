@@ -150,7 +150,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     turmaId: string,
   ): Promise<AulaResumo | null> {
     const query = `
-      SELECT id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+      SELECT
+        id,
+        numero_aula,
+        titulo,
+        to_char(data_aula, 'YYYY-MM-DD') AS data_aula,
+        to_char(hora_inicio, 'HH24:MI') AS hora_inicio,
+        to_char(hora_fim, 'HH24:MI') AS hora_fim,
+        status
       FROM aulas
       WHERE turma_id = $1
       ORDER BY
@@ -165,7 +172,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
 
   private async buscarProximaAula(turmaId: string): Promise<AulaResumo | null> {
     const query = `
-      SELECT id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+      SELECT
+        id,
+        numero_aula,
+        titulo,
+        to_char(data_aula, 'YYYY-MM-DD') AS data_aula,
+        to_char(hora_inicio, 'HH24:MI') AS hora_inicio,
+        to_char(hora_fim, 'HH24:MI') AS hora_fim,
+        status
       FROM aulas
       WHERE turma_id = $1 AND data_aula > CURRENT_DATE
       ORDER BY data_aula ASC
@@ -177,7 +191,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
 
   private async listarCronograma(turmaId: string): Promise<AulaResumo[]> {
     const query = `
-      SELECT id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+      SELECT
+        id,
+        numero_aula,
+        titulo,
+        to_char(data_aula, 'YYYY-MM-DD') AS data_aula,
+        to_char(hora_inicio, 'HH24:MI') AS hora_inicio,
+        to_char(hora_fim, 'HH24:MI') AS hora_fim,
+        status
       FROM aulas
       WHERE turma_id = $1
       ORDER BY numero_aula ASC
@@ -432,7 +453,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       SELECT $1, COALESCE(MAX(numero_aula), 0) + 1, $2, $3, $4, $5
       FROM aulas
       WHERE turma_id = $1
-      RETURNING id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+      RETURNING
+        id,
+        numero_aula,
+        titulo,
+        to_char(data_aula, 'YYYY-MM-DD') AS data_aula,
+        to_char(hora_inicio, 'HH24:MI') AS hora_inicio,
+        to_char(hora_fim, 'HH24:MI') AS hora_fim,
+        status
     `;
 
     try {
@@ -464,6 +492,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         a.numero_aula,
         a.titulo,
         to_char(a.data_aula, 'YYYY-MM-DD') AS data_aula,
+        to_char(a.hora_inicio, 'HH24:MI') AS hora_inicio,
+        to_char(a.hora_fim, 'HH24:MI') AS hora_fim,
         a.status,
         t.id AS turma_id,
         t.nome AS turma,
@@ -569,7 +599,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         UPDATE aulas
         SET ${campos.join(", ")}
         WHERE id = $${valores.length - 1} AND turma_id = $${valores.length}
-        RETURNING id, numero_aula, titulo, to_char(data_aula, 'YYYY-MM-DD') AS data_aula, status
+        RETURNING
+          id,
+          numero_aula,
+          titulo,
+          to_char(data_aula, 'YYYY-MM-DD') AS data_aula,
+          to_char(hora_inicio, 'HH24:MI') AS hora_inicio,
+          to_char(hora_fim, 'HH24:MI') AS hora_fim,
+          status
         `,
         valores,
       );
@@ -621,6 +658,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       numero: Number(linha.numero_aula),
       titulo: linha.titulo,
       data: linha.data_aula,
+      horaInicio: linha.hora_inicio ?? null,
+      horaFim: linha.hora_fim ?? null,
       status: linha.status,
     };
   }

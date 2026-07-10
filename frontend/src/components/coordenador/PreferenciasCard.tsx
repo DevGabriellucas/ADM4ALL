@@ -1,25 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { atualizarPreferenciasAction } from "@/app/coordenador/actions";
+import {
+  getSettingsFieldClass,
+  SettingsSectionCard,
+  settingsErrorClass,
+  settingsLabelClass,
+  settingsSubmitButtonClass,
+} from "@/components/coordenador/SettingsSectionCard";
 import {
   type PreferenciasFormData,
   preferencesSchema,
 } from "@/schemas/configuracionsSchema";
 
 interface PreferenciasCardProps {
+  className?: string;
   initialData: PreferenciasFormData;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
 }
 
-const INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
-const SELECT_CLASS =
-  "h-11 w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30 disabled:cursor-not-allowed disabled:opacity-60";
-
 export const PreferenciasCard = ({
+  className,
   initialData,
   onSuccess,
 }: PreferenciasCardProps) => {
@@ -30,11 +34,16 @@ export const PreferenciasCard = ({
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<PreferenciasFormData>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: initialData,
   });
+
+  useEffect(() => {
+    reset(initialData);
+  }, [initialData, reset]);
 
   const onSubmit = async (data: PreferenciasFormData) => {
     setIsSubmitting(true);
@@ -48,7 +57,7 @@ export const PreferenciasCard = ({
         return;
       }
       setSuccessMessage(resultado.mensagem);
-      onSuccess?.();
+      await onSuccess?.();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setErrorMessage(
@@ -62,42 +71,52 @@ export const PreferenciasCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-[#C9D2E6] bg-white p-5 shadow-sm">
-      <h2 className="font-semibold text-slate-900 text-sm tracking-[0.2em]">
-        Preferências Gerais
-      </h2>
-      <p className="mt-1 text-slate-500 text-xs">
-        Configure valores padrão para novas turmas e outras preferências.
-      </p>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <SettingsSectionCard
+      className={className}
+      eyebrow="Padrões"
+      title="Preferências gerais"
+      description="Valores iniciais usados em novas turmas e painéis."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Controller
             name="capacidadePadrao"
             control={control}
             render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                Capacidade Padrão (alunos)
+              <div>
+                <label
+                  htmlFor="default-capacity"
+                  className={settingsLabelClass}
+                >
+                  Capacidade padrão
+                </label>
                 <input
-                  {...field}
+                  id="default-capacity"
                   type="number"
                   min="1"
                   placeholder="30"
-                  value={field.value || ""}
-                  onChange={(e) =>
+                  value={field.value ?? ""}
+                  onBlur={field.onBlur}
+                  onChange={(event) =>
                     field.onChange(
-                      e.target.value === "" ? "" : Number(e.target.value),
+                      event.target.value === ""
+                        ? ""
+                        : Number(event.target.value),
                     )
                   }
+                  name={field.name}
+                  ref={field.ref}
                   disabled={isSubmitting}
-                  className={`${INPUT_CLASS} ${errors.capacidadePadrao ? "border-red-500" : ""}`}
+                  className={getSettingsFieldClass(
+                    Boolean(errors.capacidadePadrao),
+                  )}
                 />
                 {errors.capacidadePadrao && (
-                  <p className="text-xs text-red-500">
+                  <p className={settingsErrorClass}>
                     {errors.capacidadePadrao.message}
                   </p>
                 )}
-              </label>
+              </div>
             )}
           />
 
@@ -105,72 +124,86 @@ export const PreferenciasCard = ({
             name="statusPadrao"
             control={control}
             render={({ field }) => (
-              <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-                Status Padrão de Nova Turma
+              <div>
+                <label htmlFor="default-status" className={settingsLabelClass}>
+                  Status padrão de turma
+                </label>
                 <select
                   {...field}
+                  id="default-status"
                   disabled={isSubmitting}
-                  className={`${SELECT_CLASS} ${errors.statusPadrao ? "border-red-500" : ""}`}
+                  className={getSettingsFieldClass(
+                    Boolean(errors.statusPadrao),
+                  )}
                 >
                   <option value="">Selecione um status</option>
                   <option value="planejada">Planejada</option>
-                  <option value="em_andamento">Em Andamento</option>
+                  <option value="em_andamento">Em andamento</option>
                   <option value="encerrada">Encerrada</option>
                 </select>
                 {errors.statusPadrao && (
-                  <p className="text-xs text-red-500">
+                  <p className={settingsErrorClass}>
                     {errors.statusPadrao.message}
                   </p>
                 )}
-              </label>
+              </div>
+            )}
+          />
+
+          <Controller
+            name="nomeExibido"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label htmlFor="display-name" className={settingsLabelClass}>
+                  Nome exibido
+                </label>
+                <input
+                  {...field}
+                  id="display-name"
+                  type="text"
+                  placeholder="ADM4All"
+                  disabled={isSubmitting}
+                  className={getSettingsFieldClass(Boolean(errors.nomeExibido))}
+                />
+                {errors.nomeExibido && (
+                  <p className={settingsErrorClass}>
+                    {errors.nomeExibido.message}
+                  </p>
+                )}
+              </div>
             )}
           />
         </div>
 
-        <Controller
-          name="nomeExibido"
-          control={control}
-          render={({ field }) => (
-            <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-              Nome Exibido no Painel (opcional)
-              <input
-                {...field}
-                type="text"
-                placeholder="ADM4All"
-                disabled={isSubmitting}
-                className={`${INPUT_CLASS} ${errors.nomeExibido ? "border-red-500" : ""}`}
-              />
-              {errors.nomeExibido && (
-                <p className="text-xs text-red-500">
-                  {errors.nomeExibido.message}
-                </p>
-              )}
-            </label>
-          )}
-        />
-
         {successMessage && (
-          <div className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-800 text-sm"
+          >
             {successMessage}
-          </div>
+          </output>
         )}
 
         {errorMessage && (
-          <div className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+          <output
+            aria-live="polite"
+            className="block rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 text-sm"
+          >
             {errorMessage}
-          </div>
+          </output>
         )}
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+            className={settingsSubmitButtonClass}
           >
-            {isSubmitting ? "Salvando..." : "Salvar"}
+            {isSubmitting ? "Salvando..." : "Salvar preferências"}
           </button>
         </div>
       </form>
-    </div>
+    </SettingsSectionCard>
   );
 };

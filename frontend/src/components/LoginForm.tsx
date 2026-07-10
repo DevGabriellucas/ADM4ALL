@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
-import { type SessionProfile, saveSession } from "@/services/sessionService";
+import type { SessionProfile } from "@/services/sessionService";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
@@ -95,8 +95,6 @@ export const LoginForm = ({
         text: `${result.mensagem},${saudacao}`,
       });
 
-      saveSession(result);
-
       router.replace(resolverRedirectTo(redirectTo, result.usuario.perfil));
     } catch (error: unknown) {
       setMessage({
@@ -107,7 +105,11 @@ export const LoginForm = ({
   };
 
   return (
-    <form className={className} onSubmit={handleSubmit(loginSubmit)} {...props}>
+    <form
+      className={`min-w-0 ${className ?? ""}`}
+      onSubmit={handleSubmit(loginSubmit)}
+      {...props}
+    >
       <Input
         id="identifier"
         label="E-mail ou CPF"
@@ -177,7 +179,7 @@ export const LoginForm = ({
 
       <Link
         href="/recuperar-senha"
-        className="pr-1 text-right text-[#524ABF] text-base underline underline-offset-2 duration-200 hover:text-indigo-900"
+        className="block w-full max-w-full pr-1 text-right text-[#524ABF] text-base underline underline-offset-2 duration-200 hover:text-indigo-900"
       >
         Recuperar Senha
       </Link>

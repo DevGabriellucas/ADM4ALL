@@ -1,28 +1,26 @@
-# Pendências Pós-MVP — ADM4All
+# Pendencias Pos-MVP - ADM4All
 
-> Última atualização: 06/07/2026.
+> Ultima atualizacao: 09/07/2026.
 
-| Prioridade | Item | Motivo | Dependências | Observação |
+| Prioridade | Item | Motivo | Dependencias | Observacao |
 |---|---|---|---|---|
-| Alta | Confirmar regra de elegibilidade do certificado | Divergência entre faltas < 3 (implementado) e frequência >= 80% (Doc. de Visão) | Decisão do PO | Ver `docs/decisoes-produto.md` DEC-004 |
-| Alta | Cookie HttpOnly para JWT | Segurança — token acessível via JavaScript no MVP atual | Refatoração do fluxo de sessão | Cookie atual é setado pelo cliente |
-| Alta | Remover/transicionar `x-api-key` | Rotas administrativas de alunos ainda usam API key legada | Migrar para JWT por perfil | Rotas: GET/PUT/DELETE `/alunos/:id` |
-| Alta | SMTP de produção | E-mails de ativação e recuperação dependem de credenciais reais | Configuração de servidor SMTP | Gmail App Password funciona em dev |
-| Alta | Storage externo para uploads | Arquivos salvos em volume local do container | S3, MinIO ou volume persistente | Hoje: `uploads/` e `storage/` locais |
-| Média | Mensagens internas | Comunicação entre perfis prevista no Doc. de Visão | Backend + frontend de chat/mensagens | V2 |
-| Média | Ex-alunos | Gestão de egressos | Nova tabela e fluxos | V2 |
-| Média | Gestão centralizada de usuários | Tela de administração de todos os usuários do sistema | Backend + frontend | Página existe como "Em desenvolvimento" |
-| Média | Processos administrativos | Controle de processos internos | Backend + frontend | Página existe como "Em desenvolvimento" |
-| Média | Configurações administrativas completas | Preferências do sistema além do período letivo | Backend + frontend | Página existe como "Em desenvolvimento" |
-| Média | Certificado automático | Emissão sem ação do coordenador | Decisão do PO + regra de elegibilidade | V2 |
-| Média | Emissão em lote de certificados | Emitir para múltiplos alunos de uma vez | UI + backend | Pós-MVP |
-| Média | Cronograma geral do coordenador | Visão consolidada de todas as aulas | Integração com endpoints de aula | Página existe como "Em desenvolvimento" |
-| Média | Testes de frontend | Cobertura de componentes React | Jest + React Testing Library | Atualmente zero testes de frontend |
-| Média | Testes E2E | Fluxos completos automatizados | Cypress ou Playwright | Não implementado |
-| Média | Cobertura de testes dos limites de frequência | Testes unitários para os thresholds 75/80 | Jest | Backend tem 26 testes, mas sem cobertura específica de thresholds |
-| Baixa | Padronização visual global de badges/status | Consistência entre todos os componentes | Refatoração de CSS/Tailwind | Feito parcialmente (CoordinatorStatusBadge com orange) |
-| Baixa | CI/CD | Build, lint e testes automatizados | GitHub Actions ou GitLab CI | Não configurado |
-| Baixa | Backups e logs | Rotina de backup do banco e logs estruturados | Infraestrutura | Não implementado |
-| Baixa | Edição/exclusão de cursos | Ações rápidas da tabela de cursos desabilitadas | Frontend + backend | Criar e listar já funcionam |
-| Baixa | Edição/exclusão de turmas | Ações rápidas da tabela de turmas desabilitadas | Frontend + backend | Criar, listar e detalhe já funcionam |
-| Baixa | Novos alunos de teste | Cenários como atenção (75-79%), risco (<75%), certificado cancelado | Seed SQL | Tarefa separada de seed |
+| Alta | Confirmar regra final de elegibilidade do certificado | Pode haver diferenca entre regra de faltas e regra por frequencia minima | Decisao do PO | Ver `docs/decisoes-produto.md` |
+| Alta | Confirmar provedor SMTP final | Producao deve usar conta/provedor oficial da instituicao | Conta SMTP oficial + DNS SPF/DKIM/DMARC | App ja aceita SMTP customizado; ver `docs/producao-storage-smtp.md` |
+| Alta | Backup de uploads e certificados | Volumes persistentes precisam de rotina de backup | Infraestrutura | `UPLOADS_DIR` e `STORAGE_DIR` ja sao configuraveis |
+| Media | Ampliar testes E2E | Aumentar confianca da regressao alem do smoke inicial | Playwright | Smoke inicial cobre login, cadastro, recuperar/redefinir senha, cronograma e materiais |
+| Media | Testes de frontend | Cobrir componentes e formularios React | Jest/Vitest + Testing Library | Atualmente sem suite automatizada no frontend |
+| Media | Cobertura dos limites de frequencia | Garantir badges em atencao/risco/reprovado | Jest/backend + seeds | Especialmente thresholds 75/80 |
+| Media | Auditoria e permissoes avancadas de usuarios | A tela de Usuarios existe no MVP, mas sem trilha completa de auditoria | Backend + UI | Pos-MVP de seguranca/governanca |
+| Media | Configuracoes administrativas completas | A tela de Configuracoes existe, mas pode crescer com parametros do sistema | Regras aprovadas pelo PO | MVP cobre dados essenciais |
+| Media | Certificado automatico | Emissao sem acao manual do coordenador | Regra final do PO + job/evento | Hoje emissao e manual |
+| Media | Emissao em lote de certificados | Agilizar turmas concluidas com muitos alunos | UI + backend | Pos-MVP |
+| Media | Cronograma geral do coordenador | Visao consolidada de todas as aulas | Endpoints e desenho de produto | Fora do menu do MVP atual |
+| Media | Processos administrativos | Controle interno previsto para evolucao | Backend + frontend | Fora do menu do MVP atual |
+| Media | Mensagens internas | Comunicacao entre perfis prevista no Documento de Visao | Backend + frontend de mensagens | V2 |
+| Media | Ex-alunos | Gestao de egressos | Nova modelagem e fluxos | V2 |
+| Baixa | Padronizacao visual global de badges/status | Consistencia fina entre todos os componentes | Refatoracao CSS/Tailwind | Feito parcialmente |
+| Baixa | CI/CD | Build, lint e testes automatizados | GitHub Actions ou GitLab CI | Nao configurado |
+| Baixa | Logs estruturados | Melhorar observabilidade de producao | Infraestrutura | Logs atuais sao basicos |
+| Baixa | Edicao/exclusao de cursos | Acoes rapidas da tabela ainda podem evoluir | Frontend + backend | Criar/listar ja funcionam |
+| Baixa | Edicao/exclusao de turmas | Acoes rapidas da tabela ainda podem evoluir | Frontend + backend | Criar/listar/detalhe ja funcionam |
+| Baixa | Expandir alunos de teste | Demonstrar combinacoes adicionais de status/documentos | Seed SQL | Seed extra MVP ja cobre badges principais e estados de certificado |

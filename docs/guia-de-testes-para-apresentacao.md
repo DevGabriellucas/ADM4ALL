@@ -459,7 +459,7 @@ Observações:
 - implementar Processos, Usuários, Configurações e Cronograma geral com
   endpoints reais (hoje são páginas "Em desenvolvimento" sem mock);
 - concluir edição/exclusão de cursos, turmas, instrutores;
-- remover `x-api-key` das rotas administrativas legadas de alunos;
+- manter rotas administrativas legadas de alunos protegidas por JWT de coordenador/admin;
 - mover o JWT para cookie `HttpOnly`;
 - definir armazenamento definitivo para uploads (hoje em volume local);
 - acrescentar à massa de teste alunos com cenários de atenção (75-79%) e
