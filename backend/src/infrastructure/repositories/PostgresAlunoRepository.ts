@@ -273,6 +273,17 @@ export class PostgresAlunoRepository implements AlunoRepository {
     ]);
   }
 
+  async removerRecuperacaoSenhaPorTokenHash(tokenHash: string): Promise<void> {
+    await this.db.query(
+      `
+        DELETE FROM recuperacoes_senha
+        WHERE token_hash = $1
+          AND usado_em IS NULL
+      `,
+      [tokenHash],
+    );
+  }
+
   async buscarRecuperacaoValidaPorTokenHash(
     tokenHash: string,
   ): Promise<RecuperacaoSenhaValida | null> {

@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./infrastructure/config/loadEnv";
 import { AlunoUseCase } from "./application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "./application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "./application/use-cases/ActivationUseCase";
@@ -30,7 +30,9 @@ const emailPort = process.env.EMAIL_PORT?.trim()
 const emailUser =
   process.env.GMAIL_USER?.trim() || process.env.EMAIL_USER?.trim() || "";
 const emailPassword =
-  process.env.GMAIL_APP_PASSWORD?.trim() || process.env.EMAIL_PASS?.trim() || "";
+  process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "").trim() ||
+  process.env.EMAIL_PASS?.trim() ||
+  "";
 
 const jwtService = new JwtService(getRequiredEnv("JWT_SECRET"));
 const emailService = new EmailService(

@@ -101,6 +101,7 @@ export interface AlunoRepository {
   buscarUsuarioPorEmail(email: string): Promise<UsuarioRecuperacaoSenha | null>;
   existeRecuperacaoSenhaRecente(usuarioId: string, intervaloMinutos: number): Promise<boolean>;
   registrarRecuperacaoSenha(dados: RegistrarRecuperacaoSenhaInput): Promise<void>;
+  removerRecuperacaoSenhaPorTokenHash(tokenHash: string): Promise<void>;
   buscarRecuperacaoValidaPorTokenHash(tokenHash: string): Promise<RecuperacaoSenhaValida | null>;
   buscarDashboardPorAlunoId(alunoId: string): Promise<AlunoDashboard | null>;
   listarMateriaisVisiveis(alunoId: string): Promise<MaterialVisivelAluno[]>;

@@ -208,7 +208,7 @@ export default function Cadastro() {
         </div>
       </section>
 
-      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-xl sm:px-6 sm:py-7 xl:max-h-[calc(100vh-2rem)] xl:min-h-152 xl:overflow-y-auto">
+      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-xl sm:px-6 sm:py-7 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
         <form
           onSubmit={handleSubmit(cadastroSubmit)}
           className="flex flex-1 flex-col"

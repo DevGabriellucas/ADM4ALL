@@ -41,13 +41,13 @@ export default async function Home({ searchParams }: HomePageProps) {
         />
       </section>
 
-      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-md sm:px-6 sm:py-8 xl:max-h-[calc(100vh-2rem)] xl:min-h-152 xl:max-w-xl xl:overflow-y-auto">
+      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-md sm:px-6 sm:py-8 xl:max-h-[calc(100vh-2rem)] xl:max-w-xl xl:overflow-y-auto">
         <LoginForm
           className="flex w-full flex-col gap-y-4"
           redirectTo={redirectTo}
         />
 
-        <p className="mt-auto pt-6 text-center text-base text-slate-800">
+        <p className="mt-5 text-center text-base text-slate-800 sm:mt-6">
           Ainda não é aluno?{" "}
           <Link
             href="/cadastro"

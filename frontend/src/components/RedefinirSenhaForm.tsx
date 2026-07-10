@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,7 +36,7 @@ const PasswordToggle = ({
     aria-pressed={ativo}
     title={label}
     disabled={disabled}
-    className="-translate-y-1/2 absolute top-6 right-3 flex size-10 items-center justify-center rounded text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium disabled:pointer-events-none disabled:opacity-50"
+    className="-translate-y-1/2 absolute top-6 right-3 flex size-10 items-center justify-center rounded text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium disabled:pointer-events-none disabled:opacity-50 sm:top-7 sm:right-4"
   >
     <svg
       aria-hidden="true"
@@ -106,11 +105,11 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
   };
 
   return (
-    <main className="flex min-h-screen w-full items-center justify-center bg-[#E0F0FF] px-4 py-6 font-poppins text-slate-950">
-      <section className="flex w-full max-w-[300px] flex-col gap-y-6 rounded-xl bg-white/75 px-5 py-6 shadow-sm ring-1 ring-white/60 sm:px-8 sm:py-8 lg:max-w-lg">
+    <main className="flex min-h-dvh w-full items-center justify-center overflow-y-auto bg-[#E0F0FF] bg-[length:520px_auto] bg-[url(/adm-para-todos-logo.png)] bg-center bg-no-repeat px-4 py-8 font-poppins text-slate-950 sm:bg-[length:720px_auto] lg:bg-[length:960px_auto]">
+      <section className="flex w-full max-w-4xl flex-col items-center gap-y-8 sm:gap-y-10 lg:gap-y-14">
         <Link
           href="/recuperar-senha"
-          className="inline-flex w-fit items-center gap-x-2 rounded-md px-2 py-1 font-medium text-brand-dark text-sm transition-colors hover:bg-brand-light/40"
+          className="inline-flex w-fit items-center gap-x-2 self-start rounded-md bg-white/45 px-3 py-2 font-medium text-brand-dark text-sm transition-colors hover:bg-white/70"
         >
           <svg
             aria-hidden
@@ -129,26 +128,17 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
           Voltar
         </Link>
 
-        <div className="flex w-full flex-col items-center justify-center gap-y-5 text-center">
-          <Image
-            src="/adm-para-todos-logo.png"
-            alt="ADM para Todos"
-            width={140}
-            height={96}
-            priority
-            className="!h-20 !w-auto object-contain opacity-80"
-          />
-
-          <h2 className="text-center font-medium text-2xl sm:text-3xl">
+        <div className="flex w-full flex-col items-center justify-center gap-y-5 text-center sm:gap-y-7">
+          <h2 className="text-center font-medium text-2xl sm:text-3xl lg:text-4xl">
             Redefinir senha
           </h2>
 
           {isSuccess ? (
-            <p className="w-full animate-fade-in rounded-md bg-emerald-100 px-4 py-3 text-center font-medium text-emerald-800 text-sm shadow-sm">
+            <p className="w-full max-w-3xl animate-fade-in rounded-md bg-[#76C043] px-4 py-3 text-center font-medium text-[#454040] text-sm shadow-sm sm:px-6 sm:py-4 sm:text-lg">
               Senha redefinida com sucesso. Redirecionando para o login...
             </p>
           ) : (
-            <p className="w-full text-center text-slate-700 text-sm leading-6 sm:text-base">
+            <p className="w-full max-w-3xl text-center text-base leading-7 sm:text-xl lg:text-2xl">
               {token
                 ? "Informe sua nova senha para acessar a plataforma."
                 : "Link invalido ou expirado. Solicite uma nova recuperacao de senha."}
@@ -158,14 +148,14 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
 
         {token ? (
           <form
-            className="flex w-full flex-col items-center gap-y-5"
+            className="flex w-full max-w-3xl flex-col items-center gap-y-6 sm:gap-y-8"
             onSubmit={handleSubmit(redefinirSenhaSubmit)}
           >
             <div className="relative w-full">
               <Input
                 id="novaSenha"
                 label="Nova senha"
-                className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 pr-14 opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-12 sm:px-4 sm:py-3 sm:text-base sm:placeholder:text-base"
+                className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 pr-14 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-base autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-14 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:text-xl lg:placeholder:text-xl"
                 placeholder="Nova senha"
                 type={mostrarSenha ? "text" : "password"}
                 autoComplete="new-password"
@@ -185,7 +175,7 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
               <Input
                 id="confirmarSenha"
                 label="Confirmar nova senha"
-                className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 pr-14 opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-12 sm:px-4 sm:py-3 sm:text-base sm:placeholder:text-base"
+                className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 pr-14 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-base autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-14 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:text-xl lg:placeholder:text-xl"
                 placeholder="Confirmar nova senha"
                 type={mostrarConfirmarSenha ? "text" : "password"}
                 autoComplete="new-password"
@@ -216,7 +206,7 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
 
             {!isSuccess && (
               <Button
-                className="h-12 w-full cursor-pointer rounded-lg bg-[#456CA9E5] py-3 font-medium text-base hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:h-12 sm:max-w-xs sm:px-4 sm:py-3 sm:text-base"
+                className="h-12 w-full max-w-xs cursor-pointer rounded-[5rem] bg-[#456CA9E5] px-4 py-3 font-medium text-base hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:h-14 sm:text-lg lg:max-w-80 lg:text-xl"
                 disabled={isSubmitting}
                 type="submit"
               >
@@ -227,7 +217,7 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
         ) : (
           <Link
             href="/recuperar-senha"
-            className="w-full cursor-pointer rounded-lg bg-[#456CA9E5] py-3 text-center font-medium text-base hover:brightness-110 sm:max-w-xs"
+            className="h-12 w-full max-w-xs cursor-pointer rounded-[5rem] bg-[#456CA9E5] px-4 py-3 text-center font-medium text-base hover:brightness-110 sm:h-14 sm:text-lg lg:max-w-80 lg:text-xl"
           >
             Solicitar novo link
           </Link>

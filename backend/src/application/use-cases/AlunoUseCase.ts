@@ -377,16 +377,6 @@ export class AlunoUseCase {
       return;
     }
 
-    const jaSolicitouRecentemente =
-      await this.alunoRepository.existeRecuperacaoSenhaRecente(
-        usuario.id,
-        RECUPERACAO_SENHA_MINUTOS,
-      );
-
-    if (jaSolicitouRecentemente) {
-      return;
-    }
-
     const tokenDeRecuperacao = randomBytes(32).toString("hex");
     const tokenHash = createHash("sha256")
       .update(tokenDeRecuperacao)
@@ -406,11 +396,16 @@ export class AlunoUseCase {
     const frontendUrl = getRequiredEnv("FRONTEND_URL");
     const linkRedefinicao = `${frontendUrl}/redefinir-senha?token=${tokenDeRecuperacao}`;
 
-    await this.emailService.enviar(
-      usuario.email,
-      "Recuperacao de Senha - ADM Para Todos",
-      gerarEmailRecuperacaoSenha(linkRedefinicao, RECUPERACAO_SENHA_MINUTOS),
-    );
+    try {
+      await this.emailService.enviar(
+        usuario.email,
+        "Recuperacao de Senha - ADM Para Todos",
+        gerarEmailRecuperacaoSenha(linkRedefinicao, RECUPERACAO_SENHA_MINUTOS),
+      );
+    } catch (error) {
+      await this.alunoRepository.removerRecuperacaoSenhaPorTokenHash(tokenHash);
+      throw error;
+    }
   }
 
   async redefinirSenha(tokenBruto: string, novaSenha: string): Promise<void> {
