@@ -2,9 +2,21 @@ import { z } from "zod/v4";
 
 const somenteDigitos = (valor: string) => valor.replace(/\D/g, "");
 
+const nomeRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ]+([ '-][A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+
 export const cadastroFormDataSchema = z
   .object({
-    nome: z.string().trim().min(3, { error: "Nome invalido!" }),
+    nome: z
+      .string()
+      .trim()
+      .transform((valor) => valor.replace(/\s+/g, " "))
+      .refine((valor) => valor.length >= 3, { error: "Nome invalido!" })
+      .refine((valor) => nomeRegex.test(valor), {
+        error: "Informe apenas letras e espacos.",
+      })
+      .refine((valor) => valor.split(" ").length >= 2, {
+        error: "Informe nome e sobrenome.",
+      }),
     cpf: z
       .string()
       .trim()

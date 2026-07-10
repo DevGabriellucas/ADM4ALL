@@ -1,8 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAMES } from "@/services/sessionService";
 
-export function GET(request: NextRequest) {
-  const response = NextResponse.redirect(new URL("/", request.url));
+export function GET() {
+  const response = NextResponse.redirect(
+    new URL("/", process.env.FRONTEND_URL ?? "http://localhost:3000"),
+  );
 
   for (const cookieName of Object.values(SESSION_COOKIE_NAMES)) {
     response.cookies.set(cookieName, "", {
