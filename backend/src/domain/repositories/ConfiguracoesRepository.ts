@@ -1,9 +1,3 @@
-export interface ConfiguracaoSistema {
-  chave: string;
-  valor: string;
-  descricao?: string;
-}
-
 export interface DadosInstituicao {
   nome: string;
   email: string;

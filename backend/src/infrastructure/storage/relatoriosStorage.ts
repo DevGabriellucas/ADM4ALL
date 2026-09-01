@@ -24,10 +24,6 @@ function getRelatorioFilename(relativePath: string): string | null {
   return filename;
 }
 
-export function getRelatoriosDir(): string {
-  return RELATORIOS_DIR;
-}
-
 export async function ensureRelatoriosDir(): Promise<void> {
   await fs.mkdir(RELATORIOS_DIR, { recursive: true });
 }
@@ -48,21 +44,6 @@ export function buildRelatorioRelativePath(filename: string): string {
   }
 
   return `${RELATORIOS_RELATIVE_PREFIX}${safeFilename}`;
-}
-
-export function resolveRelatorioPath(
-  relativePath: string | null,
-): string | null {
-  if (!relativePath) return null;
-
-  const filename = getRelatorioFilename(relativePath);
-  if (!filename) return null;
-
-  const fullPath = path.resolve(RELATORIOS_DIR, filename);
-
-  if (!fullPath.startsWith(RELATORIOS_PREFIX)) return null;
-
-  return fullPath;
 }
 
 export function resolveRelatorioPathOrThrow(

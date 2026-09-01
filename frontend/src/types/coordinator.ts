@@ -22,12 +22,6 @@ export type ClassStatus =
 
 export type LessonStatus = "planejada" | "realizada" | "cancelada";
 
-export type LessonScheduleStatus =
-  | "concluida"
-  | "proxima"
-  | "pendente"
-  | "cancelada";
-
 export type ClassMaterialType = "PDF" | "Planilha" | "Apresentação" | "Link";
 
 export type AttendanceSituation =
@@ -43,8 +37,6 @@ export type CertificateEligibilityStatus = "elegivel" | "nao_elegivel";
 export type CertificateDisplayStatus =
   | CertificateStatus
   | CertificateEligibilityStatus;
-
-export type ProcessStatus = "aberto" | "em_analise" | "concluido" | "cancelado";
 
 export type ReportType =
   | "dashboard"
@@ -272,14 +264,6 @@ export interface StudentCertificateDetail extends CertificateDetailBase {
 
 export type CertificateDetail = StudentCertificateDetail;
 
-export interface ProcessRecord {
-  id: string;
-  nome: string;
-  status: ProcessStatus;
-  responsavel: string;
-  dataCriacao: string;
-}
-
 export interface ReportPreview {
   id: string;
   tipo: ReportType | CoordinatorReportType;
@@ -336,32 +320,6 @@ export interface GeneratedReport {
   filtros: CoordinatorReportFilters | null;
   geradoPorId: string | null;
   criadoEm: string;
-}
-
-export interface AccessProfileSetting {
-  role: UserRole;
-  label: string;
-  description: string;
-  enabled: boolean;
-}
-
-export interface CoordinatorSettings {
-  account: {
-    nome: string;
-    email: string;
-    telefone: string;
-    cargo: string;
-  };
-  system: {
-    instituicao: string;
-    periodoLetivo: string;
-    frequenciaMinimaCertificado: number;
-  };
-  accessProfiles: AccessProfileSetting[];
-  security: {
-    sessoesAtivas: number;
-    ultimaAlteracaoSenha: string;
-  };
 }
 
 export interface CoordinatorDashboardSummary {

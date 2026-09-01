@@ -137,14 +137,6 @@ interface TurmaDetalheApi {
   }[];
 }
 
-interface AulaInstrutorApi {
-  id: string;
-  numero: number;
-  titulo: string;
-  data: string;
-  status: Lesson["status"];
-}
-
 interface MaterialApi {
   id: string;
   titulo: string;
@@ -252,21 +244,6 @@ const mapearAulaDaTurma = (
   instrutor: detalhe.turma.instrutores ?? "",
   data: aula.data,
   status: aula.status as Lesson["status"],
-});
-
-const mapearAulaInstrutor = (
-  aula: AulaInstrutorApi,
-  turma: ClassGroup,
-): Lesson => ({
-  id: aula.id,
-  turmaId: turma.id,
-  numeroAula: aula.numero,
-  titulo: aula.titulo,
-  curso: turma.curso,
-  turma: turma.nome,
-  instrutor: turma.instrutores,
-  data: aula.data,
-  status: aula.status,
 });
 
 const mapearMaterial = (
@@ -906,72 +883,8 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
   });
 };
 
-export const createLesson = async (
-  turmaId: string,
-  input: {
-    titulo: string;
-    data: string;
-    horaInicio?: string | null;
-    horaFim?: string | null;
-  },
-): Promise<Lesson> => {
-  const turma = await getClassById(turmaId);
-  if (!turma) {
-    throw new Error("Turma nao encontrada.");
-  }
-
-  const aula = await authenticatedRequest<AulaInstrutorApi>(
-    `/turmas/${turmaId}/aulas`,
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-      fallbackError: "Falha ao cadastrar a aula.",
-    },
-  );
-
-  return mapearAulaInstrutor(aula, turma);
-};
-
-export const updateLesson = async (
-  turmaId: string,
-  aulaId: string,
-  input: {
-    titulo?: string;
-    data?: string;
-    horaInicio?: string | null;
-    horaFim?: string | null;
-    status?: Lesson["status"];
-  },
-): Promise<Lesson> => {
-  const turma = await getClassById(turmaId);
-  if (!turma) {
-    throw new Error("Turma nao encontrada.");
-  }
-
-  const aula = await authenticatedRequest<AulaInstrutorApi>(
-    `/turmas/${turmaId}/aulas/${aulaId}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify(input),
-      fallbackError: "Falha ao atualizar a aula.",
-    },
-  );
-
-  return mapearAulaInstrutor(aula, turma);
-};
-
-export const removeLesson = async (
-  turmaId: string,
-  aulaId: string,
-): Promise<void> => {
-  await authenticatedRequest<{ mensagem: string }>(
-    `/turmas/${turmaId}/aulas/${aulaId}`,
-    {
-      method: "DELETE",
-      fallbackError: "Falha ao remover a aula.",
-    },
-  );
-};
+// As operacoes de aula (criar/atualizar/remover) vivem em instrutorService.ts,
+// que e quem consome os endpoints /turmas/:id/aulas.
 
 export const getCertificates = async (): Promise<CertificateRecord[]> => {
   const certificados = await authenticatedRequest<CertificadoApi[]>(
