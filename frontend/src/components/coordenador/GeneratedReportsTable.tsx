@@ -9,6 +9,7 @@ import {
 } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { GeneratedReport } from "@/types/coordinator";
+import { downloadBase64File } from "@/utils/downloadFile";
 
 interface GeneratedReportsTableProps {
   reports: GeneratedReport[];
@@ -19,23 +20,6 @@ const formatDateTime = (value: string) =>
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
-
-const downloadBase64File = (file: {
-  base64: string;
-  contentType: string;
-  fileName: string;
-}) => {
-  const binary = atob(file.base64);
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  const url = URL.createObjectURL(
-    new Blob([bytes], { type: file.contentType }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-};
 
 export const GeneratedReportsTable = ({
   reports,

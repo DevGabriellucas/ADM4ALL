@@ -17,6 +17,7 @@ import type {
   CertificateDisplayStatus,
   CertificateRecord,
 } from "@/types/coordinator";
+import { downloadBase64File } from "@/utils/downloadFile";
 import { getCertificateStatus } from "@/utils/getCertificateStatus";
 
 interface CertificateTableProps {
@@ -107,18 +108,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
       setFeedback({ type: "error", message: result.mensagem });
       return;
     }
-    const binary = atob(result.arquivo.base64);
-    const bytes = Uint8Array.from(binary, (character) =>
-      character.charCodeAt(0),
-    );
-    const url = URL.createObjectURL(
-      new Blob([bytes], { type: result.arquivo.contentType }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = result.arquivo.fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBase64File(result.arquivo);
   };
 
   const handleIssueSuccess = async (

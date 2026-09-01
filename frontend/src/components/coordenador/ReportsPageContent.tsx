@@ -34,6 +34,23 @@ export const ReportsPageContent = ({
 
   const selectedReport =
     reports.find((report) => report.type === reportType) ?? reports[0];
+
+  // A API pode devolver a lista vazia; sem esta guarda o acesso a
+  // selectedReport.rows quebrava a pagina inteira no error boundary.
+  if (!selectedReport) {
+    return (
+      <>
+        <CoordinatorPageHeader
+          title="Relatórios"
+          subtitle="Gere relatórios acadêmicos e administrativos"
+        />
+        <p className="rounded-lg border border-[#D5DDEC] bg-white px-4 py-8 text-center text-slate-500 text-sm shadow-sm">
+          Nenhum relatório disponível no momento.
+        </p>
+      </>
+    );
+  }
+
   const availableClasses = classes.filter(
     (classGroup) => !courseFilter || classGroup.curso === courseFilter,
   );
