@@ -21,9 +21,9 @@ FROM (
         (
             '0d6e0f57-2a41-48b2-9c92-a0e9e37f0001'::UUID,
             'aluno',
-            'Ana Atencao',
+            'Ana Atenção',
             'ana.atencao@example.com',
-            '10456789012',
+            '10456789022',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
@@ -32,7 +32,7 @@ FROM (
             'aluno',
             'Bruno Risco',
             'bruno.risco@example.com',
-            '20456789013',
+            '20456789030',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
@@ -41,7 +41,7 @@ FROM (
             'aluno',
             'Gabriel Almeida',
             'gabriel.almeida@example.com',
-            '30456789014',
+            '30456789049',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
@@ -50,7 +50,7 @@ FROM (
             'aluno',
             'Lara Certificado',
             'lara.certificado@example.com',
-            '40567890125',
+            '40567890104',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
@@ -59,25 +59,25 @@ FROM (
             'aluno',
             'Nina Cancelada',
             'nina.cancelada@example.com',
-            '50678901236',
+            '50678901260',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
         (
             '0d6e0f57-2a41-48b2-9c92-a0e9e37f0006'::UUID,
             'aluno',
-            'Pedro Sem Matricula',
+            'Pedro Sem Matrícula',
             'pedro.sem.matricula@example.com',
-            '60789012347',
+            '60789012308',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         ),
         (
             '0d6e0f57-2a41-48b2-9c92-a0e9e37f0007'::UUID,
             'aluno',
-            'Olivia Oculto',
+            'Olívia Oculto',
             'olivia.oculto@example.com',
-            '70890123458',
+            '70890123446',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea',
             'ativo'
         )
@@ -227,7 +227,7 @@ ON CONFLICT (aluno_id, treinamento_id) DO NOTHING;
 
 INSERT INTO frequencias (matricula_id, aula_id, data_aula, presente, observacao)
 VALUES
-    -- Ana Atencao: 75% de frequencia.
+    -- Ana Atenção: 75% de frequencia.
     ('2d6e0f57-2a41-48b2-9c92-a0e9e37f0001', 'caab179f-b787-4ca9-9c29-5282f5f0457c', '2026-02-03', TRUE, NULL),
     ('2d6e0f57-2a41-48b2-9c92-a0e9e37f0001', 'ca514570-b649-4c78-bf8e-b7aacc74a6f4', '2026-02-10', TRUE, NULL),
     ('2d6e0f57-2a41-48b2-9c92-a0e9e37f0001', '2e066384-6434-488f-8f6f-bdd411710bf3', '2026-02-17', TRUE, NULL),
@@ -282,11 +282,11 @@ VALUES
         '4d6e0f57-2a41-48b2-9c92-a0e9e37f0001',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        'Material oculto de demonstracao',
-        'Este item deve aparecer para o instrutor/coordenador, mas nao para o aluno.',
+        'Material oculto de demonstração',
+        'Este item deve aparecer para o instrutor/coordenador, mas não para o aluno.',
         'pdf',
-        '/materiais/material-oculto-demo.pdf',
-        102400,
+        '/uploads/materiais/material-oculto-demo.pdf',
+        774,
         'oculto',
         'ativo'
     )

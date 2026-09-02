@@ -68,7 +68,7 @@ describe("AlunoUseCase", () => {
     it("deve cadastrar aluno com sucesso", async () => {
       const dados = {
         nome: "Aluno Teste",
-        cpf: "123.456.789-00",
+        cpf: "123.456.789-09",
         telefone: "(11) 99999-9999",
         email: "teste@email.com",
         dataNascimento: "1990-01-01",
@@ -94,7 +94,7 @@ describe("AlunoUseCase", () => {
     it("deve lançar erro se CPF ja existir", async () => {
       const dados = {
         nome: "Aluno Teste",
-        cpf: "123.456.789-00",
+        cpf: "123.456.789-09",
         telefone: "(11) 99999-9999",
         email: "teste@email.com",
         dataNascimento: "1990-01-01",
@@ -111,7 +111,7 @@ describe("AlunoUseCase", () => {
     it("deve lançar erro se e-mail ja existir", async () => {
       const dados = {
         nome: "Aluno Teste",
-        cpf: "123.456.789-00",
+        cpf: "123.456.789-09",
         telefone: "(11) 99999-9999",
         email: "teste@email.com",
         dataNascimento: "1990-01-01",

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { isCpfValido } from "@/utils/cpf";
 
 const somenteDigitos = (valor: string) => valor.replace(/\D/g, "");
 
@@ -10,9 +11,9 @@ export const cadastroFormDataSchema = z
       .string()
       .trim()
       .transform((valor) => valor.replace(/\s+/g, " "))
-      .refine((valor) => valor.length >= 3, { error: "Nome invalido!" })
+      .refine((valor) => valor.length >= 3, { error: "Nome inválido!" })
       .refine((valor) => nomeRegex.test(valor), {
-        error: "Informe apenas letras e espacos.",
+        error: "Informe apenas letras e espaços.",
       })
       .refine((valor) => valor.split(" ").length >= 2, {
         error: "Informe nome e sobrenome.",
@@ -21,23 +22,23 @@ export const cadastroFormDataSchema = z
       .string()
       .trim()
       .transform(somenteDigitos)
-      .refine((valor) => valor.length === 11, { error: "CPF invalido!" })
-      .refine((valor) => !/^(\d)\1+$/.test(valor), {
-        error: "CPF invalido!",
+      .refine((valor) => valor.length === 11, { error: "CPF inválido!" })
+      .refine((valor) => isCpfValido(valor), {
+        error: "CPF inválido!",
       }),
     telefone: z
       .string()
       .trim()
       .transform(somenteDigitos)
       .refine((valor) => valor.length >= 10 && valor.length <= 11, {
-        error: "Telefone invalido!",
+        error: "Telefone inválido!",
       }),
     email: z
       .string()
       .trim()
       .transform((valor) => valor.toLowerCase())
       .refine((valor) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor), {
-        error: "E-mail invalido!",
+        error: "E-mail inválido!",
       }),
     dataNascimento: z
       .string()
@@ -58,15 +59,15 @@ export const cadastroFormDataSchema = z
     cursoUnipe: z.string().trim().optional(),
     senha: z
       .string()
-      .min(8, { error: "A senha deve ter no minimo 8 caracteres." })
+      .min(8, { error: "A senha deve ter no mínimo 8 caracteres." })
       .regex(/[A-Za-z]/, { error: "A senha precisa ter uma letra." })
-      .regex(/\d/, { error: "A senha precisa ter um numero." }),
+      .regex(/\d/, { error: "A senha precisa ter um número." }),
     confirmarSenha: z.string().min(1, { error: "Confirme sua senha!" }),
     treinamento: z.string().min(1, { error: "Selecione um treinamento!" }),
     rgm: z.string().trim().transform(somenteDigitos).optional(),
   })
   .refine((data) => data.senha === data.confirmarSenha, {
-    error: "As senhas nao coincidem!",
+    error: "As senhas não coincidem!",
     path: ["confirmarSenha"],
   })
   .superRefine((data, ctx) => {

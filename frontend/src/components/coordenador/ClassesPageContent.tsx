@@ -57,13 +57,19 @@ export const ClassesPageContent = ({
         classGroup.status === "planejada",
     )
     .reduce((total, classGroup) => total + classGroup.alunos, 0);
+  // Só entram na média as turmas que já têm chamada registrada. Turma sem
+  // chamada vinha como 0% e derrubava o indicador — era o que fazia esta tela
+  // mostrar 7% enquanto o painel mostrava 84% para os mesmos dados.
+  const classesWithAttendance = activeClasses.filter(
+    (classGroup) => classGroup.registrosFrequencia > 0,
+  );
   const averageAttendance =
-    activeClasses.length > 0
+    classesWithAttendance.length > 0
       ? Math.round(
-          activeClasses.reduce(
+          classesWithAttendance.reduce(
             (total, classGroup) => total + classGroup.frequenciaMedia,
             0,
-          ) / activeClasses.length,
+          ) / classesWithAttendance.length,
         )
       : 0;
 
@@ -172,7 +178,11 @@ export const ClassesPageContent = ({
         <CoordinatorStatCard
           title="Frequência média"
           value={`${averageAttendance}%`}
-          subtitle="Média das turmas ativas"
+          subtitle={
+            classesWithAttendance.length > 0
+              ? `Média de ${classesWithAttendance.length} turma(s) com chamada`
+              : "Nenhuma turma com chamada registrada"
+          }
           variant="blue"
         />
         <CoordinatorStatCard

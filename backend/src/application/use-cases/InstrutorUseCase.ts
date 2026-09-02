@@ -1,4 +1,6 @@
+import { AppError } from "../../infrastructure/errors/AppError";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 import {
   AdicionarAulaInput,
   AdicionarMaterialInput,
@@ -71,8 +73,11 @@ export class InstrutorUseCase {
     turmaId: string,
     instrutorId: string | null,
   ): Promise<void> {
+    // Erros de permissao precisam sair como 401/403. Lancar Error puro fazia o
+    // middleware devolver 500, mascarando uma negacao de acesso como falha do
+    // servidor.
     if (!instrutorId) {
-      throw new Error("Instrutor autenticado nao encontrado.");
+      throw new UnauthorizedError("Instrutor autenticado nao encontrado.");
     }
 
     const permitido = await this.instrutorRepository.turmaPertenceAoInstrutor(
@@ -81,7 +86,7 @@ export class InstrutorUseCase {
     );
 
     if (!permitido) {
-      throw new Error("Instrutor sem acesso a esta turma.");
+      throw new AppError("Instrutor sem acesso a esta turma.", 403);
     }
   }
 

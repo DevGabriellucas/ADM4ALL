@@ -42,8 +42,13 @@ export default async function CoordinatorDashboardPage() {
   const issuedCertificates = certificates.filter(
     (certificate) => certificate.status === "emitido",
   ).length;
+  // "Alunos em atenção" lista quem precisa de acao da coordenacao. Matricula
+  // sem nenhuma chamada registrada nao entra: 0% ali significa "ainda nao teve
+  // aula", nao "faltou a todas" — era o que fazia todo aluno recem-cadastrado
+  // aparecer como risco de reprovacao.
   const attentionStudents = attendanceSummary.filter(
-    (student) => student.situacao !== "regular",
+    (student) =>
+      student.situacao !== "regular" && student.situacao !== "sem_registro",
   );
 
   return (
@@ -82,7 +87,7 @@ export default async function CoordinatorDashboardPage() {
         <CoordinatorStatCard
           title="Frequência média"
           value={`${summary.frequenciaMedia}%`}
-          subtitle="Média geral das turmas"
+          subtitle="Presenças sobre as chamadas registradas"
           variant="green"
         />
         <CoordinatorStatCard

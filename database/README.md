@@ -23,7 +23,10 @@ database/
     10-comentar-tabelas.sql
     11-adicionar-visibilidade-materiais.sql
     12-criar-configuracoes-sistema.sql
-    20-inserir-dados-teste.sql
+    13-inserir-configuracoes-padrao.sql
+    14-criar-relatorios-gerados.sql
+    15-inserir-perfis.sql
+    16-inserir-cursos-padrao.sql
   migrations/
     20260708_turma_instrutores.sql
 ```
@@ -167,20 +170,53 @@ Se essa consulta retornar registro, o backend nao deve gerar outro token. Se
 nao retornar, pode criar uma nova solicitacao com `expira_em = now() + interval
 '15 minutes'`.
 
+## Arquivos de materiais do seed
+
+O seed cadastra materiais que apontam para arquivos reais em
+`/uploads/materiais/`. Como `backend/uploads/` e ignorado pelo Git, os arquivos
+de exemplo ficam versionados em `database/seeds/materiais-exemplo/` e precisam
+ser copiados apos clonar o repositorio:
+
+```bash
+mkdir -p backend/uploads/materiais
+cp database/seeds/materiais-exemplo/* backend/uploads/materiais/
+```
+
+Sem essa copia, "Abrir material" responde 404 — os registros existem no banco
+mas os arquivos nao existem em disco.
+
+Atencao ao formato do caminho: o upload real grava `/uploads/materiais/<uuid>`,
+e o `express.static` so serve `/uploads/avatares`. Material sai pelas rotas
+autenticadas de download, que conferem o vinculo do usuario com a turma.
+
 ## Seed de desenvolvimento
 
-O arquivo `init/20-inserir-dados-teste.sql` cria dados para testar cenarios reais:
+**Os dados de teste nao rodam mais automaticamente.** Eles sairam de
+`database/init/` e vivem em `database/seeds/dev/`, para nenhuma instalacao
+nascer com usuarios de senha conhecida.
 
-- perfis de aluno, instrutor, coordenador e admin;
-- usuarios para cada perfil;
-- instrutores e coordenadora;
-- turmas e cronograma de aulas;
-- aluno em andamento;
-- aluno aprovado com certificado emitido;
-- aluno reprovado por falta;
-- materiais de turma;
-- documentos aprovados e pendentes;
-- frequencias, avaliacoes e certificado emitido.
+O que `database/init/` cria num banco novo:
 
-Esse seed nao e outro banco. Ele apenas popula o banco local criado pelo
-compose da raiz.
+- arquivos `01` a `12`: as tabelas e constraints;
+- `13-inserir-configuracoes-padrao.sql`: periodo letivo, dados da instituicao
+  e regras de certificado;
+- `14-criar-relatorios-gerados.sql`: tabela de relatorios persistidos;
+- `15-inserir-perfis.sql`: os 4 perfis de acesso (**estrutura**, nao dado de
+  teste — sem eles nenhum usuario pode ser criado);
+- `16-inserir-cursos-padrao.sql`: os 5 cursos (o cadastro publico exige
+  escolher um treinamento; sem nenhum, o aluno nao consegue se inscrever).
+
+Resultado: **zero usuarios, zero turmas, zero matriculas**. Para criar a
+primeira conta, veja `database/seeds/producao/README.md`.
+
+### Populando um ambiente de desenvolvimento
+
+```bash
+docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/20-inserir-dados-teste.sql
+docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/21-inserir-casos-demo-mvp.sql
+mkdir -p backend/uploads/materiais
+cp database/seeds/materiais-exemplo/* backend/uploads/materiais/
+```
+
+Esses scripts criam usuarios com senhas documentadas em
+`docs/seed-casos-teste.md`. **Nunca rode em producao.**

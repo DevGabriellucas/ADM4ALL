@@ -70,7 +70,7 @@ export class ActivationUseCase {
     if (campos.has("senha")) {
       if (!senha || senha.length < 8) {
         throw new BadRequestError(
-          "A senha deve ter no minimo 8 caracteres.",
+          "A senha deve ter no mínimo 8 caracteres.",
         );
       }
       if (senha !== dados.confirmarSenha) {

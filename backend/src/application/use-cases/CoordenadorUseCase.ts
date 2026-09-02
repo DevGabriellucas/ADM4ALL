@@ -50,6 +50,7 @@ import { Telefone } from "../../domain/value-objects/Telefone";
 import { getRequiredEnv } from "../../infrastructure/config/env";
 import { getCertificadosStorageDir } from "../../infrastructure/config/storage";
 import { EmailService } from "../../infrastructure/email/EmailService";
+import { AppError } from "../../infrastructure/errors/AppError";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
@@ -508,6 +509,7 @@ export class CoordenadorUseCase {
     id: string,
     status: string,
     usuarioLogadoId?: string,
+    perfilLogado?: string,
   ): Promise<UsuarioListagemCoordenador> {
     if (!UUID_PATTERN.test(id)) {
       throw new BadRequestError("O ID do usuario e invalido.");
@@ -528,6 +530,34 @@ export class CoordenadorUseCase {
       throw new BadRequestError(
         "Voce nao pode desativar a propria conta.",
       );
+    }
+
+    if (status === "inativo") {
+      // Separacao de privilegio: antes existia apenas a trava da propria conta,
+      // entao qualquer coordenador podia desativar o administrador do sistema
+      // ou outro coordenador.
+      if (
+        perfilLogado === "coordenador" &&
+        (usuario.role === "administrador" || usuario.role === "coordenador")
+      ) {
+        throw new AppError(
+          "Apenas um administrador pode desativar contas de coordenacao ou administracao.",
+          403,
+        );
+      }
+
+      // Trava de seguranca contra lockout: sem admin ativo ninguem consegue
+      // reativar a conta pela interface — so por SQL no banco.
+      if (usuario.role === "administrador") {
+        const administradoresAtivos =
+          await this.coordenadorRepository.contarAdministradoresAtivos();
+
+        if (administradoresAtivos <= 1) {
+          throw new BadRequestError(
+            "Este e o unico administrador ativo. Promova outro administrador antes de desativar esta conta.",
+          );
+        }
+      }
     }
 
     const atualizado =

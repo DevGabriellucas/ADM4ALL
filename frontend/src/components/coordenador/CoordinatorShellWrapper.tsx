@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorSidebar } from "@/components/coordenador/CoordinatorSidebar";
@@ -35,7 +35,6 @@ export const CoordinatorShellWrapper = ({
   perfilUsuario,
 }: CoordinatorShellWrapperProps) => {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
@@ -70,7 +69,7 @@ export const CoordinatorShellWrapper = ({
   }, [isMenuOpen]);
 
   const confirmarSaida = () => {
-    router.replace("/logout");
+    window.location.replace("/logout");
   };
 
   const iniciaisUsuario = getIniciais(nomeUsuario);
@@ -242,7 +241,7 @@ export const CoordinatorShellWrapper = ({
       {confirmandoSaida && (
         <ConfirmDialog
           title="Deseja sair?"
-          description="Voce sera desconectado da area do coordenador."
+          description="Você será desconectado da área do coordenador."
           confirmLabel="Sair"
           tone="danger"
           onCancel={() => setConfirmandoSaida(false)}

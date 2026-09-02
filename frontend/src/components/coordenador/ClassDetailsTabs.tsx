@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { baixarMaterialTurmaAction } from "@/app/coordenador/actions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type {
@@ -12,7 +13,9 @@ import type {
   Lesson,
   Student,
 } from "@/types/coordinator";
+import { downloadBase64File } from "@/utils/downloadFile";
 import { getCertificateStatus as resolveCertificateStatus } from "@/utils/getCertificateStatus";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 
 type ClassDetailsTab =
   | "alunos"
@@ -22,6 +25,7 @@ type ClassDetailsTab =
   | "certificados";
 
 interface ClassDetailsTabsProps {
+  turmaId: string;
   students: Student[];
   lessons: Lesson[];
   attendance: AttendanceSummary[];
@@ -36,16 +40,6 @@ const TABS: Array<{ id: ClassDetailsTab; label: string }> = [
   { id: "materiais", label: "Materiais" },
   { id: "certificados", label: "Certificados" },
 ];
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-
-const resolverUrlMaterial = (url: string | null | undefined) => {
-  if (!url) {
-    return null;
-  }
-
-  return url.startsWith("/") ? `${API_URL}${url}` : url;
-};
 
 const formatDate = (date: string) => {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
@@ -80,6 +74,7 @@ const getCertificateStatus = (status: CertificateDisplayStatus) => {
 };
 
 export const ClassDetailsTabs = ({
+  turmaId,
   students,
   lessons,
   attendance,
@@ -87,6 +82,22 @@ export const ClassDetailsTabs = ({
   certificates,
 }: ClassDetailsTabsProps) => {
   const [activeTab, setActiveTab] = useState<ClassDetailsTab>("alunos");
+  const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  const [erroDownload, setErroDownload] = useState<string | null>(null);
+
+  // O arquivo vem pela rota autenticada, que confere o vinculo com a turma.
+  // Linkar o arquivo estatico direto deixava o material publico.
+  const baixarMaterial = async (materialId: string) => {
+    setBaixandoId(materialId);
+    setErroDownload(null);
+    try {
+      downloadBase64File(await baixarMaterialTurmaAction(turmaId, materialId));
+    } catch (error) {
+      setErroDownload(getErrorMessage(error));
+    } finally {
+      setBaixandoId(null);
+    }
+  };
 
   return (
     <section className="overflow-hidden rounded-lg border border-[#D5DDEC] bg-white shadow-sm">
@@ -324,8 +335,6 @@ export const ClassDetailsTabs = ({
               </thead>
               <tbody>
                 {materials.map((material) => {
-                  const urlMaterial = resolverUrlMaterial(material.urlArquivo);
-
                   return (
                     <tr key={material.id}>
                       <td className="border-slate-100 border-b px-3 py-3 font-medium text-slate-900">
@@ -349,13 +358,17 @@ export const ClassDetailsTabs = ({
                           : "Visivel"}
                       </td>
                       <td className="border-slate-100 border-b px-3 py-3">
-                        {urlMaterial ? (
-                          <a
-                            href={urlMaterial}
-                            className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        {material.urlArquivo ? (
+                          <button
+                            type="button"
+                            onClick={() => baixarMaterial(material.id)}
+                            disabled={baixandoId === material.id}
+                            className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Visualizar
-                          </a>
+                            {baixandoId === material.id
+                              ? "Abrindo…"
+                              : "Visualizar"}
+                          </button>
                         ) : (
                           <span className="font-semibold text-slate-400 text-xs">
                             Sem arquivo
@@ -377,6 +390,12 @@ export const ClassDetailsTabs = ({
                 )}
               </tbody>
             </table>
+
+            {erroDownload && (
+              <p role="alert" className="mt-3 text-red-700 text-xs">
+                {erroDownload}
+              </p>
+            )}
           </div>
         )}
 

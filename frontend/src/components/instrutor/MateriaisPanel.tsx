@@ -5,6 +5,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import {
   adicionarMaterialAction,
   atualizarMaterialVisibilidadeAction,
+  baixarMaterialTurmaAction,
   removerMaterialAction,
 } from "@/app/instrutor/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -13,7 +14,9 @@ import type {
   MaterialResumo,
   TipoMaterial,
 } from "@/types/instrutor";
+import { downloadBase64File } from "@/utils/downloadFile";
 import { formatData, formatTamanho, formatTipoMaterial } from "@/utils/format";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 
 interface MateriaisPanelProps {
   turmaId: string;
@@ -67,7 +70,6 @@ const EXTENSOES_POR_TIPO: Record<TipoMaterial, string[]> = {
 };
 
 const TAMANHO_MAXIMO_BYTES = 50 * 1024 * 1024;
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 const extensaoDoArquivo = (nome: string) =>
   nome.split(".").pop()?.toLowerCase() ?? "";
@@ -85,11 +87,6 @@ const arquivoParaBase64 = (arquivo: File) =>
     leitor.onerror = () => reject(new Error("Falha ao ler o arquivo."));
     leitor.readAsDataURL(arquivo);
   });
-
-const resolverUrlMaterial = (url: string | null) => {
-  if (!url) return null;
-  return url.startsWith("/") ? `${API_URL}${url}` : url;
-};
 
 export const MateriaisPanel = ({
   turmaId,
@@ -116,6 +113,7 @@ export const MateriaisPanel = ({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isPending, startTransition] = useTransition();
   const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [isRemovendo, startRemocao] = useTransition();
   const [materialParaRemover, setMaterialParaRemover] =
     useState<MaterialResumo | null>(null);
@@ -224,6 +222,19 @@ export const MateriaisPanel = ({
         router.refresh();
       }
     });
+  };
+
+  // O arquivo vem pela rota autenticada, que confere o vinculo do instrutor
+  // com a turma. Linkar o arquivo estatico direto deixava o material publico.
+  const baixar = async (material: MaterialResumo) => {
+    setBaixandoId(material.id);
+    try {
+      downloadBase64File(await baixarMaterialTurmaAction(turmaId, material.id));
+    } catch (error) {
+      setFeedback({ tipo: "erro", texto: getErrorMessage(error) });
+    } finally {
+      setBaixandoId(null);
+    }
   };
 
   const remover = (material: MaterialResumo) => {
@@ -488,7 +499,6 @@ export const MateriaisPanel = ({
               materiaisFiltrados.map((material) => {
                 const removendoEste =
                   isRemovendo && removendoId === material.id;
-                const urlMaterial = resolverUrlMaterial(material.urlArquivo);
 
                 return (
                   <tr
@@ -532,13 +542,13 @@ export const MateriaisPanel = ({
                     </td>
                     <td className="py-3">
                       <div className="flex items-center justify-center gap-x-3">
-                        {urlMaterial ? (
-                          <a
-                            href={urlMaterial}
+                        {material.urlArquivo ? (
+                          <button
+                            type="button"
+                            onClick={() => baixar(material)}
+                            disabled={baixandoId === material.id}
                             title="Baixar o arquivo"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-slate-900 transition-colors hover:text-brand-dark"
+                            className="cursor-pointer text-slate-900 transition-colors hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <svg
                               viewBox="0 0 24 24"
@@ -554,7 +564,7 @@ export const MateriaisPanel = ({
                               <path d="M6 12l6 6 6-6" />
                               <path d="M5 21h14" />
                             </svg>
-                          </a>
+                          </button>
                         ) : (
                           <span
                             title="Sem arquivo"

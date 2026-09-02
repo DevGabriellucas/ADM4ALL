@@ -46,6 +46,12 @@ import {
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
 
+// O periodo letivo e guardado em duas chaves. `periodo_letivo` e a canonica
+// (criada pelo seed e usada pela tela de Configuracoes); `periodo_letivo_atual`
+// e a legada, que o painel gravava sozinho. A ordem importa: na leitura vale a
+// primeira encontrada, e na escrita as duas sao atualizadas juntas.
+const PERIODO_LETIVO_CHAVES = ["periodo_letivo", "periodo_letivo_atual"];
+
 export class PostgresCoordenadorRepository implements CoordenadorRepository {
   constructor(private db: Pool) {}
 
@@ -253,6 +259,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       SELECT
         t.id,
         t.nome,
+        t.codigo,
         tr.nome AS curso,
         t.status,
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
@@ -443,6 +450,20 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     id: string,
   ): Promise<UsuarioListagemCoordenador | null> {
     return await this.buscarUsuarioListagemPorId(id);
+  }
+
+  // Usado antes de desativar um administrador, para nao deixar o sistema sem
+  // nenhum: a interface nao tem como reverter uma conta admin desativada.
+  async contarAdministradoresAtivos(): Promise<number> {
+    const resultado = await this.db.query(
+      `SELECT COUNT(*)::int AS total
+         FROM usuarios u
+         JOIN perfis p ON p.id = u.perfil_id
+        WHERE p.nome = 'admin'
+          AND u.status = 'ativo'`,
+    );
+
+    return Number(resultado.rows[0]?.total ?? 0);
   }
 
   async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
@@ -968,6 +989,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           m.status AS status_matricula,
           COUNT(f.id) FILTER (WHERE f.presente) AS presencas,
           COUNT(f.id) FILTER (WHERE NOT f.presente) AS faltas,
+          COUNT(f.id) AS registros,
           COALESCE(
             ROUND(
               100.0 * COUNT(f.id) FILTER (WHERE f.presente)
@@ -1006,6 +1028,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         frequencia,
         CASE
           WHEN status_matricula = 'reprovado_falta' THEN 'reprovado_falta'
+          -- Sem nenhuma chamada registrada a frequencia e 0 por ausencia de
+          -- dado, nao por falta. Antes esses alunos (inclusive quem nunca
+          -- ativou a conta) caiam direto em 'risco' e enchiam o painel da
+          -- coordenacao de alerta antes da primeira aula.
+          WHEN registros = 0 THEN 'sem_registro'
           WHEN frequencia >= 80 THEN 'regular'
           WHEN frequencia >= 75 THEN 'atencao'
           ELSE 'risco'
@@ -1150,6 +1177,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       SELECT
         tu.id AS turma_id,
         tu.nome AS turma,
+        tu.codigo AS turma_codigo,
         tr.nome AS curso,
         to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         COALESCE(
@@ -1172,6 +1200,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
     const rows: ReportDataRow[] = resultado.rows.map((linha) => {
       const frequenciaNumero = Number(linha.frequencia);
+      const registros = Number(linha.registros);
       const turma = linha.turma ?? "";
       const curso = linha.curso ?? "";
       return {
@@ -1182,11 +1211,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         chartLabel: turma,
         chartValue: frequenciaNumero,
         metricNumerator: Number(linha.presencas),
-        metricDenominator: Number(linha.registros),
+        metricDenominator: registros,
         values: {
           turma,
+          codigo: linha.turma_codigo ?? "",
           curso,
-          frequencia: `${frequenciaNumero}%`,
+          // Turma sem chamada nao tem 0% de presenca — nao tem dado. Exibir
+          // "0%" fazia a tabela parecer contradizer a metrica do topo, que e
+          // calculada so sobre as chamadas efetivamente registradas.
+          frequencia: registros > 0 ? `${frequenciaNumero}%` : "Sem chamada",
         },
       };
     });
@@ -1203,7 +1236,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return {
       type: "frequencia_turma",
       title: "Frequência por turma",
-      description: "Média de frequência registrada em cada turma.",
+      description:
+        "Frequência por turma. A métrica geral considera todas as presenças sobre as chamadas registradas; turmas sem chamada não entram no cálculo.",
       metricLabel: "Frequência média",
       metricSuffix: "%",
       metricValue:
@@ -1213,6 +1247,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       aggregation: "average",
       columns: [
         { key: "turma", label: "Turma" },
+        { key: "codigo", label: "Código" },
         { key: "curso", label: "Curso" },
         { key: "frequencia", label: "Frequência" },
       ],
@@ -1703,7 +1738,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       dataInicio: linha.data_inicio,
       dataFim: linha.data_fim,
       dataEmissao: linha.data_emissao ?? null,
-      cidade: "João Pessoa - PB",
+      cidade: "João Pessoa",
       nomeCoordenadora: linha.nome_coordenadora,
       nomeProjeto: "Projeto de Extensão Administração para Todos",
       textoDescritivo:
@@ -2036,6 +2071,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       SELECT
         t.id,
         t.nome,
+        t.codigo,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
@@ -2044,14 +2080,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
-        COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
+        COALESCE((
+          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ), 0) AS frequencia_media,
+        (
+          SELECT COUNT(*)
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ) AS registros_frequencia
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
-      LEFT JOIN frequencias f ON f.matricula_id = m.id
       GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
     `;
@@ -2064,6 +2110,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       SELECT
         t.id,
         t.nome,
+        t.codigo,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
@@ -2072,14 +2119,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
-        COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
+        COALESCE((
+          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ), 0) AS frequencia_media,
+        (
+          SELECT COUNT(*)
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ) AS registros_frequencia
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
-      LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.treinamento_id = $1
       GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       ORDER BY t.data_inicio DESC
@@ -2094,6 +2151,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       SELECT
         t.id,
         t.nome,
+        t.codigo,
         tr.nome AS curso,
         STRING_AGG(DISTINCT ui.nome, ', ' ORDER BY ui.nome) AS instrutores,
         t.periodo_letivo,
@@ -2102,14 +2160,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
-        COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia_media
+        COALESCE((
+          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ), 0) AS frequencia_media,
+        (
+          SELECT COUNT(*)
+            FROM frequencias fr
+            JOIN matriculas mf ON mf.id = fr.matricula_id
+           WHERE mf.turma_id = t.id
+        ) AS registros_frequencia
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
-      LEFT JOIN frequencias f ON f.matricula_id = m.id
       WHERE t.id = $1
       GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
       `,
@@ -2290,6 +2358,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return {
       id: linha.id,
       nome: linha.nome,
+      codigo: linha.codigo ?? "",
       curso: linha.curso,
       instrutores: linha.instrutores ?? "",
       alunos: Number(linha.alunos),
@@ -2299,6 +2368,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       periodoLetivo: linha.periodo_letivo ?? "",
       status: linha.status,
       frequenciaMedia: Number(linha.frequencia_media),
+      // Quantas chamadas a turma tem registradas. Serve para distinguir "0% de
+      // presenca" de "turma que ainda nao teve chamada" — sem isso, turmas sem
+      // registro entravam como 0% e derrubavam a media geral.
+      registrosFrequencia: Number(linha.registros_frequencia ?? 0),
     };
   }
 
@@ -2329,17 +2402,21 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   async buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse> {
-    const CHAVE = "periodo_letivo_atual";
-
     try {
+      // O periodo letivo mora em duas chaves: `periodo_letivo` e a legada
+      // `periodo_letivo_atual`. Ler so uma delas fazia o painel e a tela de
+      // Configuracoes exibirem periodos diferentes — o painel caia no calculo
+      // por data porque a chave que ele lia nao existia no seed. Aqui a
+      // canonica tem prioridade e a legada e o fallback.
       const resultado = await this.db.query(
         `SELECT chave, valor, descricao,
                 to_char(atualizado_em, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS atualizado_em,
                 atualizado_por_id
            FROM configuracoes_sistema
-          WHERE chave = $1
+          WHERE chave = ANY($1::text[])
+          ORDER BY array_position($1::text[], chave)
           LIMIT 1`,
-        [CHAVE],
+        [PERIODO_LETIVO_CHAVES],
       );
 
       const linha = resultado.rows[0];
@@ -2382,17 +2459,18 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     periodoLetivo: string,
     usuarioId: string,
   ): Promise<PeriodoLetivoResponse> {
-    const CHAVE = "periodo_letivo_atual";
-
     try {
+      // Grava as duas chaves para o painel e a tela de Configuracoes nunca
+      // divergirem, seja qual for a tela usada para editar.
       await this.db.query(
         `INSERT INTO configuracoes_sistema (chave, valor, descricao, atualizado_por_id, atualizado_em)
-         VALUES ($1, $2, 'Periodo letivo definido manualmente pelo coordenador.', $3, now())
+         SELECT chave, $2, 'Periodo letivo definido manualmente pelo coordenador.', $3, now()
+           FROM unnest($1::text[]) AS chave
          ON CONFLICT (chave) DO UPDATE
            SET valor = EXCLUDED.valor,
                atualizado_por_id = EXCLUDED.atualizado_por_id,
                atualizado_em = now()`,
-        [CHAVE, periodoLetivo, usuarioId],
+        [PERIODO_LETIVO_CHAVES, periodoLetivo, usuarioId],
       );
 
       return await this.buscarPeriodoLetivo();
@@ -2404,12 +2482,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   async excluirPeriodoLetivoManual(): Promise<void> {
-    const CHAVE = "periodo_letivo_atual";
-
     try {
       await this.db.query(
-        `DELETE FROM configuracoes_sistema WHERE chave = $1`,
-        [CHAVE],
+        `DELETE FROM configuracoes_sistema WHERE chave = ANY($1::text[])`,
+        [PERIODO_LETIVO_CHAVES],
       );
     } catch {
       // Tabela nao existe = ja esta em modo automatico.

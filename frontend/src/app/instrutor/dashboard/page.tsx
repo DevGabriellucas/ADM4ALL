@@ -35,8 +35,8 @@ export default async function InstrutorDashboardPage() {
     .slice(0, 3);
   const alertasRapidos = [
     alunosSemPresenca > 0
-      ? `${alunosSemPresenca} alunos sem presenca registrada na aula de referencia.`
-      : "Presenca da aula de referencia sem pendencias.",
+      ? `${alunosSemPresenca} alunos sem presença registrada na aula de referência.`
+      : "Presença da aula de referência sem pendências.",
     aulasPlanejadasAtrasadas > 0
       ? `${aulasPlanejadasAtrasadas} aulas planejadas antigas precisam de status.`
       : "Cronograma sem aulas planejadas atrasadas.",
@@ -72,13 +72,13 @@ export default async function InstrutorDashboardPage() {
           />
           <MetricCard
             icon="%"
-            title="Frequencia media da turma"
+            title="Frequência média da turma"
             value={`${metricas.frequenciaMedia}%`}
             variant="azul"
           />
           <MetricCard
             icon="Aula"
-            title="Proxima aula"
+            title="Próxima aula"
             value={proximaAulaAgenda ? formatData(proximaAulaAgenda.data) : "-"}
             subtitle={
               proximaAulaAgenda ? proximaAulaTexto : "Sem aula agendada"
@@ -108,7 +108,7 @@ export default async function InstrutorDashboardPage() {
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-slate-900 text-sm">
-            Alertas rapidos
+            Alertas rápidos
           </h2>
           <ul className="mt-3 space-y-2 text-slate-600 text-sm">
             {alertasRapidos.map((alerta) => (

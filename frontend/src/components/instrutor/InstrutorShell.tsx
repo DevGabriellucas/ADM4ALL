@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -44,7 +44,6 @@ export const InstrutorShell = ({
   children,
 }: InstrutorShellProps) => {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
@@ -73,7 +72,7 @@ export const InstrutorShell = ({
   }, [isMenuOpen]);
 
   const confirmarSaida = () => {
-    router.replace("/logout");
+    window.location.replace("/logout");
   };
 
   const iniciais = getIniciais(instrutor.nome);
@@ -247,7 +246,7 @@ export const InstrutorShell = ({
       {confirmandoSaida && (
         <ConfirmDialog
           title="Deseja sair?"
-          description="Voce sera desconectado da area do instrutor."
+          description="Você será desconectado da área do instrutor."
           confirmLabel="Sair"
           tone="danger"
           onCancel={() => setConfirmandoSaida(false)}

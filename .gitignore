@@ -8,3 +8,6 @@ dist/
 .npm-cache-*/
 
 database/pgdata/
+
+# Dumps do banco: contem dados pessoais de alunos (CPF, e-mail).
+backups/

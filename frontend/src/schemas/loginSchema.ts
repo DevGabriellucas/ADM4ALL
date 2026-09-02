@@ -16,6 +16,9 @@ export const loginFormDataSchema = z.object({
   ),
   password: z
     .string("A senha é obrigatória.")
+    // Campo em branco tem erro próprio: sem o min(1) a mensagem exibida era
+    // "A senha deve ter no mínimo 8 caracteres", que não é o problema.
+    .min(1, { error: "A senha é obrigatória." })
     .min(8, { error: "A senha deve ter no mínimo 8 caracteres." }),
 });
 

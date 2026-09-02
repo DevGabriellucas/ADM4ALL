@@ -176,7 +176,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                 Turmas vinculadas
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                Acoes
+                Ações
               </th>
             </tr>
           </thead>
@@ -194,7 +194,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                     {instructor.email}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                    {instructor.telefone ?? "Nao informado"}
+                    {instructor.telefone ?? "Não informado"}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <CoordinatorStatusBadge

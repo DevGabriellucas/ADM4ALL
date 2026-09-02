@@ -6,9 +6,18 @@ export function GET() {
   // NextResponse.redirect exige URL absoluta e request.nextUrl.origin devolve
   // sempre o host de bind do servidor (localhost:3000), o que jogava o usuario
   // para localhost em qualquer acesso por IP ou dominio.
+  //
+  // A raiz "/" e a propria tela de login (app/page.tsx renderiza o LoginForm
+  // quando nao ha sessao), entao este e o destino correto do "Sair".
+  //
+  // Os botoes de sair precisam usar window.location.replace("/logout"), nunca
+  // router.replace: a navegacao client-side do App Router resolve este 303
+  // internamente, mantem o Router Cache com as telas do usuario anterior e
+  // deixa a URL final a cargo do router. So a navegacao de documento garante
+  // que os cookies limpos valham e que a raiz seja buscada do zero.
   const response = new NextResponse(null, {
     status: 303,
-    headers: { Location: "/" },
+    headers: { "Cache-Control": "no-store", Location: "/" },
   });
 
   for (const cookieName of Object.values(SESSION_COOKIE_NAMES)) {

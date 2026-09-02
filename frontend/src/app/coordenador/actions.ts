@@ -8,8 +8,10 @@ import type {
   PeriodoLetivoFormData,
   PreferenciasFormData,
 } from "@/schemas/configuracionsSchema";
+import type { AuthenticatedFileResponse } from "@/services/apiClient";
 import { configService } from "@/services/configService";
 import * as coordinatorService from "@/services/coordinatorService";
+import { downloadMaterialTurma } from "@/services/instrutorService";
 import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
 import type {
@@ -803,7 +805,7 @@ export async function atualizarUsuarioAction(
       mensagem:
         error instanceof Error
           ? error.message
-          : "Falha ao atualizar o usuario.",
+          : "Falha ao atualizar o usuário.",
     };
   }
 }
@@ -826,7 +828,7 @@ export async function atualizarStatusUsuarioAction(
       mensagem:
         error instanceof Error
           ? error.message
-          : "Falha ao atualizar o status do usuario.",
+          : "Falha ao atualizar o status do usuário.",
     };
   }
 }
@@ -1007,4 +1009,11 @@ export async function atualizarPreferenciasAction(
           : "Erro ao atualizar preferências.",
     };
   }
+}
+
+export async function baixarMaterialTurmaAction(
+  turmaId: string,
+  materialId: string,
+): Promise<AuthenticatedFileResponse> {
+  return await downloadMaterialTurma(turmaId, materialId);
 }

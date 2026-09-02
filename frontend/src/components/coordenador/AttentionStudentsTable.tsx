@@ -23,6 +23,10 @@ const getSituationInfo = (situacao: AttendanceSummary["situacao"]) => {
     return { label: "Risco de reprovação", tone: "orange" as const };
   }
 
+  if (situacao === "sem_registro") {
+    return { label: "Sem chamada registrada", tone: "slate" as const };
+  }
+
   return { label: "Regular", tone: "green" as const };
 };
 

@@ -88,6 +88,7 @@ interface AlunoListagemApi {
 interface TurmaApi {
   id: string;
   nome: string;
+  codigo?: string;
   curso: string;
   instrutores: string;
   alunos: number;
@@ -97,6 +98,7 @@ interface TurmaApi {
   periodoLetivo: string;
   status: string;
   frequenciaMedia: number;
+  registrosFrequencia?: number;
 }
 
 interface CertificadoApi {
@@ -207,6 +209,7 @@ const serializeClassStatus = (status: ClassGroup["status"]): string => status;
 const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
   nome: turma.nome,
+  codigo: turma.codigo ?? "",
   curso: turma.curso,
   instrutores: turma.instrutores ?? "",
   alunos: turma.alunos,
@@ -216,6 +219,7 @@ const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   periodoLetivo: turma.periodoLetivo ?? "",
   status: normalizeClassStatus(turma.status),
   frequenciaMedia: turma.frequenciaMedia,
+  registrosFrequencia: turma.registrosFrequencia ?? 0,
 });
 
 const formatarTamanhoMaterial = (bytes: number | null): string => {
@@ -733,7 +737,7 @@ export const updateUserStatus = async (
     {
       method: "PATCH",
       body: JSON.stringify({ status }),
-      fallbackError: "Falha ao atualizar o status do usuario.",
+      fallbackError: "Falha ao atualizar o status do usuário.",
     },
   );
 };
@@ -749,7 +753,7 @@ export const updateUser = async (
   return await authenticatedRequest<BaseUser>(`/coordenador/usuarios/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),
-    fallbackError: "Falha ao atualizar o usuario.",
+    fallbackError: "Falha ao atualizar o usuário.",
   });
 };
 
@@ -872,6 +876,7 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
       situacao !== "regular" &&
       situacao !== "atencao" &&
       situacao !== "risco_reprovacao" &&
+      situacao !== "sem_registro" &&
       situacao !== "reprovado_falta"
     ) {
       throw new Error(

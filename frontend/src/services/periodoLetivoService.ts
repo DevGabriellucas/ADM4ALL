@@ -35,7 +35,7 @@ export const getPeriodoLetivo = async (): Promise<PeriodoLetivoResponse> => {
     "/coordenador/periodo-letivo",
     {
       cache: "no-store",
-      fallbackError: "Falha ao carregar o periodo letivo.",
+      fallbackError: "Falha ao carregar o período letivo.",
     },
   );
 };
@@ -48,7 +48,7 @@ export const atualizarPeriodoLetivo = async (
     {
       method: "PATCH",
       body: JSON.stringify({ periodoLetivo }),
-      fallbackError: "Falha ao atualizar o periodo letivo.",
+      fallbackError: "Falha ao atualizar o período letivo.",
     },
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { InstrutorResumo } from "@/types/instrutor";
@@ -12,8 +12,8 @@ interface InstrutorSidebarProps {
 
 export const instrutorNavItems = [
   { label: "Dashboard", href: "/instrutor/dashboard" },
-  { label: "Presenca", href: "/instrutor/presenca" },
-  { label: "Frequencia", href: "/instrutor/frequencia" },
+  { label: "Presença", href: "/instrutor/presenca" },
+  { label: "Frequência", href: "/instrutor/frequencia" },
   { label: "Cronograma", href: "/instrutor/cronograma" },
   { label: "Materiais", href: "/instrutor/materiais" },
   { label: "Perfil", href: "/instrutor/perfil" },
@@ -38,13 +38,12 @@ const resolverAvatarUrl = (url: string | null) => {
 };
 
 export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
-  const router = useRouter();
   const pathname = usePathname();
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const avatarUrl = resolverAvatarUrl(instrutor.avatarUrl);
 
   const confirmarSaida = () => {
-    router.replace("/logout");
+    window.location.replace("/logout");
   };
 
   return (
@@ -115,7 +114,7 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
       {confirmandoSaida && (
         <ConfirmDialog
           title="Deseja sair?"
-          description="Voce sera desconectado da area do instrutor."
+          description="Você será desconectado da área do instrutor."
           confirmLabel="Sair"
           tone="danger"
           onCancel={() => setConfirmandoSaida(false)}

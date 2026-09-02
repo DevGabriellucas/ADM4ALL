@@ -28,7 +28,7 @@ export default async function InstrutorPerfilPage() {
             </div>
             <div>
               <dt className="font-medium text-slate-500 text-xs">
-                Area de atuacao
+                Área de atuação
               </dt>
               <dd className="mt-1 text-slate-900 text-sm">
                 {instrutor.areaAtuacao ?? "Nao informada"}

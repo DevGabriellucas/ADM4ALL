@@ -84,6 +84,13 @@ export const ClassTable = ({
                 <tr key={classGroup.id}>
                   <td className="border-slate-100 border-b px-3 py-3 font-medium text-slate-900">
                     {classGroup.nome}
+                    {/* Turmas do mesmo curso e período têm nome idêntico; o
+                        código é o único jeito de distinguir uma da outra. */}
+                    {classGroup.codigo && (
+                      <span className="mt-0.5 block font-normal text-slate-500 text-xs">
+                        {classGroup.codigo}
+                      </span>
+                    )}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
                     {classGroup.curso}

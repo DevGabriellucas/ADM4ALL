@@ -28,6 +28,9 @@ export type AttendanceSituation =
   | "regular"
   | "atencao"
   | "risco_reprovacao"
+  // Matricula sem nenhuma chamada registrada: frequencia 0% por ausencia de
+  // dado, e nao por falta. Nao deve ser tratada como alerta.
+  | "sem_registro"
   | typeof MATRICULA_STATUS.REPROVADO_FALTA;
 
 export type CertificateStatus = "pendente" | "emitido" | "cancelado";
@@ -171,6 +174,8 @@ export interface Course {
 export interface ClassGroup {
   id: string;
   nome: string;
+  /** Codigo unico (ex.: ADM-2026-01). Distingue turmas de mesmo nome. */
+  codigo: string;
   curso: string;
   instrutores: string;
   alunos: number;
@@ -180,6 +185,8 @@ export interface ClassGroup {
   periodoLetivo: string;
   status: ClassStatus;
   frequenciaMedia: number;
+  /** Chamadas registradas. 0 = turma ainda sem chamada, nao 0% de presenca. */
+  registrosFrequencia: number;
 }
 
 export interface Lesson {

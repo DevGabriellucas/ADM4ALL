@@ -41,12 +41,12 @@ export class AuthUseCase {
     );
 
     if (!usuario || usuario.status !== "ativo") {
-      throw new UnauthorizedError("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais inválidas.");
     }
 
     const senhaCorreta = await bcrypt.compare(senha, usuario.senhaHash);
     if (!senhaCorreta) {
-      throw new UnauthorizedError("Credenciais invalidas.");
+      throw new UnauthorizedError("Credenciais inválidas.");
     }
 
     await this.authRepository.registrarUltimoLogin(usuario.id);

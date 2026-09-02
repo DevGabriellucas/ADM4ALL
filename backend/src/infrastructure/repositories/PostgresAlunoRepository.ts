@@ -577,7 +577,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
         FROM materiais m
         JOIN turmas t ON t.id = m.turma_id
         WHERE m.status = 'ativo'
-          AND m.visivel_aluno = TRUE
+          AND m.visibilidade = 'visivel'
           AND m.turma_id IN (
             SELECT mat.turma_id
             FROM matriculas mat
@@ -625,7 +625,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
         AND mat.turma_id IS NOT NULL
         AND mat.status <> 'cancelado'
         AND m.status = 'ativo'
-        AND m.visivel_aluno = TRUE
+        AND m.visibilidade = 'visivel'
       LIMIT 1
     `;
 

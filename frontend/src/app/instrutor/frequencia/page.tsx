@@ -23,14 +23,14 @@ export default async function InstrutorFrequenciaPage() {
 
     if (frequencia < 75) {
       return {
-        texto: "Abaixo do minimo",
+        texto: "Abaixo do mínimo",
         classe: "bg-red-50 text-red-700",
       };
     }
 
     if (frequencia < 80) {
       return {
-        texto: "Atencao",
+        texto: "Atenção",
         classe: "bg-amber-50 text-amber-700",
       };
     }
@@ -51,7 +51,7 @@ export default async function InstrutorFrequenciaPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <MetricCard
             icon="%"
-            title="Frequencia media"
+            title="Frequência média"
             value={`${metricas.frequenciaMedia}%`}
             variant="azul"
           />
@@ -72,22 +72,22 @@ export default async function InstrutorFrequenciaPage() {
 
       <section className="rounded-lg bg-white p-5 shadow-sm">
         <h2 className="font-semibold text-slate-900 text-sm">
-          Frequencia por aluno
+          Frequência por aluno
         </h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[48rem] text-left text-sm">
             <thead>
               <tr className="border-slate-200 border-b text-slate-500 text-xs">
                 <th className="py-2 pr-3 font-medium">Aluno</th>
-                <th className="py-2 pr-3 text-center font-medium">Presencas</th>
+                <th className="py-2 pr-3 text-center font-medium">Presenças</th>
                 <th className="py-2 pr-3 text-center font-medium">Faltas</th>
                 <th className="py-2 pr-3 text-center font-medium">
                   Aulas registradas
                 </th>
                 <th className="py-2 pr-3 text-center font-medium">
-                  Frequencia
+                  Frequência
                 </th>
-                <th className="py-2 pr-3 text-center font-medium">Situacao</th>
+                <th className="py-2 pr-3 text-center font-medium">Situação</th>
               </tr>
             </thead>
             <tbody>

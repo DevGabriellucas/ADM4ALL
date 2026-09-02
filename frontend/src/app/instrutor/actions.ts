@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { AuthenticatedFileResponse } from "@/services/apiClient";
 import {
   adicionarAula,
   adicionarMaterial,
   atualizarAula,
   atualizarAvatarInstrutor,
   atualizarMaterialVisibilidade,
+  downloadMaterialTurma,
   getPresencasPorAula,
   registrarPresencas,
   removerAula,
@@ -41,7 +43,6 @@ const revalidarInstrutor = () => {
   revalidatePath("/instrutor/frequencia");
   revalidatePath("/instrutor/materiais");
   revalidatePath("/instrutor/perfil");
-  revalidatePath("/instrutor/configuracoes");
 };
 
 export const salvarPresencasAction = async (
@@ -50,11 +51,11 @@ export const salvarPresencasAction = async (
   try {
     await registrarPresencas(input);
     revalidarInstrutor();
-    return { ok: true, mensagem: "Presenca salva com sucesso!" };
+    return { ok: true, mensagem: "Presença salva com sucesso!" };
   } catch (error) {
     return {
       ok: false,
-      erro: traduzirErro(error, "Falha ao salvar a presenca."),
+      erro: traduzirErro(error, "Falha ao salvar a presença."),
     };
   }
 };
@@ -149,7 +150,7 @@ export const atualizarAulaAction = async (
       ok: true,
       mensagem:
         input.status === "cancelada"
-          ? "Aula cancelada com sucesso. Os alunos ativos serao notificados por e-mail."
+          ? "Aula cancelada com sucesso. Os alunos ativos serão notificados por e-mail."
           : "Aula atualizada com sucesso.",
       aula,
     };
@@ -171,7 +172,7 @@ export const buscarPresencasPorAulaAction = async (
   } catch (error) {
     return {
       ok: false,
-      erro: traduzirErro(error, "Falha ao consultar a presenca da aula."),
+      erro: traduzirErro(error, "Falha ao consultar a presença da aula."),
     };
   }
 };
@@ -195,3 +196,10 @@ export const atualizarAvatarAction = async (
     };
   }
 };
+
+export async function baixarMaterialTurmaAction(
+  turmaId: string,
+  materialId: string,
+): Promise<AuthenticatedFileResponse> {
+  return await downloadMaterialTurma(turmaId, materialId);
+}

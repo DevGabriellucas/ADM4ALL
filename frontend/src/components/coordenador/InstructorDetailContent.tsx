@@ -57,7 +57,7 @@ const classStatusInfo: Record<
 };
 
 const formatDate = (date: string | null) => {
-  if (!date) return "Nao informado";
+  if (!date) return "Não informado";
 
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
     new Date(date),
@@ -271,7 +271,7 @@ export const InstructorDetailContent = ({
             <div>
               <dt className="font-medium text-slate-500 text-xs">Telefone</dt>
               <dd className="mt-1 text-slate-900 text-sm">
-                {instructor.telefone ?? "Nao informado"}
+                {instructor.telefone ?? "Não informado"}
               </dd>
             </div>
             <div>
@@ -292,16 +292,16 @@ export const InstructorDetailContent = ({
           <dl className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <dt className="font-medium text-slate-500 text-xs">
-                Area de atuacao
+                Área de atuação
               </dt>
               <dd className="mt-1 text-slate-900 text-sm">
-                {instructor.areaAtuacao ?? "Nao informado"}
+                {instructor.areaAtuacao ?? "Não informado"}
               </dd>
             </div>
             <div>
               <dt className="font-medium text-slate-500 text-xs">Formacao</dt>
               <dd className="mt-1 text-slate-900 text-sm">
-                {instructor.formacao ?? "Nao informado"}
+                {instructor.formacao ?? "Não informado"}
               </dd>
             </div>
           </dl>
@@ -324,7 +324,7 @@ export const InstructorDetailContent = ({
                   Curso
                 </th>
                 <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                  Periodo
+                  Período
                 </th>
                 <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                   Alunos
@@ -333,7 +333,7 @@ export const InstructorDetailContent = ({
                   Status
                 </th>
                 <th className="border-slate-200 border-b px-3 py-2 font-semibold">
-                  Acoes
+                  Ações
                 </th>
               </tr>
             </thead>

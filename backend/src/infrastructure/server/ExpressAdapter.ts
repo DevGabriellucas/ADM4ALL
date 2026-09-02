@@ -112,9 +112,14 @@ export class ExpressAdapter {
   ) {
     this.app.use(express.json({ limit: "60mb" }));
     this.app.use(cors(criarCorsOptions()));
+    // Apenas os avatares sao publicos: eles aparecem em <img>, que nao envia
+    // cabecalho de autorizacao. Material de turma NAO entra aqui — servir
+    // /uploads inteiro deixava qualquer PDF de qualquer turma baixavel por
+    // quem tivesse a URL, sem login. Material sai pelas rotas autenticadas
+    // (.../materiais/:materialId/download), que conferem o vinculo do usuario.
     this.app.use(
-      "/uploads",
-      express.static(this.uploadsRootDir),
+      "/uploads/avatares",
+      express.static(path.join(this.uploadsRootDir, "avatares")),
     );
     this.configurarRotas();
     this.app.use(errorMiddleware);
@@ -127,7 +132,7 @@ export class ExpressAdapter {
       : null;
 
     if (!token) {
-      next(new UnauthorizedError("Token de acesso nao informado."));
+      next(new UnauthorizedError("Token de acesso não informado."));
       return;
     }
 
@@ -209,6 +214,55 @@ export class ExpressAdapter {
     };
   }
 
+  // Entrega o arquivo de um material ja autorizado pela rota que chamou.
+  // Quem decide SE o usuario pode baixar e a rota (vinculo aluno/turma ou
+  // instrutor/turma); aqui so resolvemos o caminho com seguranca e enviamos.
+  private async enviarArquivoDeMaterial(
+    res: Response,
+    material: { titulo: string; urlArquivo: string | null },
+  ): Promise<void> {
+    if (!material.urlArquivo) {
+      res
+        .status(404)
+        .json({ erro: "Material nao possui arquivo para download." });
+      return;
+    }
+
+    if (
+      material.urlArquivo.startsWith("http://") ||
+      material.urlArquivo.startsWith("https://")
+    ) {
+      res.redirect(material.urlArquivo);
+      return;
+    }
+
+    const uploadsBase = this.uploadsDir;
+    const caminhoRelativo = material.urlArquivo.replace(
+      /^\/uploads\/materiais\//,
+      "",
+    );
+    const caminhoAbsoluto = path.resolve(uploadsBase, caminhoRelativo);
+
+    // Barra path traversal: o caminho resolvido tem de continuar dentro da
+    // pasta de materiais.
+    if (!caminhoAbsoluto.startsWith(uploadsBase + path.sep)) {
+      res.status(404).json({ erro: "Material nao encontrado." });
+      return;
+    }
+
+    try {
+      await fs.access(caminhoAbsoluto);
+    } catch {
+      res.status(404).json({ erro: "Arquivo do material nao encontrado." });
+      return;
+    }
+
+    const extensao = path.extname(caminhoAbsoluto).toLowerCase();
+    const nomeArquivo = `${material.titulo.replace(/[^a-zA-Z0-9_-]/g, "_")}${extensao}`;
+
+    res.download(caminhoAbsoluto, nomeArquivo);
+  }
+
   private async salvarAvatarInstrutor(
     arquivo: ArquivoUploadJson,
   ): Promise<string> {
@@ -271,7 +325,7 @@ export class ExpressAdapter {
         const { identifier, password } = req.body ?? {};
 
         if (!identifier || !password) {
-          throw new BadRequestError("Identificador e senha sao obrigatorios.");
+          throw new BadRequestError("Informe o e-mail (ou CPF) e a senha.");
         }
 
         const resultado = await this.authUseCase.login(identifier, password);
@@ -317,7 +371,7 @@ export class ExpressAdapter {
           nome: cadastro.aluno.nome,
           mensagem: cadastro.emailEnviado
             ? "Cadastro realizado. Verifique seu e-mail para ativar sua conta."
-            : "Cadastro realizado, mas nao foi possivel enviar o e-mail de ativacao. Use o link abaixo para ativar a conta.",
+            : "Cadastro realizado, mas não foi possível enviar o e-mail de ativação. Use o link abaixo para ativar a conta.",
           emailEnviado: cadastro.emailEnviado,
           linkAtivacao: deveExporLinkAtivacao
             ? cadastro.linkAtivacao
@@ -358,7 +412,7 @@ export class ExpressAdapter {
         });
 
         res.status(200).json({
-          mensagem: "Se o e-mail estiver cadastrado, as instrucoes foram enviadas.",
+          mensagem: "Se o e-mail estiver cadastrado, as instruções foram enviadas.",
         });
       }),
     );
@@ -439,44 +493,44 @@ export class ExpressAdapter {
           return;
         }
 
-        if (!material.urlArquivo) {
-          res
-            .status(404)
-            .json({ erro: "Material nao possui arquivo para download." });
-          return;
+        await this.enviarArquivoDeMaterial(res, material);
+      }),
+    );
+
+    // Download de material para quem administra a turma. Espelha a rota do
+    // aluno: o vinculo e conferido antes de tocar no arquivo — instrutor so
+    // baixa material de turma sua; coordenador e admin veem todas.
+    this.app.get(
+      "/turmas/:turmaId/materiais/:materialId/download",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId, materialId } = req.params as {
+          turmaId: string;
+          materialId: string;
+        };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || !materialId) {
+          throw new BadRequestError("Turma e material sao obrigatorios.");
         }
 
-        if (
-          material.urlArquivo.startsWith("http://") ||
-          material.urlArquivo.startsWith("https://")
-        ) {
-          res.redirect(material.urlArquivo);
-          return;
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
         }
 
-        const uploadsBase = this.uploadsDir;
-        const caminhoRelativo = material.urlArquivo.replace(
-          /^\/uploads\/materiais\//,
-          "",
-        );
-        const caminhoAbsoluto = path.resolve(uploadsBase, caminhoRelativo);
+        const materiais =
+          await this.instrutorUseCase.listarMateriaisTurma(turmaId);
+        const material = materiais.find((item) => item.id === materialId);
 
-        if (!caminhoAbsoluto.startsWith(uploadsBase + path.sep)) {
+        if (!material) {
           res.status(404).json({ erro: "Material nao encontrado." });
           return;
         }
 
-        try {
-          await fs.access(caminhoAbsoluto);
-        } catch {
-          res.status(404).json({ erro: "Arquivo do material nao encontrado." });
-          return;
-        }
-
-        const extensao = path.extname(caminhoAbsoluto).toLowerCase();
-        const nomeArquivo = `${material.titulo.replace(/[^a-zA-Z0-9_-]/g, "_")}${extensao}`;
-
-        res.download(caminhoAbsoluto, nomeArquivo);
+        await this.enviarArquivoDeMaterial(res, material);
       }),
     );
 
@@ -1195,6 +1249,7 @@ export class ExpressAdapter {
             id,
             status,
             usuario.sub,
+            usuario.perfil,
           );
 
         res.json(resultado);

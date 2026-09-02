@@ -31,6 +31,11 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
   const deactivatedCourses = courses.filter(
     (course) => course.status === "desativado",
   ).length;
+  // Sem este contador os cartoes nao somavam o total: um curso em planejamento
+  // nao aparecia nem como ativo nem como desativado.
+  const plannedCourses = courses.filter(
+    (course) => course.status === "em_planejamento",
+  ).length;
   const coursesWithoutClasses = courses.filter(
     (course) => course.quantidadeTurmas === 0,
   ).length;
@@ -111,7 +116,7 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
 
       <section
         aria-label="Indicadores de cursos"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
       >
         <CoordinatorStatCard
           title="Total de cursos"
@@ -124,6 +129,12 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
           value={activeCourses}
           subtitle="Disponíveis no período"
           variant="green"
+        />
+        <CoordinatorStatCard
+          title="Em planejamento"
+          value={plannedCourses}
+          subtitle="Ainda não abertos"
+          variant="amber"
         />
         <CoordinatorStatCard
           title="Cursos desativados"

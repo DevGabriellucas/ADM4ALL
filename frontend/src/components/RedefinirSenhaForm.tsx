@@ -84,9 +84,10 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
   useEffect(() => {
     if (!isSuccess) return;
 
+    // 1,2s não dava tempo de ler a confirmação antes do redirecionamento.
     const timeoutId = window.setTimeout(() => {
       router.replace("/");
-    }, 1200);
+    }, 2800);
 
     return () => window.clearTimeout(timeoutId);
   }, [isSuccess, router]);
@@ -141,7 +142,7 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
             <p className="w-full max-w-3xl text-center text-base leading-7 sm:text-xl lg:text-2xl">
               {token
                 ? "Informe sua nova senha para acessar a plataforma."
-                : "Link invalido ou expirado. Solicite uma nova recuperacao de senha."}
+                : "Link inválido ou expirado. Solicite uma nova recuperação de senha."}
             </p>
           )}
         </div>
@@ -189,8 +190,8 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
                 onClick={() => setMostrarConfirmarSenha((atual) => !atual)}
                 label={
                   mostrarConfirmarSenha
-                    ? "Ocultar confirmacao de senha"
-                    : "Mostrar confirmacao de senha"
+                    ? "Ocultar confirmação de senha"
+                    : "Mostrar confirmação de senha"
                 }
               />
             </div>

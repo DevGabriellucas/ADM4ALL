@@ -102,7 +102,7 @@ const gerarCertificadoAlunoPdf = (
       });
 
     const completionText =
-      `CPF ${formatCpf(certificate.cpfAluno)}, concluiu do Curso de ` +
+      `CPF ${formatCpf(certificate.cpfAluno)}, concluiu o Curso de ` +
       `${certificate.nomeCurso}, com carga horária de ` +
       `${certificate.cargaHoraria} horas, realizado no período de ` +
       `${formatDate(certificate.dataInicio)} a ` +
@@ -122,11 +122,27 @@ const gerarCertificadoAlunoPdf = (
       .font("Helvetica")
       .fontSize(13.5)
       .fillColor(TEXT_COLOR)
-      .text(`João Pessoa, ${formatDate(certificate.dataEmissao)}`, 500, 401, {
+      .text(`${certificate.cidade}, ${formatDate(certificate.dataEmissao)}`, 500, 401, {
         align: "center",
         width: 250,
         lineBreak: false,
       });
+
+    // Codigo de autenticidade. Sem ele impresso, um terceiro (empregador,
+    // secretaria) nao tem como conferir o documento contra o sistema.
+    if (certificate.codigo) {
+      // Canto esquerdo, na mesma altura da data (que fica a direita). O rodape
+      // esta ocupado: logos ate ~y=513 e as portarias a partir de ~y=545.
+      document
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor("#555555")
+        .text(`Código de autenticidade: ${certificate.codigo}`, 72, 405, {
+          align: "left",
+          width: 320,
+          lineBreak: false,
+        });
+    }
   });
 
 export const gerarCertificadoPdf = (

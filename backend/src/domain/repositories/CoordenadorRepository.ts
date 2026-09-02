@@ -220,7 +220,12 @@ export interface FrequenciaCoordenador {
   presencas: number;
   faltas: number;
   frequencia: number;
-  situacao: "regular" | "atencao" | "risco" | "reprovado_falta";
+  situacao:
+    | "regular"
+    | "atencao"
+    | "risco"
+    | "reprovado_falta"
+    | "sem_registro";
 }
 
 export type TipoCertificado = "aluno";
@@ -387,6 +392,8 @@ export interface ConvidarAlunoInput {
 export interface TurmaListagem {
   id: string;
   nome: string;
+  /** Codigo unico da turma (ex.: ADM-2026-01). Distingue turmas homonimas. */
+  codigo: string;
   curso: string;
   instrutores: string;
   alunos: number;
@@ -396,6 +403,8 @@ export interface TurmaListagem {
   periodoLetivo: string;
   status: string;
   frequenciaMedia: number;
+  /** Chamadas registradas na turma. 0 significa "ainda sem chamada". */
+  registrosFrequencia: number;
 }
 
 export interface CriarTurmaInput {
@@ -486,6 +495,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorId(
     id: string,
   ): Promise<UsuarioListagemCoordenador | null>;
+  contarAdministradoresAtivos(): Promise<number>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
   atualizarAluno(

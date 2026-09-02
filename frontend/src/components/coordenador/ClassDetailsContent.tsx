@@ -252,6 +252,7 @@ export const ClassDetailsContent = ({
       </section>
 
       <ClassDetailsTabs
+        turmaId={classGroup.id}
         students={students}
         lessons={lessons}
         attendance={attendance}

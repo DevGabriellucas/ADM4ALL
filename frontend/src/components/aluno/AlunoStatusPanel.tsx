@@ -17,7 +17,9 @@ const getFaltasHelperText = (status: AlunoDashboard["status"]) => {
     return undefined;
   }
 
-  return "O certificado exige menos de 3 faltas.";
+  // Mesma redação do aviso no rodapé do painel: "menos de 3" e "no máximo 2"
+  // dizem a mesma coisa, e ver as duas formas na mesma tela confunde.
+  return "O limite máximo permitido é de 2 faltas.";
 };
 
 export const AlunoStatusPanel = ({ aluno }: AlunoStatusPanelProps) => {

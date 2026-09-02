@@ -48,7 +48,7 @@ export default async function AlunoDashboardPage() {
             className="mx-auto max-w-3xl text-center font-medium text-red-800 text-xs leading-6 tracking-[0.25em]"
             role="alert"
           >
-            Voce foi reprovado por falta. O limite maximo permitido e de 2
+            Você foi reprovado por falta. O limite máximo permitido é de 2
             faltas.
           </section>
         )}

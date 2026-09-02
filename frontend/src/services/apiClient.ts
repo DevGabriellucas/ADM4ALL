@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getApiUrl } from "@/services/apiUrl";
 import { getServerSession } from "@/services/serverSessionService";
 
@@ -26,6 +27,18 @@ export class ApiError extends Error {
   }
 }
 
+// Sessao ausente ou recusada pelo backend nao e erro de tela: e usuario
+// deslogado. Lancar ApiError nesses casos derrubava o Server Component
+// inteiro, e o Next respondia com "Ocorreu um erro na renderizacao dos
+// Componentes do Servidor" mais um digest opaco, em vez de levar a pessoa
+// de volta ao login. Vale para todas as telas autenticadas.
+//
+// O destino precisa ser /logout, nunca "/": um token com assinatura invalida
+// mas exp no futuro ainda passa pelo getServerSession, entao a raiz mandaria
+// o usuario de volta ao dashboard e o ciclo recomecaria. /logout limpa os
+// cookies antes de cair na tela de login, quebrando o laco.
+const ROTA_LOGOUT = "/logout";
+
 const readErrorMessage = async (response: Response, fallback: string) => {
   try {
     const data = (await response.json()) as ApiErrorBody;
@@ -42,7 +55,7 @@ export const authenticatedRequest = async <T>(
   const session = await getServerSession();
 
   if (!session) {
-    throw new ApiError("Sessao nao encontrada.", 401);
+    redirect(ROTA_LOGOUT);
   }
 
   const {
@@ -72,17 +85,14 @@ export const authenticatedRequest = async <T>(
   }
 
   if (response.status === 401) {
-    throw new ApiError(
-      await readErrorMessage(response, "Sessao expirada ou invalida."),
-      401,
-    );
+    redirect(ROTA_LOGOUT);
   }
 
   if (response.status === 403) {
     throw new ApiError(
       await readErrorMessage(
         response,
-        "Voce nao possui permissao para esta acao.",
+        "Você não possui permissão para esta ação.",
       ),
       403,
     );
@@ -112,8 +122,9 @@ export const authenticatedFileRequest = async (
   fallbackError = "Nao foi possivel baixar o arquivo.",
 ): Promise<AuthenticatedFileResponse> => {
   const session = await getServerSession();
+
   if (!session) {
-    throw new ApiError("Sessao nao encontrada.", 401);
+    redirect(ROTA_LOGOUT);
   }
 
   let response: Response;
@@ -128,6 +139,10 @@ export const authenticatedFileRequest = async (
       "Nao foi possivel conectar a API para baixar o arquivo.",
       503,
     );
+  }
+
+  if (response.status === 401) {
+    redirect(ROTA_LOGOUT);
   }
 
   if (!response.ok) {

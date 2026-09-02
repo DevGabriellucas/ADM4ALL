@@ -316,8 +316,8 @@ export default function Cadastro() {
                   mostrarConfirmarSenha,
                   () => setMostrarConfirmarSenha((atual) => !atual),
                   mostrarConfirmarSenha
-                    ? "Ocultar confirmacao de senha"
-                    : "Mostrar confirmacao de senha",
+                    ? "Ocultar confirmação de senha"
+                    : "Mostrar confirmação de senha",
                 )}
               </div>
               {errorText(errors.confirmarSenha?.message)}
@@ -439,7 +439,7 @@ export default function Cadastro() {
               href="/"
               className="text-center font-medium text-slate-800 text-sm underline-offset-2 hover:underline sm:text-left"
             >
-              Ja tenho acesso
+              Já tenho acesso
             </Link>
             <button
               type="submit"

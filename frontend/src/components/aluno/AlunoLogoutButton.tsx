@@ -1,15 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export const AlunoLogoutButton = () => {
-  const router = useRouter();
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const confirmarSaida = () => {
-    router.replace("/logout");
+    window.location.replace("/logout");
   };
 
   return (
@@ -41,7 +39,7 @@ export const AlunoLogoutButton = () => {
       {confirmandoSaida && (
         <ConfirmDialog
           title="Deseja sair?"
-          description="Voce sera desconectado da area do aluno."
+          description="Você será desconectado da área do aluno."
           confirmLabel="Sair"
           tone="danger"
           onCancel={() => setConfirmandoSaida(false)}

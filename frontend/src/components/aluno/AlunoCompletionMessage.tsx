@@ -45,7 +45,7 @@ export const AlunoCompletionMessage = ({
 
   return (
     <output className="mx-auto block max-w-3xl text-center font-medium text-xs leading-6 tracking-[0.25em]">
-      <p>Parabens! Voce concluiu o curso {curso} com sucesso.</p>
+      <p>Parabéns! Você concluiu o curso {curso} com sucesso.</p>
 
       {certificadoDisponivel ? (
         <>
@@ -60,7 +60,7 @@ export const AlunoCompletionMessage = ({
           {error && <p className="mt-2 text-red-600">{error}</p>}
         </>
       ) : (
-        <p className="mt-3">Seu certificado ainda nao esta disponivel.</p>
+        <p className="mt-3">Seu certificado ainda não está disponível.</p>
       )}
     </output>
   );

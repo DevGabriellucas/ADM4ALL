@@ -1,5 +1,16 @@
 # Roteiro de Apresentacao para Cliente - ADM4All
 
+> **Atenção — estas credenciais não existem mais por padrão.**
+> O banco de produção foi limpo e os dados de teste saíram de
+> `database/init/`. Para usar este roteiro, popule um ambiente de
+> desenvolvimento primeiro:
+>
+> ```bash
+> docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/20-inserir-dados-teste.sql
+> docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/21-inserir-casos-demo-mvp.sql
+> ```
+
+
 > Roteiro pensado para uma apresentacao simples, para cliente sem conhecimento
 > tecnico. Duracao sugerida: 25 a 35 minutos.
 

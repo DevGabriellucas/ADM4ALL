@@ -95,7 +95,7 @@ export const AvatarUploadPanel = ({
     if (selecionado.size > TAMANHO_MAXIMO) {
       setFeedback({
         tipo: "erro",
-        texto: "A imagem deve ter no maximo 5 MB.",
+        texto: "A imagem deve ter no máximo 5 MB.",
       });
       return;
     }

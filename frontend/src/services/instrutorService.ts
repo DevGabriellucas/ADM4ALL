@@ -1,7 +1,11 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
-import { ApiError, authenticatedRequest } from "@/services/apiClient";
+import {
+  ApiError,
+  authenticatedFileRequest,
+  authenticatedRequest,
+} from "@/services/apiClient";
 import { getServerSession } from "@/services/serverSessionService";
 import type {
   AdicionarAulaInput,
@@ -55,7 +59,7 @@ export const registrarPresencas = async (
       aulaId: input.aulaId,
       registros: input.registros,
     }),
-    fallbackError: "Falha ao registrar a presenca.",
+    fallbackError: "Falha ao registrar a presença.",
   });
 };
 
@@ -179,9 +183,19 @@ export const getPresencasPorAula = async (
     `/turmas/${turmaId}/aulas/${aulaId}/presencas`,
     {
       cache: "no-store",
-      fallbackError: "Falha ao consultar a presenca da aula.",
+      fallbackError: "Falha ao consultar a presença da aula.",
     },
   );
 
   return data.alunos;
+};
+
+export const downloadMaterialTurma = async (
+  turmaId: string,
+  materialId: string,
+) => {
+  return await authenticatedFileRequest(
+    `/turmas/${turmaId}/materiais/${materialId}/download`,
+    "Falha ao baixar o material da turma.",
+  );
 };

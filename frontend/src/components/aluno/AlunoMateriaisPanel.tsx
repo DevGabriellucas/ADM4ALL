@@ -1,19 +1,11 @@
+import { baixarMaterialAlunoAction } from "@/app/aluno/actions";
+import { BotaoBaixarMaterial } from "@/components/shared/BotaoBaixarMaterial";
 import type { MaterialVisivelAluno } from "@/types/aluno";
 import { formatData, formatTamanho, formatTipoMaterial } from "@/utils/format";
 
 interface AlunoMateriaisPanelProps {
   materiais: MaterialVisivelAluno[];
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
-
-const resolverUrlMaterial = (url: string | null) => {
-  if (!url) {
-    return null;
-  }
-
-  return url.startsWith("/") ? `${API_URL}${url}` : url;
-};
 
 export const AlunoMateriaisPanel = ({
   materiais,
@@ -49,8 +41,6 @@ export const AlunoMateriaisPanel = ({
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           {materiaisSeguros.map((material) => {
-            const urlMaterial = resolverUrlMaterial(material.urlArquivo);
-
             return (
               <article
                 key={material.id}
@@ -84,15 +74,12 @@ export const AlunoMateriaisPanel = ({
                   <span>{formatTamanho(material.tamanhoBytes)}</span>
                 </div>
 
-                {urlMaterial ? (
-                  <a
-                    href={urlMaterial}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex h-9 items-center rounded-md bg-brand-dark px-3 font-semibold text-sm text-white transition-colors hover:bg-brand-medium"
-                  >
-                    Abrir material
-                  </a>
+                {material.urlArquivo ? (
+                  <div className="mt-4">
+                    <BotaoBaixarMaterial
+                      baixar={baixarMaterialAlunoAction.bind(null, material.id)}
+                    />
+                  </div>
                 ) : (
                   <p className="mt-4 text-slate-400 text-xs">
                     Material sem arquivo ou link anexado.

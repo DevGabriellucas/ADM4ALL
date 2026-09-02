@@ -47,7 +47,7 @@ FROM (
         (
             '10a081dc-89b5-4a59-847a-99095c2110f2'::UUID,
             'aluno',
-            'Jose Santos',
+            'José Santos',
             'jose.santos@example.com',
             '52998224725',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha: Aluno@123
@@ -83,7 +83,7 @@ FROM (
         (
             '744b59d4-4d69-4826-9d6c-5b70d7c5a4ce'::UUID,
             'aluno',
-            'Joao Ativacao',
+            'João Ativação',
             'joao.ativacao@example.com',
             '11144477735',
             '$2b$10$ysTGWSiIZogKWgXPlhRzMOcSZuO9a3ajwBcVdoEyp3TVs5oDx8lea', -- senha definida no cadastro publico: Aluno@123
@@ -118,7 +118,7 @@ FROM (
             'instrutor',
             'Camila Rocha',
             'camila.rocha@example.com',
-            '48296175301',
+            '48296175355',
             '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
             'ativo'
         ),
@@ -127,7 +127,7 @@ FROM (
             'instrutor',
             'Rafael Mendes',
             'rafael.mendes@example.com',
-            '75320184690',
+            '75320184662',
             '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
             'ativo'
         ),
@@ -136,7 +136,7 @@ FROM (
             'instrutor',
             'Juliana Torres',
             'juliana.torres@example.com',
-            '30915846270',
+            '30915846233',
             '$2b$10$/cfTJOtRjPc1axxxvqEIkuEvF0JK.Am.9KGWcuE60ArjBWKgx/mQu',
             'ativo'
         )
@@ -292,37 +292,42 @@ VALUES
     )
 ON CONFLICT (usuario_id) DO NOTHING;
 
-INSERT INTO treinamentos (id, nome, descricao, carga_horaria)
+INSERT INTO treinamentos (id, nome, descricao, carga_horaria, status)
 VALUES
     (
         '524963bc-e82c-447f-8e6f-7fd567f99e87',
         'Assistente Administrativo',
-        'Formacao inicial para rotinas administrativas, documentos e atendimento.',
-        40
+        'Formação inicial para rotinas administrativas, documentos e atendimento.',
+        40,
+        'ativo'
     ),
     (
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
         'Assistente Contábil',
         'Rotinas contábeis, documentos fiscais e apoio ao setor financeiro.',
-        20
+        20,
+        'ativo'
     ),
     (
         '2f9a746b-70dc-4261-b150-2ec16d2b842c',
         'Assistente de RH',
         'Rotinas de recursos humanos, admissão, documentos e atendimento.',
-        30
+        30,
+        'ativo'
     ),
     (
         '13f6bf4a-8d9d-4e54-a5f1-5a5c4b79f111',
         'Assistente de Marketing',
-        'Fundamentos de marketing, atendimento, comunicacao e apoio comercial.',
-        30
+        'Fundamentos de marketing, atendimento, comunicação e apoio comercial.',
+        30,
+        'ativo'
     ),
     (
         '0af7df27-d7cf-4d86-b1a9-4b9f4fe6c222',
         'Empreendedorismo',
-        'Planejamento, validacao de ideias e gestao inicial de pequenos negocios.',
-        30
+        'Planejamento, validação de ideias e gestão inicial de pequenos negócios.',
+        30,
+        'ativo'
     )
 ON CONFLICT (nome) DO NOTHING;
 
@@ -348,7 +353,7 @@ VALUES
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'CONT-2026-01',
-        'Assistente Contábil 2026.1',
+        'Assistente Contábil 2026.1 - Noite',
         'noite',
         'Sala 02',
         '2026.1',
@@ -404,7 +409,7 @@ VALUES
         '3b4169fc-5a08-44aa-b03e-3b2620533378',
         '99fa3cbc-5367-4911-a6d2-dba72e50d6c0',
         'CONTABIL-2026-01',
-        'Assistente Contábil 2026.1',
+        'Assistente Contábil 2026.1 - Online',
         'online',
         'Ambiente virtual',
         '2026.1',
@@ -497,7 +502,7 @@ VALUES
         'caab179f-b787-4ca9-9c29-5282f5f0457c',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         1,
-        'Introducao a administracao',
+        'Introdução à administração',
         'Conceitos iniciais e papel do assistente administrativo.',
         '2026-02-03',
         '19:00',
@@ -751,30 +756,30 @@ VALUES
         'fa2d5097-5f45-404c-b201-b0635f436c12',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        'Introducao a administracao',
+        'Introdução à administração',
         'pdf',
-        '/materiais/introducao-administracao.pdf',
-        2097152,
+        '/uploads/materiais/introducao-administracao.pdf',
+        776,
         'ativo'
     ),
     (
         'abf3710c-895e-446e-880d-7f8eb231747d',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        'Video - O que e administracao',
+        'Vídeo - O que é administração',
         'video',
-        '/materiais/video-o-que-e-administracao.mp4',
-        5242880,
+        NULL,
+        NULL,
         'ativo'
     ),
     (
         'bdfd0211-81d8-4cd1-9e88-2075bff1465a',
         'df349e38-0e92-4971-b67b-2deb56b90c7b',
         'ddba5066-6c5f-4989-b715-638a0b9a8d58',
-        'Atividade de fixacao',
+        'Atividade de fixação',
         'documento',
-        '/materiais/atividade-fixacao.docx',
-        1572864,
+        '/uploads/materiais/atividade-fixacao.docx',
+        1013,
         'ativo'
     )
 ON CONFLICT DO NOTHING;

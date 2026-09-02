@@ -138,7 +138,7 @@ export const InstructorEditForm = ({
           </label>
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Area de atuacao
+            Área de atuação
             <input
               type="text"
               value={formData.areaAtuacao}

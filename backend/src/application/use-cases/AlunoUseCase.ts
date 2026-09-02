@@ -215,7 +215,19 @@ export class AlunoUseCase {
       /[^a-zA-Z0-9_-]/g,
       "-",
     );
-    const nomeArquivo = `certificado-aluno-${codigoSeguro}.pdf`;
+
+    // O aluno guarda esse arquivo: o nome traz o curso, nao so o codigo.
+    // Acentos e cedilha saem para o nome nao quebrar em outros sistemas.
+    const cursoSeguro = (cert.nomeCurso ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase();
+
+    const nomeArquivo = cursoSeguro
+      ? `certificado-${cursoSeguro}-${codigoSeguro}.pdf`
+      : `certificado-aluno-${codigoSeguro}.pdf`;
 
     const certificadosDir = getCertificadosStorageDir();
 
@@ -377,6 +389,23 @@ export class AlunoUseCase {
       return;
     }
 
+    // Rate limit: uma solicitacao por janela de expiracao. Sem isso, cada clique
+    // gerava um token e disparava outro e-mail — dava para inundar a caixa do
+    // aluno e queimar a cota diaria do provedor de e-mail.
+    //
+    // Sai em silencio, igual ao caso de e-mail inexistente: a resposta ao
+    // usuario e sempre a mesma ("se o e-mail estiver cadastrado..."), entao a
+    // tela nao revela se a conta existe nem se ja havia pedido em andamento.
+    const jaSolicitouRecentemente =
+      await this.alunoRepository.existeRecuperacaoSenhaRecente(
+        usuario.id,
+        RECUPERACAO_SENHA_MINUTOS,
+      );
+
+    if (jaSolicitouRecentemente) {
+      return;
+    }
+
     const tokenDeRecuperacao = randomBytes(32).toString("hex");
     const tokenHash = createHash("sha256")
       .update(tokenDeRecuperacao)
@@ -414,7 +443,7 @@ export class AlunoUseCase {
     }
 
     if (!novaSenha || novaSenha.length < 8) {
-      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
+      throw new BadRequestError("A senha deve ter no mínimo 8 caracteres.");
     }
 
     const tokenHash = createHash("sha256")
@@ -558,7 +587,7 @@ export class AlunoUseCase {
 
   private async criptografarSenha(senha: string): Promise<string> {
     if (!senha || senha.length < 8) {
-      throw new BadRequestError("A senha deve ter no minimo 8 caracteres.");
+      throw new BadRequestError("A senha deve ter no mínimo 8 caracteres.");
     }
 
     if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
