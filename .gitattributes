@@ -1,0 +1,43 @@
+# Normaliza o texto no repositorio e protege o binario.
+#
+# O projeto e desenvolvido no Windows e o biome do frontend exige CRLF
+# (frontend/biome.json usa "lineEnding": "crlf"), entao o checkout devolve CRLF
+# nos fontes. Sem estas regras o Git decide arquivo a arquivo por heuristica, e
+# um binario detectado como texto tem os bytes 0x0A trocados por 0x0D 0x0A no
+# checkout — o arquivo chega corrompido.
+
+* text=auto
+
+# Fontes e configuracao: CRLF no working tree, LF no repositorio.
+*.ts    text eol=crlf
+*.tsx   text eol=crlf
+*.js    text eol=crlf
+*.jsx   text eol=crlf
+*.json  text eol=crlf
+*.css   text eol=crlf
+*.sql   text eol=crlf
+*.md    text eol=crlf
+*.yml   text eol=crlf
+*.yaml  text eol=crlf
+
+# Scripts de shell precisam de LF mesmo no Windows.
+*.sh    text eol=lf
+
+# Binarios: nunca converter.
+*.pdf   binary
+*.docx  binary
+*.doc   binary
+*.xlsx  binary
+*.pptx  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.mp4   binary
+*.webm  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
