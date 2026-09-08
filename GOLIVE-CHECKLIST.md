@@ -16,28 +16,32 @@
 | `instituicao_telefone` | `(83) 98871-6106` |
 | `instituicao_cidade` / `uf` | João Pessoa / PB |
 
-⚠️ **Falta aplicar no banco que já existe.** O script de init usa
-`ON CONFLICT DO NOTHING`, então ele só grava esses valores num banco novo.
-Com o Docker rodando:
+Aplicado no banco em 08/09/2026.
+
+O script de init usa `ON CONFLICT DO NOTHING`, então ele só grava esses valores
+num banco novo. Em banco já existente, é o UPDATE que vale:
 
 ```bash
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/atualizar-dados-instituicao.sql
+docker compose exec -T db psql -U adm4all -d adm4all -v ON_ERROR_STOP=1 < database/seeds/producao/atualizar-dados-instituicao.sql
 ```
 
-Depois confirme em Coordenador > Configurações.
+## ✅ ADMIN INICIAL (aplicado em 08/09/2026)
 
-## ✅ ADMIN INICIAL (preenchido localmente)
+Conta única de admin, com login validado em `POST /auth/login` (HTTP 200).
+Ela substituiu o `admin.ti@adm4all.edu.br` criado na limpeza de 02/09 —
+mesmo CPF, e-mail e senha novos.
 
 As credenciais reais **não ficam no repositório**. O Git guarda só o modelo
 `criar-admin-inicial.sql`, com placeholders; a cópia preenchida vive em
 `criar-admin-inicial.local.sql`, ignorada pelo Git, na máquina do deploy.
 
 ```bash
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/criar-admin-inicial.local.sql
+docker compose exec -T db psql -U adm4all -d adm4all -v ON_ERROR_STOP=1 < database/seeds/producao/criar-admin-inicial.local.sql
 ```
 
-⚠️ Se for fazer o deploy de outra máquina, copie o `.local.sql` por um canal
-seguro — ele não vem no `git clone`.
+⚠️ O `.local.sql` não vem no `git clone`. Para fazer deploy de outra máquina,
+copie-o por um canal seguro — e guarde a senha em outro lugar também, porque
+se essa máquina for formatada o arquivo se perde.
 
 ⚠️ Trocar a senha no primeiro acesso, pelo fluxo de "Esqueci minha senha".
 
@@ -66,7 +70,7 @@ NEXT_PUBLIC_API_URL=<URL da API em produção>
 ## 📋 ANTES DO AR
 
 1. [x] Email e telefone do UNIPE confirmados
-2. [ ] Rodar `atualizar-dados-instituicao.sql` e `criar-admin-inicial.sql` no banco
+2. [x] Dados da instituição e conta de admin aplicados no banco
 3. [ ] `.env` de produção configurado
 4. [ ] Turmas e instrutores cadastrados
 5. [ ] Teste de fluxo completo (cadastro → ativação → login → relatório)
