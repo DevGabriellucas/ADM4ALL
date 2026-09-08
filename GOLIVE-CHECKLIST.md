@@ -26,14 +26,18 @@ docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/a
 
 Depois confirme em Coordenador > Configurações.
 
-## ✅ ADMIN INICIAL (preenchido)
+## ✅ ADMIN INICIAL (preenchido localmente)
 
-`database/seeds/producao/criar-admin-inicial.sql` já está com nome, e-mail,
-CPF e o hash bcrypt da senha. Para criar a conta no banco:
+As credenciais reais **não ficam no repositório**. O Git guarda só o modelo
+`criar-admin-inicial.sql`, com placeholders; a cópia preenchida vive em
+`criar-admin-inicial.local.sql`, ignorada pelo Git, na máquina do deploy.
 
 ```bash
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/criar-admin-inicial.sql
+docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/criar-admin-inicial.local.sql
 ```
+
+⚠️ Se for fazer o deploy de outra máquina, copie o `.local.sql` por um canal
+seguro — ele não vem no `git clone`.
 
 ⚠️ Trocar a senha no primeiro acesso, pelo fluxo de "Esqueci minha senha".
 
