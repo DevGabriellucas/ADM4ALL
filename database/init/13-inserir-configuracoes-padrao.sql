@@ -2,8 +2,8 @@
 INSERT INTO configuracoes_sistema (chave, valor, descricao, atualizado_em)
 VALUES
   ('instituicao_nome', 'ADM4All', 'Nome da instituição exibido em certificados e relatórios', NOW()),
-  ('instituicao_email', 'contato@adm4all.edu.br', 'E-mail de contato da instituição', NOW()),
-  ('instituicao_telefone', '(11) 3000-0000', 'Telefone da instituição', NOW()),
+  ('instituicao_email', 'unipeadm4all@gmail.com', 'E-mail de contato da instituição', NOW()),
+  ('instituicao_telefone', '(83) 98871-6106', 'Telefone da instituição', NOW()),
   ('instituicao_cidade', 'João Pessoa', 'Cidade da instituição', NOW()),
   ('instituicao_uf', 'PB', 'UF da instituição', NOW()),
   ('periodo_letivo', '2026.1', 'Período letivo atual (formato: YYYY.S)', NOW()),

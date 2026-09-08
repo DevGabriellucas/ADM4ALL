@@ -8,31 +8,34 @@
 - [x] Pasta vazia `database/seeds/dev/` removida
 - [x] João Pessoa / PB já corretos no banco
 
-## 🔴 DADOS REAIS DO UNIPE (FALTAM)
+## ✅ DADOS DA INSTITUIÇÃO (preenchidos)
 
-Estes dados ainda são placeholder e precisam ser atualizados em `database/init/13-inserir-configuracoes-padrao.sql`:
+| Config | Valor |
+|--------|-------|
+| `instituicao_email` | `unipeadm4all@gmail.com` |
+| `instituicao_telefone` | `(83) 98871-6106` |
+| `instituicao_cidade` / `uf` | João Pessoa / PB |
 
-| Config | Valor atual (placeholder) | Valor real |
-|--------|---------------------------|-----------|
-| `instituicao_email` | `contato@adm4all.edu.br` | ??? |
-| `instituicao_telefone` | `(11) 3000-0000` | ??? |
+⚠️ **Falta aplicar no banco que já existe.** O script de init usa
+`ON CONFLICT DO NOTHING`, então ele só grava esses valores num banco novo.
+Com o Docker rodando:
 
-**Como atualizar:**
+```bash
+docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/atualizar-dados-instituicao.sql
+```
 
-1. Forneça o email e telefone reais do UNIPE
-2. Atualize `database/init/13-inserir-configuracoes-padrao.sql` (linhas 5-6)
-3. Resete o banco: `docker compose down -v && docker compose up -d`
-4. Confirme em Coordenador > Configurações
+Depois confirme em Coordenador > Configurações.
 
-## 🔴 CREDENCIAIS DO ADMIN INICIAL (FALTAM)
+## ✅ ADMIN INICIAL (preenchido)
 
-Em `database/seeds/producao/criar-admin-inicial.sql`, substitua:
+`database/seeds/producao/criar-admin-inicial.sql` já está com nome, e-mail,
+CPF e o hash bcrypt da senha. Para criar a conta no banco:
 
-- `admin.ti@adm4all.edu.br` → email real do admin de TI
-- `529.982.247-25` → CPF real (válido, com dígito verificador)
-- Hash de senha (gerado via `bcrypt.hashSync()`)
+```bash
+docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/producao/criar-admin-inicial.sql
+```
 
-**Instruções no arquivo:** `database/seeds/producao/README.md`
+⚠️ Trocar a senha no primeiro acesso, pelo fluxo de "Esqueci minha senha".
 
 ## 🟡 CONFIGURAÇÕES DO .env (VERIFICAR)
 
@@ -58,8 +61,8 @@ NEXT_PUBLIC_API_URL=<URL da API em produção>
 
 ## 📋 ANTES DO AR
 
-1. [ ] Email e telefone do UNIPE confirmados
-2. [ ] Admin inicial criado com credenciais reais
+1. [x] Email e telefone do UNIPE confirmados
+2. [ ] Rodar `atualizar-dados-instituicao.sql` e `criar-admin-inicial.sql` no banco
 3. [ ] `.env` de produção configurado
 4. [ ] Turmas e instrutores cadastrados
 5. [ ] Teste de fluxo completo (cadastro → ativação → login → relatório)
