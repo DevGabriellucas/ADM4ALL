@@ -11,3 +11,7 @@ database/pgdata/
 
 # Dumps do banco: contem dados pessoais de alunos (CPF, e-mail).
 backups/
+
+# Credenciais reais de producao: preencher localmente, nunca versionar.
+database/seeds/producao/*.local.sql
+Senha de acesso do sistema.txt
