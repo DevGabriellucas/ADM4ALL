@@ -44,17 +44,8 @@ docker compose exec -T db psql -U adm4all -d adm4all \
   público exige escolher um treinamento. Sem curso cadastrado a lista fica vazia
   e o aluno não consegue concluir a inscrição.
 
-## E os dados de teste?
+## Dados de teste foram removidos
 
-Ficam em `database/seeds/dev/` e **não rodam sozinhos**. Para popular um
-ambiente de desenvolvimento:
+Os scripts de teste (`database/seeds/dev/20-21.sql`) foram removidos do repositório antes do go-live.
 
-```bash
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/20-inserir-dados-teste.sql
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/21-inserir-casos-demo-mvp.sql
-mkdir -p backend/uploads/materiais
-cp database/seeds/materiais-exemplo/* backend/uploads/materiais/
-```
-
-Nunca rode esses dois em produção: eles criam usuários com senhas conhecidas e
-documentadas em `docs/seed-casos-teste.md`.
+**NUNCA rode dados de teste em produção.** O banco de produção foi limpo propositalmente e não deve ser populado com credenciais conhecidas.

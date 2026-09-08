@@ -48,7 +48,7 @@ locais diferentes. Use sempre o `docker-compose.yml` da raiz.
 
 Os arquivos em `database/init/` sao numerados porque o Postgres executa tudo
 em ordem alfabetica na primeira inicializacao. Por isso os arquivos `01` a
-`12` criam a estrutura, e o arquivo `20` insere os dados de teste.
+`16` criam a estrutura e as configurações padrão.
 
 ## Volumes Docker e persistencia de dados
 
@@ -209,14 +209,8 @@ O que `database/init/` cria num banco novo:
 Resultado: **zero usuarios, zero turmas, zero matriculas**. Para criar a
 primeira conta, veja `database/seeds/producao/README.md`.
 
-### Populando um ambiente de desenvolvimento
+### Ambientes de desenvolvimento
 
-```bash
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/20-inserir-dados-teste.sql
-docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/21-inserir-casos-demo-mvp.sql
-mkdir -p backend/uploads/materiais
-cp database/seeds/materiais-exemplo/* backend/uploads/materiais/
-```
+Os scripts de teste foram removidos do repositório antes do go-live (19/09/2026).
 
-Esses scripts criam usuarios com senhas documentadas em
-`docs/seed-casos-teste.md`. **Nunca rode em producao.**
+**NUNCA rode dados de teste em produção.** O banco de produção foi limpo propositalmente para não nascer com credenciais conhecidas.

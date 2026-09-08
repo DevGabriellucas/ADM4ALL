@@ -1,19 +1,12 @@
 # Casos de Teste - Alunos
 
-> **Atenção — estas credenciais não existem mais por padrão.**
-> O banco de produção foi limpo e os dados de teste saíram de
-> `database/init/`. Para usar este roteiro, popule um ambiente de
-> desenvolvimento primeiro:
->
-> ```bash
-> docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/20-inserir-dados-teste.sql
-> docker compose exec -T db psql -U adm4all -d adm4all < database/seeds/dev/21-inserir-casos-demo-mvp.sql
-> ```
-
-
-> Alunos existentes no seed base (`database/init/20-inserir-dados-teste.sql`) e
-> casos extras de demonstracao (`database/init/21-inserir-casos-demo-mvp.sql`).
-> Ultima atualizacao: 09/07/2026.
+> ⚠️ **ARQUIVO DESCONTINUADO**
+> 
+> Os scripts de dados de teste (`database/seeds/dev/20-21.sql`) foram removidos do repositório antes do go-live de 19/09/2026.
+> 
+> **NUNCA rode dados de teste em produção.** O banco de produção foi limpo e não deve ser populado com credenciais conhecidas.
+> 
+> Este arquivo é mantido apenas para referência histórica de quais casos foram testados no MVP.
 
 ## Casos base
 
