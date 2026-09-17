@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { desativarCursoAction } from "@/app/coordenador/actions";
+import { useEffect, useState } from "react";
+import { excluirCursoAction } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { CourseTable } from "@/components/coordenador/CourseTable";
-import { EditCourseForm } from "@/components/coordenador/EditCourseForm";
 import { NewCourseForm } from "@/components/coordenador/NewCourseForm";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { Course } from "@/types/coordinator";
 
 interface CoursesPageContentProps {
@@ -16,14 +16,15 @@ interface CoursesPageContentProps {
 
 export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [deactivatingCourse, setDeactivatingCourse] = useState<Course | null>(
-    null,
-  );
-  const [isDeactivating, setIsDeactivating] = useState(false);
-  const [deactivationError, setDeactivationError] = useState<string | null>(
-    null,
-  );
+  const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletionError, setDeletionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deletionError) return;
+    const timeout = window.setTimeout(() => setDeletionError(null), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [deletionError]);
 
   const activeCourses = courses.filter(
     (course) => course.status === "ativo",
@@ -40,23 +41,24 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
     (course) => course.quantidadeTurmas === 0,
   ).length;
 
-  const handleDeactivateConfirm = async () => {
-    if (!deactivatingCourse) return;
+  const handleDeleteConfirm = async () => {
+    if (!deletingCourse) return;
 
-    setIsDeactivating(true);
-    setDeactivationError(null);
+    setIsDeleting(true);
+    setDeletionError(null);
 
-    const resultado = await desativarCursoAction(deactivatingCourse.id);
+    const resultado = await excluirCursoAction(deletingCourse.id);
 
-    setIsDeactivating(false);
+    setIsDeleting(false);
 
     if (!resultado.sucesso) {
-      setDeactivationError(resultado.mensagem);
+      setDeletingCourse(null);
+      setDeletionError(resultado.mensagem);
       return;
     }
 
-    setDeactivatingCourse(null);
-    setDeactivationError(null);
+    setDeletingCourse(null);
+    setDeletionError(null);
   };
 
   return (
@@ -81,37 +83,29 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
         onCancel={() => setIsFormOpen(false)}
       />
 
-      {editingCourse && (
-        <EditCourseForm
-          course={editingCourse}
-          onCancel={() => setEditingCourse(null)}
-          onSuccess={() => setEditingCourse(null)}
-        />
-      )}
-
-      {deactivatingCourse && (
+      {deletingCourse && (
         <ConfirmDialog
-          title="Desativar curso?"
-          description="O curso deixará de aparecer como ativo, mas os registros vinculados serão preservados."
-          confirmLabel={isDeactivating ? "Desativando..." : "Desativar"}
+          title="Excluir curso?"
+          description={`O curso "${deletingCourse.nome}" será apagado do sistema. Essa ação não pode ser desfeita. Cursos com turma ou matrícula vinculada não podem ser excluídos.`}
+          confirmLabel={isDeleting ? "Excluindo..." : "Excluir"}
           cancelLabel="Cancelar"
           tone="danger"
-          isLoading={isDeactivating}
+          isLoading={isDeleting}
           onCancel={() => {
-            setDeactivatingCourse(null);
-            setDeactivationError(null);
+            setDeletingCourse(null);
+            setDeletionError(null);
           }}
-          onConfirm={handleDeactivateConfirm}
+          onConfirm={handleDeleteConfirm}
         />
       )}
 
-      {deactivationError && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
+      {deletionError && (
+        <Notificacao
+          tipo="erro"
+          className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
         >
-          {deactivationError}
-        </output>
+          {deletionError}
+        </Notificacao>
       )}
 
       <section
@@ -152,8 +146,7 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
 
       <CourseTable
         courses={courses}
-        onEdit={(course) => setEditingCourse(course)}
-        onDeactivate={(course) => setDeactivatingCourse(course)}
+        onDelete={(course) => setDeletingCourse(course)}
       />
     </>
   );

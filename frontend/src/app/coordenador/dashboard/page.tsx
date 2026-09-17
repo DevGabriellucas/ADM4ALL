@@ -87,7 +87,7 @@ export default async function CoordinatorDashboardPage() {
         <CoordinatorStatCard
           title="Frequência média"
           value={`${summary.frequenciaMedia}%`}
-          subtitle="Presenças sobre as chamadas registradas"
+          subtitle="Média dos alunos, com 10% por falta não justificada"
           variant="green"
         />
         <CoordinatorStatCard

@@ -14,7 +14,12 @@ import {
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
+import { DESCONTO_FREQUENCIA_POR_FALTA } from "../../domain/regras-academicas";
 import { BadRequestError } from "../errors/BadRequestError";
+import {
+  faltasNaoJustificadas,
+  frequenciaPorMatricula,
+} from "./sql/frequencia";
 
 export class PostgresAlunoRepository implements AlunoRepository {
   constructor(private db: Pool) {}
@@ -66,6 +71,17 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return this.mapearLinhaParaAluno(resultado.rows[0]);
   }
 
+  // O bloqueio vale so para o cadastro publico. A coordenacao continua podendo
+  // cadastrar o mesmo CPF, e esse cadastro tira o CPF da lista.
+  async cpfBloqueado(cpf: string): Promise<boolean> {
+    const resultado = await this.db.query(
+      "SELECT 1 FROM cpfs_bloqueados WHERE cpf = $1 LIMIT 1",
+      [cpf],
+    );
+
+    return resultado.rows.length > 0;
+  }
+
   async buscarPorCpf(cpf: string): Promise<Aluno | null> {
     const query = `${this.selecionarAluno} WHERE u.cpf = $1 LIMIT 1`;
     const resultado = await this.db.query(query, [cpf]);
@@ -111,44 +127,135 @@ export class PostgresAlunoRepository implements AlunoRepository {
           END,
           m.data_matricula DESC
         LIMIT 1
+      ),
+      -- As duas CTEs abaixo sao agregacoes sem GROUP BY, entao devolvem uma
+      -- linha mesmo quando a matricula ainda nao tem turma (turma_id NULL) ou
+      -- quando nenhuma chamada foi registrada. E o que mantem o painel de pe
+      -- para o aluno recem-cadastrado.
+      aulas_turma AS (
+        SELECT
+          COUNT(*) FILTER (WHERE au.status <> 'cancelada')::INTEGER AS total,
+          COUNT(*) FILTER (WHERE au.status = 'realizada')::INTEGER AS realizadas
+        FROM aulas au
+        JOIN matricula_selecionada m ON m.turma_id = au.turma_id
+      ),
+      faltas_aluno AS (
+        -- Falta justificada e aceita nao conta e nao desconta progresso.
+        SELECT
+          COUNT(*) FILTER (WHERE f.presente = FALSE AND f.justificada = FALSE)::INTEGER AS qtd,
+          COUNT(*) FILTER (WHERE f.presente = TRUE)::INTEGER AS presencas
+        FROM frequencias f
+        JOIN matricula_selecionada m ON m.id = f.matricula_id
+      ),
+      painel AS (
+        SELECT
+          fa.qtd AS qtd_faltas,
+          fa.presencas AS qtd_presencas,
+          -- A MESMA conta das outras telas: 100 pontos menos 10 por falta nao
+          -- justificada. Aqui era a proporcao de presencas sobre as chamadas,
+          -- uma quarta formula divergente — o aluno que faltasse na primeira
+          -- aula via 0% e "Reprovado por falta" enquanto o instrutor via 90%.
+          GREATEST(0, 100 - fa.qtd * $2::INTEGER) AS frequencia,
+          au.total AS qtd_total_aulas,
+          au.realizadas AS qtd_aulas_concluidas,
+          CASE
+            WHEN au.total > 0
+              THEN ROUND((au.realizadas * 100.0) / au.total)
+            ELSE 0
+          END AS progresso,
+          (au.total > 0 AND au.realizadas >= au.total) AS curso_concluido
+        FROM faltas_aluno fa
+        CROSS JOIN aulas_turma au
       )
       SELECT
         u.nome,
         a.rgm AS matricula,
-        tr.nome AS nome_curso,
-        (
-          SELECT COUNT(*)::INTEGER
-          FROM frequencias f
-          WHERE f.matricula_id = m.id
-            AND f.presente = FALSE
-        ) AS qtd_faltas,
-        (
-          SELECT COUNT(*)::INTEGER
-          FROM aulas au
-          WHERE au.turma_id = m.turma_id
-            AND au.status <> 'cancelada'
-        ) AS qtd_total_aulas,
-        (
-          SELECT COUNT(*)::INTEGER
-          FROM aulas au
-          WHERE au.turma_id = m.turma_id
-            AND au.status = 'realizada'
-        ) AS qtd_aulas_concluidas,
-        m.progresso,
-        m.status,
+        a.avatar_url,
+        (m.id IS NULL) AS sem_matricula,
+        COALESCE(tr.nome, '') AS nome_curso,
+        p.qtd_faltas,
+        p.qtd_total_aulas,
+        p.qtd_aulas_concluidas,
+        p.progresso,
+        p.curso_concluido,
+        -- Quem manda e o status da matricula, que o backend ja reavalia a cada
+        -- chamada. Recalcular aqui era o que fazia o painel do aluno discordar
+        -- do painel do instrutor sobre o mesmo aluno.
+        COALESCE(m.status = 'aprovado', FALSE) AS certificado_liberado,
+        COALESCE(m.status, 'em_andamento') AS status,
+        -- A linha da tabela certificados e a fonte da verdade: se esta emitida,
+        -- o aluno baixa. As condicoes extras que existiam aqui podiam esconder
+        -- um certificado valido do dono dele.
         COALESCE(c.status = 'emitido', FALSE) AS certificado_disponivel,
         CASE WHEN c.status = 'emitido' THEN c.url_arquivo ELSE NULL END
-          AS certificado_url
+        AS certificado_url,
+        p.frequencia,
+        (
+        SELECT json_build_object(
+          'titulo', proxima.titulo,
+          'data', to_char(proxima.data_aula, 'YYYY-MM-DD'),
+          'horaInicio', to_char(proxima.hora_inicio, 'HH24:MI'),
+          'horaFim', to_char(proxima.hora_fim, 'HH24:MI')
+        )
+        FROM aulas proxima
+        JOIN matricula_selecionada mp ON mp.turma_id = proxima.turma_id
+        WHERE proxima.status = 'planejada'
+          AND proxima.data_aula >= CURRENT_DATE
+        ORDER BY proxima.data_aula, proxima.hora_inicio NULLS LAST
+        LIMIT 1
+        ) AS proxima_aula
+        ,(
+          SELECT COALESCE(json_agg(historico ORDER BY historico.data DESC), '[]'::json)
+          FROM (
+            SELECT
+              au.titulo AS aula,
+              to_char(au.data_aula, 'YYYY-MM-DD') AS data,
+              CASE
+                WHEN f.id IS NULL THEN 'pendente'
+                WHEN f.justificada THEN 'justificada'
+                WHEN f.presente THEN 'presente'
+                ELSE 'falta'
+              END AS situacao
+            FROM aulas au
+            JOIN matricula_selecionada mh ON mh.turma_id = au.turma_id
+            LEFT JOIN frequencias f
+              ON f.aula_id = au.id AND f.matricula_id = mh.id
+            ORDER BY au.data_aula DESC, au.numero_aula DESC
+            LIMIT 10
+          ) historico
+        ) AS historico_presencas
+        ,(
+          SELECT COALESCE(json_agg(calendario ORDER BY calendario.data ASC), '[]'::json)
+          FROM (
+            SELECT
+              au.titulo AS aula,
+              to_char(au.data_aula, 'YYYY-MM-DD') AS data,
+              au.status
+            FROM aulas au
+            JOIN matricula_selecionada mc ON mc.turma_id = au.turma_id
+            ORDER BY au.data_aula ASC, au.numero_aula ASC
+          ) calendario
+        ) AS calendario_turma
+        ,'[]'::json AS comunicados
       FROM alunos a
       JOIN usuarios u ON u.id = a.usuario_id
-      JOIN matricula_selecionada m ON m.aluno_id = a.id
-      JOIN treinamentos tr ON tr.id = m.treinamento_id
+      -- LEFT, e nao JOIN: aluno cadastrado que ainda nao foi vinculado a uma
+      -- turma existe e precisa de painel. Com JOIN a consulta devolvia zero
+      -- linhas, o use case virava 400 e a tela caia no boundary de erro
+      -- dizendo "nao possui matricula disponivel" — e sao ~150 ex-alunos
+      -- entrando assim antes do go-live.
+      LEFT JOIN matricula_selecionada m ON m.aluno_id = a.id
+      LEFT JOIN treinamentos tr ON tr.id = m.treinamento_id
+      CROSS JOIN painel p
       LEFT JOIN certificados c ON c.matricula_id = m.id
       WHERE a.id = $1
       LIMIT 1
     `;
 
-    const resultado = await this.db.query(query, [alunoId]);
+    const resultado = await this.db.query(query, [
+      alunoId,
+      DESCONTO_FREQUENCIA_POR_FALTA,
+    ]);
     const linha = resultado.rows[0];
 
     if (!linha) {
@@ -158,6 +265,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return {
       nome: linha.nome,
       matricula: linha.matricula ?? null,
+      avatarUrl: linha.avatar_url ?? null,
+      semMatricula: linha.sem_matricula,
       cursoDeExtensao: {
         nomeCurso: linha.nome_curso,
         qtdFaltas: Number(linha.qtd_faltas),
@@ -165,10 +274,31 @@ export class PostgresAlunoRepository implements AlunoRepository {
         qtdAulasConcluidas: Number(linha.qtd_aulas_concluidas),
         progresso: Number(linha.progresso),
         status: linha.status,
+        cursoConcluido: linha.curso_concluido,
+        certificadoLiberado: linha.certificado_liberado,
       },
       certificadoDisponivel: linha.certificado_disponivel,
       certificadoUrl: linha.certificado_url ?? null,
+      frequencia: Number(linha.frequencia),
+      proximaAula: linha.proxima_aula ?? null,
+      historicoPresencas: linha.historico_presencas ?? [],
+      calendarioTurma: linha.calendario_turma ?? [],
+      comunicados: linha.comunicados ?? [],
     };
+  }
+
+  async atualizarAvatar(
+    alunoId: string,
+    avatarUrl: string | null,
+  ): Promise<void> {
+    const resultado = await this.db.query(
+      "UPDATE alunos SET avatar_url = $1 WHERE id = $2",
+      [avatarUrl, alunoId],
+    );
+
+    if (resultado.rowCount === 0) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
   }
 
   async listarMateriaisVisiveis(
@@ -663,7 +793,20 @@ export class PostgresAlunoRepository implements AlunoRepository {
           'YYYY-MM-DD'
         ) AS data_fim,
         to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
-        COALESCE(emissor.nome, 'Coordenacao do Projeto') AS nome_coordenadora
+        COALESCE(emissor.nome, 'Coordenacao do Projeto') AS nome_coordenadora,
+        -- Numeros reais da matricula do PROPRIO certificado. O caminho de
+        -- fallback, que regera o PDF quando o arquivo sumiu do disco, montava
+        -- o detalhe com faltas = 0 e frequencia = 100 fixos.
+        (
+          SELECT ${faltasNaoJustificadas("f")}
+          FROM frequencias f
+          WHERE f.matricula_id = m.id
+        ) AS faltas,
+        COALESCE((
+          SELECT ${frequenciaPorMatricula("f2")}
+          FROM frequencias f2
+          WHERE f2.matricula_id = m.id
+        ), 100) AS frequencia
       FROM certificados c
       JOIN matriculas m ON m.id = c.matricula_id
       JOIN alunos a ON a.id = m.aluno_id
@@ -697,6 +840,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
       nomeProjeto: "Projeto de Extensao Administracao para Todos",
       textoDescritivo:
         "concluiu o curso de extensao, desenvolvendo conhecimentos e habilidades para atuacao em rotinas administrativas e no ambiente profissional.",
+      faltas: Number(linha.faltas ?? 0),
+      frequencia: Number(linha.frequencia ?? 100),
     };
   }
 

@@ -6,6 +6,7 @@ import {
   buscarPresencasPorAulaAction,
   salvarPresencasAction,
 } from "@/app/instrutor/actions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   AlunoPresenca,
   AulaResumo,
@@ -104,13 +105,23 @@ export const PresencaPanel = ({
     setFeedback(null);
   };
 
-  const marcarTodosPresentes = () => {
-    setStatuses((anterior) => ({
-      ...anterior,
-      ...(Object.fromEntries(
-        alunosAtuais.map((aluno) => [aluno.matriculaId, "presente"]),
-      ) as Record<string, StatusPresenca>),
-    }));
+  // Atalho da chamada: numa turma de 30 alunos o caminho normal e "todos
+  // presentes, menos fulano", e sem isto o instrutor dava trinta cliques.
+  //
+  // So preenche quem esta pendente, nunca sobrescreve falta ou justificativa ja
+  // marcada — a mesma regra do preenchimento automatico do backend.
+  const marcarPendentesComoPresentes = () => {
+    setStatuses((anterior) => {
+      const atualizado = { ...anterior };
+
+      for (const aluno of alunosAtuais) {
+        if (!atualizado[aluno.matriculaId]) {
+          atualizado[aluno.matriculaId] = "presente";
+        }
+      }
+
+      return atualizado;
+    });
     setFeedback(null);
   };
 
@@ -281,11 +292,11 @@ export const PresencaPanel = ({
 
         <button
           type="button"
-          onClick={marcarTodosPresentes}
-          disabled={desabilitado || alunosAtuais.length === 0}
-          className="cursor-pointer rounded-md border border-emerald-200 px-3 py-1.5 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={marcarPendentesComoPresentes}
+          disabled={resumoPresenca.pendentes === 0 || isTrocandoAula}
+          className="cursor-pointer rounded-md border border-emerald-600 px-4 py-2 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Marcar todos presentes
+          Marcar pendentes como presentes
         </button>
       </div>
 
@@ -339,17 +350,16 @@ export const PresencaPanel = ({
         )}
       </ul>
 
-      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-        {feedback && (
-          <output
-            className={`text-sm ${
-              feedback.tipo === "ok" ? "text-emerald-700" : "text-red-700"
-            }`}
-          >
-            {feedback.texto}
-          </output>
-        )}
+      {feedback && (
+        <Notificacao
+          tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
+          className="mt-5"
+        >
+          {feedback.texto}
+        </Notificacao>
+      )}
 
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
           onClick={salvar}

@@ -11,6 +11,7 @@ import {
   settingsLabelClass,
   settingsSubmitButtonClass,
 } from "@/components/coordenador/SettingsSectionCard";
+import { Notificacao } from "@/components/shared/Notificacao";
 import {
   type PreferenciasFormData,
   preferencesSchema,
@@ -177,22 +178,10 @@ export const PreferenciasCard = ({
         </div>
 
         {successMessage && (
-          <output
-            aria-live="polite"
-            className="block rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-800 text-sm"
-          >
-            {successMessage}
-          </output>
+          <Notificacao tipo="sucesso">{successMessage}</Notificacao>
         )}
 
-        {errorMessage && (
-          <output
-            aria-live="polite"
-            className="block rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 text-sm"
-          >
-            {errorMessage}
-          </output>
-        )}
+        {errorMessage && <Notificacao tipo="erro">{errorMessage}</Notificacao>}
 
         <div className="flex justify-end">
           <button

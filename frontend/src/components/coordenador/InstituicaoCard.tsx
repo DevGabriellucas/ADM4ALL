@@ -11,10 +11,12 @@ import {
   settingsLabelClass,
   settingsSubmitButtonClass,
 } from "@/components/coordenador/SettingsSectionCard";
+import { Notificacao } from "@/components/shared/Notificacao";
 import {
   type InstituicaoFormData,
   instituicaoSchema,
 } from "@/schemas/configuracionsSchema";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface InstituicaoCardProps {
   className?: string;
@@ -118,6 +120,10 @@ export const InstituicaoCard = ({
                   {...field}
                   id="institution-email"
                   type="email"
+                  autoComplete="email"
+                  onChange={(event) =>
+                    field.onChange(event.target.value.toLowerCase())
+                  }
                   placeholder="contato@instituicao.edu.br"
                   disabled={isSubmitting}
                   className={getSettingsFieldClass(Boolean(errors.email))}
@@ -144,6 +150,11 @@ export const InstituicaoCard = ({
                   {...field}
                   id="institution-phone"
                   type="tel"
+                  inputMode="tel"
+                  maxLength={15}
+                  onChange={(event) =>
+                    field.onChange(formatarTelefone(event.target.value))
+                  }
                   placeholder="(83) 99999-9999"
                   disabled={isSubmitting}
                   className={getSettingsFieldClass(Boolean(errors.telefone))}
@@ -216,22 +227,10 @@ export const InstituicaoCard = ({
         </div>
 
         {successMessage && (
-          <output
-            aria-live="polite"
-            className="block rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-green-800 text-sm"
-          >
-            {successMessage}
-          </output>
+          <Notificacao tipo="sucesso">{successMessage}</Notificacao>
         )}
 
-        {errorMessage && (
-          <output
-            aria-live="polite"
-            className="block rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 text-sm"
-          >
-            {errorMessage}
-          </output>
-        )}
+        {errorMessage && <Notificacao tipo="erro">{errorMessage}</Notificacao>}
 
         <div className="flex justify-end">
           <button

@@ -26,6 +26,7 @@ describe("AlunoUseCase", () => {
     mockAlunoRepository = {
       buscarPorEmailOuCpf: jest.fn(),
       buscarPorCpf: jest.fn(),
+      cpfBloqueado: jest.fn().mockResolvedValue(false),
       buscarPorEmail: jest.fn(),
       cadastrar: jest.fn(),
       listarTodos: jest.fn(),
@@ -73,7 +74,7 @@ describe("AlunoUseCase", () => {
         email: "teste@email.com",
         dataNascimento: "1990-01-01",
         isAlunoUnipe: false,
-        senha: "password123",
+        senha: "Password123!",
         treinamento: "teste",
       };
       
@@ -99,7 +100,7 @@ describe("AlunoUseCase", () => {
         email: "teste@email.com",
         dataNascimento: "1990-01-01",
         isAlunoUnipe: false,
-        senha: "password123",
+        senha: "Password123!",
         treinamento: "teste",
       };
       
@@ -116,7 +117,7 @@ describe("AlunoUseCase", () => {
         email: "teste@email.com",
         dataNascimento: "1990-01-01",
         isAlunoUnipe: false,
-        senha: "password123",
+        senha: "Password123!",
         treinamento: "teste",
       };
       
@@ -124,6 +125,27 @@ describe("AlunoUseCase", () => {
       mockAlunoRepository.buscarPorEmail.mockResolvedValue({} as any);
 
       await expect(alunoUseCase.cadastrar(dados)).rejects.toThrow(BadRequestError);
+    });
+
+    it("deve recusar CPF bloqueado antes de qualquer outra checagem", async () => {
+      const dados = {
+        nome: "Aluno Teste",
+        cpf: "123.456.789-09",
+        telefone: "(11) 99999-9999",
+        email: "teste@email.com",
+        dataNascimento: "1990-01-01",
+        isAlunoUnipe: false,
+        senha: "Password123!",
+        treinamento: "teste",
+      };
+
+      mockAlunoRepository.cpfBloqueado.mockResolvedValue(true);
+
+      await expect(alunoUseCase.cadastrar(dados)).rejects.toThrow(
+        "Você está bloqueado e não conseguirá criar uma conta!!! Entre em contato com a coordenação do curso.",
+      );
+      expect(mockAlunoRepository.buscarPorCpf).not.toHaveBeenCalled();
+      expect(mockAlunoRepository.cadastrar).not.toHaveBeenCalled();
     });
   });
 

@@ -1,3 +1,5 @@
+import type { MatriculaStatus } from "@/constants/matriculaStatus";
+
 export type StatusPresenca = "presente" | "falta" | "justificada";
 export type StatusAula = "planejada" | "realizada" | "cancelada";
 
@@ -30,6 +32,14 @@ export interface TurmaResumo {
   curso: string;
   turno: string;
   local: string | null;
+  /** Periodo letivo da turma no formato AAAA.P (ex.: 2026.1). */
+  periodoLetivo: string;
+  status:
+    | "planejada"
+    | "em_andamento"
+    | "concluida"
+    | "encerrada"
+    | "cancelada";
 }
 
 export interface AulaResumo {
@@ -48,9 +58,13 @@ export interface AlunoPresenca {
   nome: string;
   statusPresenca: StatusPresenca | null;
   presencas: number;
+  /** Ausencias abonadas: nao contam como falta nem derrubam a frequencia. */
+  justificadas: number;
   faltas: number;
   aulasRegistradas: number;
   frequencia: number;
+  /** Desfecho academico da matricula, ja reavaliado pelo backend. */
+  statusMatricula: MatriculaStatus;
 }
 
 export interface MaterialResumo {
@@ -70,6 +84,8 @@ export interface InstrutorDashboard {
   instrutor: InstrutorResumo;
   turma: TurmaResumo | null;
   aulaReferencia: AulaResumo | null;
+  /** Aula que esta por vir: a primeira cujo horario de termino ainda nao passou. */
+  aulaAtual: AulaResumo | null;
   proximaAula: AulaResumo | null;
   metricas: {
     totalAlunos: number;
@@ -79,6 +95,14 @@ export interface InstrutorDashboard {
   alunos: AlunoPresenca[];
   cronograma: AulaResumo[];
   materiais: MaterialResumo[];
+}
+
+// O mesmo painel, recortado pela turma em vez do instrutor. A coordenacao ve
+// todas as turmas e escolhe uma no seletor; o instrutor cai sempre na turma
+// vinculada a ele. Espelha TurmaDashboard do backend.
+export interface TurmaDashboard
+  extends Omit<InstrutorDashboard, "instrutor" | "turma"> {
+  turma: TurmaResumo;
 }
 
 export interface RegistroPresenca {

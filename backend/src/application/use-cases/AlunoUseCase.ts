@@ -6,7 +6,6 @@ import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
-  CertificadoEmitidoDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
   MaterialVisivelAluno,
@@ -22,6 +21,7 @@ import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemp
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
+import { validarSenhaForte } from "../utils/validarSenha";
 import { ActivationUseCase } from "./ActivationUseCase";
 
 export interface CadastrarAlunoInput {
@@ -78,6 +78,15 @@ export class AlunoUseCase {
     const telefoneVo = this.criarTelefone(dadosNormalizados.telefone);
     const emailVo = this.criarEmail(dadosNormalizados.email);
     const dataNascimento = this.normalizarDataNascimento(dados.dataNascimento);
+
+    // Antes de qualquer outra checagem: quem foi excluido pela coordenacao nao
+    // volta pelo cadastro publico. O texto e o que o usuario pediu que
+    // aparecesse na tela de cadastro.
+    if (await this.alunoRepository.cpfBloqueado(cpfVo.value)) {
+      throw new BadRequestError(
+        "Você está bloqueado e não conseguirá criar uma conta!!! Entre em contato com a coordenação do curso.",
+      );
+    }
 
     const cpfExistente = await this.alunoRepository.buscarPorCpf(cpfVo.value);
     if (cpfExistente) {
@@ -166,13 +175,66 @@ export class AlunoUseCase {
     const dashboard =
       await this.alunoRepository.buscarDashboardPorAlunoId(alunoId);
 
+    // Chegar aqui sem linha significa que o registro de aluno do token nao
+    // existe mais, e nao que falta matricula — a consulta devolve painel vazio
+    // para quem ainda nao tem turma. Entao e sessao morta: 401 faz o frontend
+    // limpar o cookie e voltar ao login, em vez de repetir uma tela de erro que
+    // o usuario nao tem como resolver.
     if (!dashboard) {
-      throw new BadRequestError(
-        "O aluno nao possui matricula disponivel para o dashboard.",
+      throw new UnauthorizedError(
+        "Sua conta nao esta mais disponivel. Entre novamente.",
       );
     }
 
-    return dashboard;
+    return this.adicionarComunicados(dashboard);
+  }
+
+  private adicionarComunicados(dashboard: AlunoDashboard): AlunoDashboard {
+    const comunicados: AlunoDashboard["comunicados"] = [];
+
+    if (dashboard.cursoDeExtensao.qtdFaltas >= 3) {
+      comunicados.push({
+        titulo: "Reprovação por falta",
+        mensagem: "Você pode concluir o curso, mas não receberá certificado.",
+        tipo: "importante",
+      });
+    } else if (dashboard.cursoDeExtensao.qtdFaltas >= 2) {
+      comunicados.push({
+        titulo: "Atenção à frequência",
+        mensagem: "Você já possui 2 faltas. A partir da 3ª falta, será reprovado.",
+        tipo: "atencao",
+      });
+    }
+
+    if (dashboard.cursoDeExtensao.certificadoLiberado) {
+      comunicados.push({
+        titulo: "Curso concluído",
+        mensagem: "Seu certificado foi liberado para emissão.",
+        tipo: "informacao",
+      });
+    }
+
+    return { ...dashboard, comunicados };
+  }
+
+  async atualizarAvatar(alunoId: string, avatarUrl: string): Promise<void> {
+    if (!alunoId) {
+      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
+    }
+
+    if (!avatarUrl || avatarUrl.trim() === "") {
+      throw new BadRequestError("A foto enviada e invalida.");
+    }
+
+    await this.alunoRepository.atualizarAvatar(alunoId, avatarUrl);
+  }
+
+  async removerAvatar(alunoId: string): Promise<void> {
+    if (!alunoId) {
+      throw new UnauthorizedError("Aluno autenticado nao encontrado.");
+    }
+
+    await this.alunoRepository.atualizarAvatar(alunoId, null);
   }
 
   async listarMateriaisVisiveis(
@@ -202,6 +264,14 @@ export class AlunoUseCase {
   async baixarCertificado(
     alunoId: string,
   ): Promise<{ buffer: Buffer; nomeArquivo: string }> {
+    // A autorizacao e o proprio certificado: a consulta abaixo so devolve linha
+    // com status 'emitido', e a reavaliacao cancela o certificado sozinha se o
+    // aluno for reprovado depois.
+    //
+    // A liberacao vinha do painel, que reflete a matricula ATUAL do aluno, e
+    // nao a matricula do certificado. Quem concluiu uma turma e voltou a
+    // estudar em outra era barrado com "reprovado por frequencia" no
+    // certificado que ja tinha conquistado.
     const cert =
       await this.alunoRepository.buscarCertificadoEmitidoPorAlunoId(alunoId);
 
@@ -247,8 +317,12 @@ export class AlunoUseCase {
           const buffer = await fs.readFile(caminhoAbsoluto);
           return { buffer, nomeArquivo };
         } catch {
-          console.warn(
-            "Arquivo do certificado nao encontrado em disco. Gerando fallback.",
+          // Regerar a partir do banco mantem o aluno atendido, mas o arquivo
+          // nao devia ter sumido. Sai como erro, e nao aviso, porque a causa
+          // provavel em producao e o volume de storage nao estar montado — e
+          // nesse caso todo download cai aqui em silencio.
+          console.error(
+            `Certificado ${cert.codigo ?? cert.certificadoId}: arquivo ausente em ${caminhoAbsoluto}. Regerando pelo banco. Se isto se repetir, confira se o volume de certificados esta montado.`,
           );
         }
       }
@@ -275,7 +349,8 @@ export class AlunoUseCase {
       statusMatricula: "",
       statusTurma: "",
       statusUsuario: "",
-      faltas: 0,
+      faltas: cert.faltas,
+      frequencia: cert.frequencia,
     };
 
     const pdf = await gerarCertificadoPdf(detalhe);
@@ -586,15 +661,7 @@ export class AlunoUseCase {
   }
 
   private async criptografarSenha(senha: string): Promise<string> {
-    if (!senha || senha.length < 8) {
-      throw new BadRequestError("A senha deve ter no mínimo 8 caracteres.");
-    }
-
-    if (!/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-      throw new BadRequestError(
-        "A senha deve conter pelo menos uma letra e um numero.",
-      );
-    }
+    validarSenhaForte(senha);
 
     return await bcrypt.hash(senha, SALT_ROUNDS);
   }

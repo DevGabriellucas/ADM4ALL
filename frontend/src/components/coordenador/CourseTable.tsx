@@ -6,8 +6,7 @@ import type { Course } from "@/types/coordinator";
 
 interface CourseTableProps {
   courses: Course[];
-  onEdit: (course: Course) => void;
-  onDeactivate: (course: Course) => void;
+  onDelete: (course: Course) => void;
 }
 
 const getCourseStatusInfo = (status: Course["status"]) => {
@@ -22,11 +21,9 @@ const getCourseStatusInfo = (status: Course["status"]) => {
   return { label: "Desativado", tone: "slate" as const };
 };
 
-export const CourseTable = ({
-  courses,
-  onEdit,
-  onDeactivate,
-}: CourseTableProps) => {
+// Sem botao de editar: "Visualizar" abre a pagina do curso, e a edicao vive
+// la. Ter os dois lado a lado era o mesmo destino em dois botoes.
+export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
   return (
     <section
       aria-labelledby="courses-table-heading"
@@ -100,18 +97,10 @@ export const CourseTable = ({
                       </Link>
                       <button
                         type="button"
-                        onClick={() => onEdit(course)}
-                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+                        onClick={() => onDelete(course)}
+                        className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2"
                       >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        disabled={course.status === "desativado"}
-                        onClick={() => onDeactivate(course)}
-                        className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Desativar
+                        Excluir
                       </button>
                     </div>
                   </td>

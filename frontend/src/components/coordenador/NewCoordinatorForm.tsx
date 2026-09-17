@@ -6,6 +6,9 @@ import { useState } from "react";
 import { convidarCoordenadorAction } from "@/app/coordenador/actions";
 import { ActivationNotice } from "@/components/coordenador/ActivationNotice";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
+import { Notificacao } from "@/components/shared/Notificacao";
+import { formatarCpf } from "@/utils/cpf";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface NewCoordinatorFormProps {
   isOpen: boolean;
@@ -95,21 +98,15 @@ export const NewCoordinatorForm = ({
       <ActivationNotice userLabel="coordenador" />
 
       {successMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className="mt-4">
           {successMessage}
-        </output>
+        </Notificacao>
       )}
 
       {errorMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mt-4">
           {errorMessage}
-        </output>
+        </Notificacao>
       )}
 
       <form onSubmit={handleSubmit} className="mt-5">
@@ -133,9 +130,13 @@ export const NewCoordinatorForm = ({
             <input
               required
               type="email"
+              autoComplete="email"
               value={formData.email}
               onChange={(event) =>
-                setFormData({ ...formData, email: event.target.value })
+                setFormData({
+                  ...formData,
+                  email: event.target.value.toLowerCase(),
+                })
               }
               placeholder="coordenador@email.com"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
@@ -151,7 +152,10 @@ export const NewCoordinatorForm = ({
               maxLength={14}
               value={formData.cpf}
               onChange={(event) =>
-                setFormData({ ...formData, cpf: event.target.value })
+                setFormData({
+                  ...formData,
+                  cpf: formatarCpf(event.target.value),
+                })
               }
               placeholder="000.000.000-00"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
@@ -163,9 +167,14 @@ export const NewCoordinatorForm = ({
             <span className="sr-only">Opcional</span>
             <input
               type="tel"
+              inputMode="tel"
+              maxLength={15}
               value={formData.telefone}
               onChange={(event) =>
-                setFormData({ ...formData, telefone: event.target.value })
+                setFormData({
+                  ...formData,
+                  telefone: formatarTelefone(event.target.value),
+                })
               }
               placeholder="(83) 99999-9999 (opcional)"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"

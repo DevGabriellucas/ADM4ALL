@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import type { ActivationPendingField } from "@/types/auth";
+import { primeiroErroSenha } from "@/utils/senha";
 
 const optionalText = z.string().trim().optional();
 
@@ -20,11 +21,12 @@ export const createActivateAccountSchema = (
     })
     .superRefine((data, context) => {
       if (campos.has("senha")) {
-        if (!data.senha || data.senha.length < 8) {
+        const erroSenha = primeiroErroSenha(data.senha ?? "");
+        if (erroSenha) {
           context.addIssue({
             code: "custom",
             path: ["senha"],
-            message: "A senha deve ter no mínimo 8 caracteres.",
+            message: erroSenha,
           });
         }
         if (!data.confirmarSenha) {

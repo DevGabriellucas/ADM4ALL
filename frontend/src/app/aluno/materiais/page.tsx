@@ -1,8 +1,11 @@
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
-import { AlunoMateriaisList } from "@/components/aluno/AlunoMateriaisList";
+import { AlunoMateriaisPanel } from "@/components/aluno/AlunoMateriaisPanel";
 import { BackButton } from "@/components/shared/BackButton";
-import { getAlunoDashboard, getMateriaisAluno } from "@/services/alunoService";
+import {
+  getAlunoDashboard,
+  getMateriaisVisiveisAluno,
+} from "@/services/alunoService";
 import { getAlunoSession } from "@/services/serverSessionService";
 
 export default async function AlunoMateriaisPage() {
@@ -12,10 +15,25 @@ export default async function AlunoMateriaisPage() {
     redirect("/?redirectTo=/aluno/materiais");
   }
 
-  const [aluno, materiaisResponse] = await Promise.all([
+  const [alunoResult, materiaisResult] = await Promise.allSettled([
     getAlunoDashboard(),
-    getMateriaisAluno(),
+    getMateriaisVisiveisAluno(),
   ]);
+
+  if (alunoResult.status === "rejected") {
+    throw alunoResult.reason;
+  }
+
+  // O 401 do apiClient vira redirect(), sinalizado como erro lancado. Engolido
+  // aqui, ele deixava a tela renderizar sem material nenhum em vez de mandar o
+  // aluno para o login.
+  if (materiaisResult.status === "rejected") {
+    unstable_rethrow(materiaisResult.reason);
+  }
+
+  const aluno = alunoResult.value;
+  const materiais =
+    materiaisResult.status === "fulfilled" ? materiaisResult.value : [];
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 font-poppins text-slate-950 sm:px-6 lg:px-8">
@@ -36,7 +54,10 @@ export default async function AlunoMateriaisPage() {
             </h2>
           </div>
 
-          <AlunoMateriaisList materiais={materiaisResponse.materiais} />
+          <AlunoMateriaisPanel
+            materiais={materiais}
+            erroCarregamento={materiaisResult.status === "rejected"}
+          />
         </section>
       </div>
     </main>

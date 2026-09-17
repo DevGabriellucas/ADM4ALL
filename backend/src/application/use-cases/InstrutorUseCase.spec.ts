@@ -10,6 +10,7 @@ describe("InstrutorUseCase", () => {
   beforeEach(() => {
     mockInstrutorRepository = {
       buscarDashboard: jest.fn(),
+      buscarDashboardDaTurma: jest.fn(),
       listarMateriaisTurma: jest.fn(),
       turmaPertenceAoInstrutor: jest.fn(),
       registrarPresencas: jest.fn(),
@@ -55,6 +56,34 @@ describe("InstrutorUseCase", () => {
     it("deve lançar erro se o instrutor não for encontrado", async () => {
       mockInstrutorRepository.buscarDashboard.mockResolvedValue(null);
       await expect(instrutorUseCase.obterDashboard("1")).rejects.toThrow("Instrutor nao encontrado.");
+    });
+  });
+
+  describe("obterDashboardDaTurma", () => {
+    it("deve retornar o painel da turma escolhida", async () => {
+      const mockPainel = { turma: { id: "t1" }, alunos: [], cronograma: [] };
+      mockInstrutorRepository.buscarDashboardDaTurma.mockResolvedValue(
+        mockPainel as any,
+      );
+
+      const result = await instrutorUseCase.obterDashboardDaTurma("t1");
+
+      expect(mockInstrutorRepository.buscarDashboardDaTurma).toHaveBeenCalledWith("t1");
+      expect(result).toEqual(mockPainel);
+    });
+
+    it("deve lançar erro se a turma for vazia", async () => {
+      await expect(instrutorUseCase.obterDashboardDaTurma("  ")).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    it("deve lançar 404 se a turma não existir", async () => {
+      mockInstrutorRepository.buscarDashboardDaTurma.mockResolvedValue(null);
+
+      await expect(instrutorUseCase.obterDashboardDaTurma("t1")).rejects.toThrow(
+        "Turma nao encontrada.",
+      );
     });
   });
 

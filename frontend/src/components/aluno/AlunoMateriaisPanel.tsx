@@ -5,23 +5,26 @@ import { formatData, formatTamanho, formatTipoMaterial } from "@/utils/format";
 
 interface AlunoMateriaisPanelProps {
   materiais: MaterialVisivelAluno[];
+  erroCarregamento?: boolean;
 }
 
 export const AlunoMateriaisPanel = ({
   materiais,
+  erroCarregamento = false,
 }: AlunoMateriaisPanelProps) => {
   const materiaisSeguros = Array.isArray(materiais) ? materiais : [];
+  const ehUrlExterna = (valor: string) => /^https?:\/\//i.test(valor);
 
   return (
     <section
       aria-labelledby="materiais-heading"
-      className="rounded-lg border border-slate-200 bg-slate-50 p-5"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2
             id="materiais-heading"
-            className="font-semibold text-sm tracking-[0.25em]"
+            className="font-semibold text-lg text-slate-950"
           >
             Materiais
           </h2>
@@ -29,12 +32,20 @@ export const AlunoMateriaisPanel = ({
             Arquivos e links liberados pelo instrutor para sua turma.
           </p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 font-medium text-slate-600 text-xs">
+        <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 text-xs">
           {materiaisSeguros.length} disponíveis
         </span>
       </div>
 
-      {materiaisSeguros.length === 0 ? (
+      {erroCarregamento ? (
+        <p
+          role="alert"
+          className="mt-5 rounded-lg bg-red-50 px-4 py-5 text-center text-red-700 text-sm"
+        >
+          Não foi possível carregar os materiais agora. Tente novamente mais
+          tarde.
+        </p>
+      ) : materiaisSeguros.length === 0 ? (
         <p className="mt-5 rounded-lg bg-white px-4 py-5 text-center text-slate-500 text-sm">
           Nenhum material visível no momento.
         </p>
@@ -76,9 +87,24 @@ export const AlunoMateriaisPanel = ({
 
                 {material.urlArquivo ? (
                   <div className="mt-4">
-                    <BotaoBaixarMaterial
-                      baixar={baixarMaterialAlunoAction.bind(null, material.id)}
-                    />
+                    {ehUrlExterna(material.urlArquivo) ? (
+                      <a
+                        href={material.urlArquivo}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-9 w-fit items-center rounded-md bg-brand-dark px-3 font-semibold text-sm text-white transition-colors hover:bg-brand-medium"
+                      >
+                        Abrir link
+                      </a>
+                    ) : (
+                      <BotaoBaixarMaterial
+                        baixar={baixarMaterialAlunoAction.bind(
+                          null,
+                          material.id,
+                        )}
+                        modo={material.tipo === "video" ? "abrir" : "baixar"}
+                      />
+                    )}
                   </div>
                 ) : (
                   <p className="mt-4 text-slate-400 text-xs">

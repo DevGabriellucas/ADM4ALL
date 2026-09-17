@@ -74,7 +74,9 @@ test.describe("MVP ADM4All", () => {
 
     await page.goto("/redefinir-senha?token=invalido");
     await expect(page.getByRole("link", { name: "Voltar" })).toBeVisible();
-    await expect(page.getByPlaceholder("Nova senha")).toBeVisible();
+    await expect(
+      page.getByPlaceholder("Nova senha", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByPlaceholder("Confirmar nova senha")).toBeVisible();
   });
 
@@ -103,6 +105,20 @@ test.describe("MVP ADM4All", () => {
   test("aluno visualiza materiais sem cards duplicados", async ({ page }) => {
     await entrarComo(page, USUARIOS.aluno);
     await expect(page.getByText("Materiais")).toBeVisible();
+
+    await expect(page.getByRole("link", { name: "Materiais" })).toBeVisible();
+    await page.getByRole("link", { name: "Materiais" }).click();
+    await expect(page).toHaveURL(/\/aluno\/materiais/);
+    await expect(page.getByText("Meus materiais")).toBeVisible();
+  });
+
+  test("aluno acessa o resumo acadêmico da dashboard", async ({ page }) => {
+    await entrarComo(page, USUARIOS.aluno);
+
+    await expect(page.getByRole("heading", { name: /Olá,/ })).toBeVisible();
+    await expect(page.getByText("Resumo de frequência")).toBeVisible();
+    await expect(page.getByText("Próxima aula")).toBeVisible();
+    await expect(page.getByRole("progressbar")).toBeVisible();
 
     const titulos = await page
       .locator('[data-testid="aluno-material-title"]')

@@ -6,6 +6,7 @@ import {
   exportarRelatorioAction,
   gerarRelatorioGeradoAction,
 } from "@/app/coordenador/actions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   CoordinatorReportData,
   CoordinatorReportFilters,
@@ -31,23 +32,33 @@ const getMetricValue = (
   rows: ReportDataRow[],
   filters: CoordinatorReportFilters,
 ) => {
-  if (report.type === "frequencia_turma") {
-    const numerator = rows.reduce(
-      (total, row) => total + (row.metricNumerator ?? 0),
-      0,
-    );
-    const denominator = rows.reduce(
-      (total, row) => total + (row.metricDenominator ?? 0),
-      0,
-    );
-    if (denominator > 0) {
-      return Math.round((numerator / denominator) * 100);
-    }
-  }
-
   const hasFilters = Object.values(filters).some(Boolean);
+
+  // Sem filtro, o numero e o que o backend calculou. O caso de
+  // "frequencia_turma" era tratado ANTES desta linha e retornava sempre, entao
+  // o valor do backend era inalcancavel para esse relatorio e a media virava
+  // uma terceira copia da mesma conta, livre para divergir.
   if (!hasFilters && report.metricValue !== undefined) {
     return report.metricValue;
+  }
+
+  // Com filtro, o backend nao sabe quais linhas sobraram na tela e a conta e
+  // refeita aqui — seguindo a mesma regra dele: turma sem chamada nao tem
+  // frequencia e fica fora da media, em vez de entrar como zero.
+  if (report.type === "frequencia_turma") {
+    const turmasComChamada = rows.filter(
+      (row) => (row.metricDenominator ?? 0) > 0,
+    );
+
+    if (turmasComChamada.length === 0) {
+      return 0;
+    }
+
+    const soma = turmasComChamada.reduce(
+      (total, row) => total + row.chartValue,
+      0,
+    );
+    return Math.round(soma / turmasComChamada.length);
   }
 
   if (report.aggregation === "count") {
@@ -229,14 +240,14 @@ export const ReportPreviewPanel = ({
         </div>
 
         {exportError && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+          <Notificacao tipo="erro" className="mt-4">
             {exportError}
-          </p>
+          </Notificacao>
         )}
         {successMessage && (
-          <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700 text-sm">
+          <Notificacao tipo="sucesso" className="mt-4">
             {successMessage}
-          </p>
+          </Notificacao>
         )}
 
         <div className="mt-5 overflow-x-auto">

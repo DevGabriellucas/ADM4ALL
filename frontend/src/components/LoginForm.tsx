@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { type ComponentProps, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
+import { Notificacao } from "@/components/shared/Notificacao";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
 import type { SessionProfile } from "@/services/sessionService";
+import { formatarCpf, pareceCpf } from "@/utils/cpf";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
@@ -77,24 +79,26 @@ export const LoginForm = ({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginFormDataSchema),
   });
+
+  const identifierField = register("identifier");
 
   const loginSubmit = async (data: LoginFormData) => {
     setMessage(null);
 
     try {
       const result = await login(data);
-      const nomeUsuario = result.usuario.nome;
-      const saudacao = ` Bem-vindo(a), ${nomeUsuario}!`;
 
       setMessage({
         type: "success",
-        text: `${result.mensagem},${saudacao}`,
+        text: `${result.mensagem} Bem-vindo(a), ${result.usuario.nome}!`,
       });
 
+      await new Promise((resolve) => window.setTimeout(resolve, 900));
       router.replace(resolverRedirectTo(redirectTo, result.usuario.perfil));
     } catch (error: unknown) {
       setMessage({
@@ -113,13 +117,36 @@ export const LoginForm = ({
       <Input
         id="identifier"
         label="E-mail ou CPF"
-        className="h-12 w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 py-3 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-base sm:h-[5.22rem] sm:px-10 sm:py-4 sm:text-xl sm:placeholder:text-xl"
+        className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition placeholder:font-normal placeholder:text-base focus:border-brand-medium focus:bg-white focus:ring-4 focus:ring-brand-light/30"
         placeholder="E-mail ou CPF"
         type="text"
         autoCapitalize="none"
         autoComplete="username"
         spellCheck={false}
-        {...register("identifier")}
+        {...identifierField}
+        onChange={(event) => {
+          // Nenhuma mascara enquanto digita. A mascara so pode ser decidida
+          // com o valor inteiro em maos: aplicada tecla a tecla, ela reescrevia
+          // o comeco de um e-mail institucional com matricula numerica e ainda
+          // descartava tudo depois do 11o digito, e o aluno so descobria no
+          // "Credenciais invalidas", sem nada na tela explicando.
+          setValue("identifier", event.target.value.toLowerCase(), {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }}
+        onBlur={(event) => {
+          const valor = event.target.value;
+
+          if (pareceCpf(valor)) {
+            setValue("identifier", formatarCpf(valor), {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }
+
+          identifierField.onBlur(event);
+        }}
         error={errors.identifier?.message}
       />
 
@@ -127,7 +154,7 @@ export const LoginForm = ({
         <Input
           id="password"
           label="Senha de acesso"
-          className="mt-4 h-12 w-full rounded-lg bg-radial-[at_0%_50.72%] from-[#BFD0EC] to-[#6D7686] px-4 py-3 pr-14 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-base sm:h-[5.22rem] sm:px-10 sm:py-4 sm:pr-20 sm:text-xl sm:placeholder:text-xl"
+          className="mt-4 h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 pr-14 text-base outline-none transition placeholder:font-normal placeholder:text-base focus:border-brand-medium focus:bg-white focus:ring-4 focus:ring-brand-light/30"
           placeholder="Senha de acesso"
           type={isPasswordVisible ? "text" : "password"}
           {...register("password")}
@@ -140,7 +167,12 @@ export const LoginForm = ({
           aria-label={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
           aria-pressed={isPasswordVisible}
           title={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
-          onClick={() => setIsPasswordVisible((visible) => !visible)}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsPasswordVisible((visible) => !visible);
+          }}
         >
           {isPasswordVisible ? (
             <svg
@@ -179,33 +211,29 @@ export const LoginForm = ({
 
       <Link
         href="/recuperar-senha"
-        className="block w-full max-w-full pr-1 text-right text-[#524ABF] text-base underline underline-offset-2 duration-200 hover:text-indigo-900"
+        className="block w-full max-w-full pr-1 text-right font-medium text-brand-dark text-sm underline underline-offset-2 duration-200 hover:text-brand-medium"
       >
         Recuperar Senha
       </Link>
 
-      {message?.type === "error" && (
-        <output
-          className="text-center font-medium text-red-700 text-sm"
-          role="alert"
+      {/* Erro e sucesso saem no mesmo lugar e com o mesmo cartao: antes o
+          "bem-vindo" aparecia embaixo do botao, fora do padrao do sistema. */}
+      {message && (
+        <Notificacao
+          tipo={message.type === "error" ? "erro" : "sucesso"}
+          className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
         >
           {message.text}
-        </output>
+        </Notificacao>
       )}
 
       <Button
-        className="h-12 w-full cursor-pointer rounded-lg bg-radial-[at_0%_48.97%] from-[#78A4EA] to-[#445D84] px-4 py-3 font-semibold text-base hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:h-[5.22rem] sm:px-10 sm:py-4 sm:text-2xl"
+        className="h-12 w-full cursor-pointer rounded-lg bg-brand-dark px-4 py-3 font-semibold text-base text-white transition hover:bg-[#252c65] disabled:pointer-events-none disabled:opacity-60"
         disabled={isSubmitting}
         type="submit"
       >
         {isSubmitting ? "Entrando..." : "Entrar"}
       </Button>
-
-      {message?.type === "success" && (
-        <output className="text-center font-medium text-green-800 text-sm">
-          {message.text}
-        </output>
-      )}
     </form>
   );
 };

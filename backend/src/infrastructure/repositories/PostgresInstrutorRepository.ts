@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import { BadRequestError } from "../errors/BadRequestError";
 import {
   AdicionarAulaInput,
@@ -13,11 +13,28 @@ import {
   InstrutorResumo,
   MaterialResumo,
   RegistrarPresencasInput,
+  SituacaoAula,
   StatusPresenca,
+  TurmaDashboard,
   TurmaResumo,
 } from "../../domain/repositories/InstrutorRepository";
+import {
+  DESCONTO_FREQUENCIA_POR_FALTA,
+  FREQUENCIA_MAXIMA_REPROVACAO,
+  FREQUENCIA_MINIMA_APROVACAO,
+} from "../../domain/regras-academicas";
+import { faltasNaoJustificadas, presencasEfetivas } from "./sql/frequencia";
+import { cursoConcluido } from "./sql/turma";
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
+
+// invalid_text_representation. O id da turma escolhida pela coordenacao chega
+// pela query string, entao um valor que nao e UUID e entrada invalida (404) e
+// nao falha do servidor (500).
+const CODIGO_TEXTO_INVALIDO = "22P02";
+
+// check_violation. Acusa banco sem a migration que liberou presenca justificada.
+const CODIGO_VIOLACAO_CHECK = "23514";
 
 export class PostgresInstrutorRepository implements InstrutorRepository {
   constructor(private db: Pool) {}
@@ -35,6 +52,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         instrutor,
         turma: null,
         aulaReferencia: null,
+        aulaAtual: null,
         proximaAula: null,
         metricas: { totalAlunos: 0, presentesHoje: 0, frequenciaMedia: 0 },
         alunos: [],
@@ -43,14 +61,44 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       };
     }
 
-    const [aulaReferencia, proximaAula, cronograma, materiais, frequenciaMedia] =
-      await Promise.all([
-        this.buscarAulaReferencia(turma.id),
-        this.buscarProximaAula(turma.id),
-        this.listarCronograma(turma.id),
-        this.listarMateriaisTurma(turma.id),
-        this.calcularFrequenciaMedia(turma.id),
-      ]);
+    return { instrutor, ...(await this.montarPainelDaTurma(turma)) };
+  }
+
+  // A coordenacao escolhe a turma no seletor e cai aqui; o instrutor chega pela
+  // turma vinculada a ele. O calculo e o mesmo nos dois caminhos de proposito:
+  // frequencia divergente entre as duas telas ja foi bug neste projeto.
+  async buscarDashboardDaTurma(
+    turmaId: string,
+  ): Promise<TurmaDashboard | null> {
+    const turma = await this.buscarTurmaPorId(turmaId);
+
+    if (!turma) {
+      return null;
+    }
+
+    return await this.montarPainelDaTurma(turma);
+  }
+
+  private async montarPainelDaTurma(
+    turma: TurmaResumo,
+  ): Promise<TurmaDashboard> {
+    const [
+      aulaReferencia,
+      aulasPendentes,
+      cronograma,
+      materiais,
+      frequenciaMedia,
+    ] = await Promise.all([
+      this.buscarAulaReferencia(turma.id),
+      this.listarAulasPendentes(turma.id, 2),
+      this.listarCronograma(turma.id),
+      this.listarMateriaisTurma(turma.id),
+      this.calcularFrequenciaMedia(turma.id),
+    ]);
+
+    // A primeira pendente e a aula que esta por vir; a segunda e a seguinte.
+    const aulaAtual = aulasPendentes[0] ?? null;
+    const proximaAula = aulasPendentes[1] ?? null;
 
     const alunos = await this.listarAlunosComPresenca(
       turma.id,
@@ -62,9 +110,9 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     ).length;
 
     return {
-      instrutor,
       turma,
       aulaReferencia,
+      aulaAtual,
       proximaAula,
       metricas: {
         totalAlunos: alunos.length,
@@ -119,7 +167,10 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     instrutorId: string,
   ): Promise<TurmaResumo | null> {
     const query = `
-      SELECT t.id, t.codigo, t.nome, t.turno, t.local, tr.nome AS curso
+      SELECT
+        t.id, t.codigo, t.nome, t.turno, t.local, t.periodo_letivo,
+        t.status,
+        tr.nome AS curso
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
       JOIN turma_instrutores ti ON ti.turma_id = t.id
@@ -128,8 +179,35 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       LIMIT 1
     `;
     const resultado = await this.db.query(query, [instrutorId]);
-    const linha = resultado.rows[0];
 
+    return this.mapearTurma(resultado.rows[0]);
+  }
+
+  private async buscarTurmaPorId(turmaId: string): Promise<TurmaResumo | null> {
+    const query = `
+      SELECT
+        t.id, t.codigo, t.nome, t.turno, t.local, t.periodo_letivo,
+        t.status,
+        tr.nome AS curso
+      FROM turmas t
+      JOIN treinamentos tr ON tr.id = t.treinamento_id
+      WHERE t.id = $1
+      LIMIT 1
+    `;
+
+    try {
+      const resultado = await this.db.query(query, [turmaId]);
+      return this.mapearTurma(resultado.rows[0]);
+    } catch (error: any) {
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  private mapearTurma(linha: any): TurmaResumo | null {
     if (!linha) {
       return null;
     }
@@ -141,6 +219,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       curso: linha.curso,
       turno: linha.turno,
       local: linha.local ?? null,
+      periodoLetivo: linha.periodo_letivo,
+      status: linha.status,
     };
   }
 
@@ -170,7 +250,18 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     return this.mapearAula(resultado.rows[0]);
   }
 
-  private async buscarProximaAula(turmaId: string): Promise<AulaResumo | null> {
+  /**
+   * As aulas que ainda nao aconteceram, da mais proxima para a mais distante.
+   *
+   * A virada e pelo horario de termino, na hora de Sao Paulo: quando a aula de
+   * hoje acaba, ela sai da lista e a agenda anda sozinha — a barra passa a
+   * mostrar a proxima e o cartao "Proxima aula", a seguinte. Aula cancelada
+   * nunca entra.
+   */
+  private async listarAulasPendentes(
+    turmaId: string,
+    limite: number,
+  ): Promise<AulaResumo[]> {
     const query = `
       SELECT
         id,
@@ -181,12 +272,17 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         to_char(hora_fim, 'HH24:MI') AS hora_fim,
         status
       FROM aulas
-      WHERE turma_id = $1 AND data_aula > CURRENT_DATE
-      ORDER BY data_aula ASC
-      LIMIT 1
+      WHERE turma_id = $1
+        AND status <> 'cancelada'
+        AND (
+          data_aula + COALESCE(hora_fim, TIME '23:59')
+        ) > (now() AT TIME ZONE 'America/Sao_Paulo')
+      ORDER BY data_aula ASC, numero_aula ASC
+      LIMIT $2
     `;
-    const resultado = await this.db.query(query, [turmaId]);
-    return this.mapearAula(resultado.rows[0]);
+    const resultado = await this.db.query(query, [turmaId, limite]);
+
+    return resultado.rows.map((linha) => this.mapearAula(linha)!);
   }
 
   private async listarCronograma(turmaId: string): Promise<AulaResumo[]> {
@@ -238,15 +334,21 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         m.id AS matricula_id,
         a.id AS aluno_id,
         u.nome,
+        m.status AS status_matricula,
         f.presente,
-        f.observacao,
+        f.justificada,
         COALESCE(freq.presencas, 0) AS presencas,
+        COALESCE(freq.justificadas, 0) AS justificadas,
         COALESCE(freq.faltas, 0) AS faltas,
         COALESCE(freq.aulas_registradas, 0) AS aulas_registradas,
-        CASE
-          WHEN COALESCE(freq.aulas_registradas, 0) = 0 THEN 0
-          ELSE ROUND((freq.presencas::numeric / freq.aulas_registradas::numeric) * 100)
-        END AS frequencia
+        -- Mesma conta do progresso no painel do aluno: comeca em 100 e cada
+        -- falta nao justificada desconta uma fatia fixa. Antes isso era uma
+        -- proporcao sobre as chamadas lancadas, e as duas telas mostravam
+        -- numeros diferentes para o mesmo aluno.
+        GREATEST(
+          0,
+          100 - COALESCE(freq.faltas, 0) * $3::INTEGER
+        ) AS frequencia
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
       JOIN usuarios u ON u.id = a.usuario_id
@@ -255,39 +357,74 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
        AND f.aula_id = $2
       LEFT JOIN LATERAL (
         SELECT
-          COUNT(*) FILTER (WHERE f2.presente) AS presencas,
-          COUNT(*) FILTER (WHERE NOT f2.presente) AS faltas,
+          -- Presenca justificada e gravada com presente = TRUE, entao um
+          -- COUNT FILTER (presente) puro contava a mesma linha aqui e em
+          -- "Justificadas", e as colunas da tela nao fechavam com o total de
+          -- chamadas.
+          ${presencasEfetivas("f2")} AS presencas,
+          COUNT(*) FILTER (WHERE f2.justificada) AS justificadas,
+          -- Falta justificada nao entra na conta, igual ao painel do aluno.
+          ${faltasNaoJustificadas("f2")} AS faltas,
           COUNT(*) AS aulas_registradas
         FROM frequencias f2
         WHERE f2.matricula_id = m.id
       ) freq ON TRUE
+      -- Matricula cancelada nao e mais aluno da turma: fora da chamada e das
+      -- metricas do painel.
       WHERE m.turma_id = $1
+        AND m.status <> 'cancelado'
       ORDER BY u.nome ASC
     `;
-    const resultado = await this.db.query(query, [turmaId, aulaReferenciaId]);
+    const resultado = await this.db.query(query, [
+      turmaId,
+      aulaReferenciaId,
+      DESCONTO_FREQUENCIA_POR_FALTA,
+    ]);
 
     return resultado.rows.map((linha) => ({
       matriculaId: linha.matricula_id,
       alunoId: linha.aluno_id,
       nome: linha.nome,
-      statusPresenca: this.mapearStatusPresenca(linha.presente, linha.observacao),
+      statusPresenca: this.mapearStatusPresenca(
+        linha.presente,
+        linha.justificada,
+      ),
       presencas: Number(linha.presencas),
+      justificadas: Number(linha.justificadas),
       faltas: Number(linha.faltas),
       aulasRegistradas: Number(linha.aulas_registradas),
       frequencia: Number(linha.frequencia),
+      statusMatricula: linha.status_matricula,
     }));
   }
 
   private async calcularFrequenciaMedia(turmaId: string): Promise<number> {
     const query = `
+      -- Media das frequencias individuais, e nao das chamadas: cada aluno vale
+      -- o mesmo peso, com a mesma conta que ele ve no proprio painel.
+      WITH por_aluno AS (
+        SELECT
+          GREATEST(
+            0,
+            100 - COUNT(f.id) FILTER (
+              WHERE NOT f.presente AND NOT f.justificada
+            ) * $2::INTEGER
+          ) AS frequencia
+        FROM matriculas m
+        LEFT JOIN frequencias f ON f.matricula_id = m.id
+        WHERE m.turma_id = $1
+          AND m.status <> 'cancelado'
+        GROUP BY m.id
+      )
       SELECT
-        COUNT(*) FILTER (WHERE f.presente) AS presentes,
+        COALESCE(ROUND(AVG(frequencia)), 0) AS presentes,
         COUNT(*) AS total
-      FROM frequencias f
-      JOIN matriculas m ON m.id = f.matricula_id
-      WHERE m.turma_id = $1
+      FROM por_aluno
     `;
-    const resultado = await this.db.query(query, [turmaId]);
+    const resultado = await this.db.query(query, [
+      turmaId,
+      DESCONTO_FREQUENCIA_POR_FALTA,
+    ]);
     const linha = resultado.rows[0];
 
     const total = Number(linha?.total ?? 0);
@@ -295,8 +432,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       return 0;
     }
 
-    const presentes = Number(linha?.presentes ?? 0);
-    return Math.round((presentes / total) * 100);
+    return Number(linha?.presentes ?? 0);
   }
 
   async registrarPresencas(input: RegistrarPresencasInput): Promise<void> {
@@ -317,32 +453,63 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         throw new Error("Aula nao encontrada para esta turma.");
       }
 
-      const upsert = `
-        INSERT INTO frequencias (matricula_id, aula_id, data_aula, presente, observacao)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (matricula_id, data_aula)
+      // Upsert atomico pela identidade exata da chamada: (matricula, aula).
+      //
+      // O par UPDATE-entao-INSERT que existia aqui casava por
+      // `(aula_id = $2 OR data_aula = $6)`. Esse OR alcancava a linha de OUTRA
+      // aula que por acaso caisse na mesma data e a reescrevia, apagando a
+      // chamada dela sem erro nenhum; podia tambem casar duas linhas de uma vez
+      // e estourar o indice unico, derrubando a chamada inteira com um 500.
+      // O ON CONFLICT tambem e a guarda de concorrencia que o par nao tinha.
+      const salvar = `
+        INSERT INTO frequencias (
+          matricula_id, aula_id, data_aula, presente, justificada, observacao
+        )
+        VALUES ($1, $2, $6, $3, $4, $5)
+        ON CONFLICT (matricula_id, aula_id) WHERE aula_id IS NOT NULL
         DO UPDATE SET
           presente = EXCLUDED.presente,
+          justificada = EXCLUDED.justificada,
           observacao = EXCLUDED.observacao,
-          aula_id = EXCLUDED.aula_id,
+          data_aula = EXCLUDED.data_aula,
           data_registro = now()
       `;
 
       for (const registro of input.registros) {
-        const { presente, observacao } = this.traduzirStatus(registro.status);
+        const { presente, justificada, observacao } = this.traduzirStatus(
+          registro.status,
+        );
 
-        await cliente.query(upsert, [
+        await cliente.query(salvar, [
           registro.matriculaId,
           input.aulaId,
-          aula.data_aula,
           presente,
+          justificada,
           observacao,
+          aula.data_aula,
         ]);
       }
 
+      await this.reavaliarSituacaoMatricula(
+        cliente,
+        input.registros.map((registro) => registro.matriculaId),
+      );
+
       await cliente.query("COMMIT");
-    } catch (error) {
+    } catch (error: any) {
       await cliente.query("ROLLBACK");
+
+      // Banco que ainda carrega a constraint antiga recusa presenca
+      // justificada. Sem esta traducao o instrutor recebia "Erro interno do
+      // servidor." e perdia a chamada inteira, sem nada que apontasse a causa.
+      if (error?.code === CODIGO_VIOLACAO_CHECK) {
+        throw new BadRequestError(
+          "O banco de dados ainda nao aceita presenca justificada. Aplique a " +
+            "migration 20260916_presenca_justificada_como_presente.sql antes " +
+            "de lancar esta chamada.",
+        );
+      }
+
       throw error;
     } finally {
       cliente.release();
@@ -472,6 +639,10 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         input.horaFim ?? null,
       ]);
 
+      // Aula nova numa turma ja encerrada reabre a turma: o curso voltou a ter
+      // aula pendente.
+      await this.reavaliarSituacaoTurma(input.turmaId);
+
       return this.mapearAula(resultado.rows[0])!;
     } catch (error: any) {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
@@ -548,6 +719,80 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     }));
   }
 
+  /**
+   * Situacao da aula para as regras do cronograma.
+   *
+   * `jaTerminou` compara o fim da aula com a hora de Sao Paulo, e nao com o
+   * relogio do servidor: o banco e o backend rodam em UTC, entao usar now()
+   * direto liberaria "Realizada" tres horas antes de a aula acabar.
+   */
+  async buscarSituacaoAula(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<SituacaoAula | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        numero_aula,
+        status,
+        (
+          data_aula + COALESCE(hora_fim, TIME '23:59')
+        ) <= (now() AT TIME ZONE 'America/Sao_Paulo') AS ja_terminou
+      FROM aulas
+      WHERE id = $1 AND turma_id = $2
+      LIMIT 1
+      `,
+      [aulaId, turmaId],
+    );
+    const linha = resultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    return {
+      numero: Number(linha.numero_aula),
+      status: linha.status,
+      jaTerminou: linha.ja_terminou,
+    };
+  }
+
+  /**
+   * Fecha a chamada da aula preenchendo com presenca quem ficou sem
+   * lancamento. Nao encosta em quem ja recebeu falta ou justificativa do
+   * instrutor.
+   */
+  async preencherPresencasPendentes(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<number> {
+    const resultado = await this.db.query(
+      `
+      INSERT INTO frequencias (
+        matricula_id, aula_id, data_aula, presente, justificada, observacao
+      )
+      SELECT m.id, au.id, au.data_aula, TRUE, FALSE, NULL
+      FROM matriculas m
+      JOIN aulas au ON au.id = $2
+      WHERE m.turma_id = $1
+        AND m.status <> 'cancelado'
+        -- A tabela tem dois indices unicos: (matricula, data_aula) e
+        -- (matricula, aula_id). Checar so a data deixava passar o caso em que
+        -- a aula ja tinha chamada mas a data dela foi editada depois.
+        AND NOT EXISTS (
+          SELECT 1
+          FROM frequencias f
+          WHERE f.matricula_id = m.id
+            AND (f.data_aula = au.data_aula OR f.aula_id = au.id)
+        )
+      ON CONFLICT DO NOTHING
+      `,
+      [turmaId, aulaId],
+    );
+
+    return resultado.rowCount ?? 0;
+  }
+
   async removerAula(aulaId: string, turmaId: string): Promise<void> {
     const frequenciasResultado = await this.db.query(
       "SELECT 1 FROM frequencias WHERE aula_id = $1 LIMIT 1",
@@ -568,6 +813,9 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     if (resultado.rowCount === 0) {
       throw new BadRequestError("Aula nao encontrada para esta turma.");
     }
+
+    // Remover a ultima aula pendente fecha o curso; a turma acompanha.
+    await this.reavaliarSituacaoTurma(turmaId);
   }
 
   async atualizarAula(input: AtualizarAulaInput): Promise<AulaResumo> {
@@ -616,6 +864,36 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         throw new BadRequestError("Aula nao encontrada para esta turma.");
       }
 
+      // Remarcar a aula leva junto a data das frequencias dela. Sem isso a
+      // chamada ficava com a data antiga, e essa linha desencontrada colidia
+      // com o indice (matricula, data_aula) assim que outra aula ocupava a
+      // data liberada.
+      if (input.data !== undefined) {
+        await this.db.query(
+          "UPDATE frequencias SET data_aula = $2 WHERE aula_id = $1",
+          [input.aulaId, input.data],
+        );
+      }
+
+      // Marcar a aula como realizada encerra a chamada dela, entao quem ficou
+      // sem lancamento entra como presente. Falta e justificativa ja lancadas
+      // pelo instrutor sao preservadas pelo NOT EXISTS da propria consulta.
+      //
+      // Isso precisa acontecer ANTES da reavaliacao. Rodando depois, as
+      // presencas nao chegavam a tempo da decisao de aprovacao: a turma
+      // encerrava com todo mundo parado em "em andamento", sem certificado e
+      // fora da lista de candidatos. E, preso ao fim de cada bloco de dez, nem
+      // chegava a rodar em turma de oito, nove ou doze aulas.
+      if (input.status === "realizada") {
+        await this.preencherPresencasPendentes(input.turmaId, input.aulaId);
+      }
+
+      // Mudar o status da aula pode fechar (ou reabrir) o curso, e e o que
+      // decide a aprovacao automatica da turma inteira.
+      if (input.status !== undefined) {
+        await this.reavaliarSituacaoTurma(input.turmaId);
+      }
+
       return this.mapearAula(aula)!;
     } catch (error: any) {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
@@ -645,6 +923,13 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     await this.db.query(
       "UPDATE instrutores SET avatar_url = $1 WHERE id = $2",
       [avatarUrl, instrutorId],
+    );
+  }
+
+  async removerAvatar(instrutorId: string): Promise<void> {
+    await this.db.query(
+      "UPDATE instrutores SET avatar_url = NULL WHERE id = $1",
+      [instrutorId],
     );
   }
 
@@ -679,33 +964,271 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     };
   }
 
+  /**
+   * Recalcula a situacao das matriculas informadas. Roda dentro da transacao
+   * do registro de presenca e tambem quando uma aula vira "realizada", porque
+   * os dois eventos mudam o desfecho.
+   *
+   * Sao tres saidas:
+   * - frequencia igual ou inferior a 70% reprova, o que na pratica e a terceira
+   *   falta nao justificada;
+   * - curso terminado com frequencia suficiente aprova sozinho, e e isso que
+   *   libera o botao de emitir certificado sem a coordenacao mexer no status;
+   * - qualquer outro caso volta para "em andamento", o que faz justificar uma
+   *   falta desfazer a reprovacao.
+   *
+   * A frequencia e a MESMA conta das telas (100 menos 10 por falta nao
+   * justificada). Antes aqui era a proporcao de presencas sobre as chamadas
+   * lancadas, e isso reprovava o aluno que faltasse na primeira aula: 0 de 1
+   * chamada dava 0%, enquanto a tela mostrava 90%.
+   *
+   * `registros > 0` guarda a aprovacao: sem nenhuma chamada lancada o aluno nao
+   * tem falta, entao a frequencia vale 100 — encerrar a turma nesse estado
+   * aprovava a turma inteira e liberava certificado para quem nunca teve aula.
+   *
+   * So matricula cancelada nao e tocada, porque o aluno saiu da turma. A
+   * aprovacao E revista: lancar falta depois de aprovar tem que reprovar.
+   */
+  private async reavaliarSituacaoMatricula(
+    cliente: PoolClient,
+    matriculaIds: string[],
+  ): Promise<void> {
+    if (matriculaIds.length === 0) {
+      return;
+    }
+
+    await cliente.query(
+      `
+      WITH situacao AS (
+        SELECT
+          m.id,
+          m.turma_id,
+          COUNT(f.id) FILTER (
+            WHERE NOT f.presente AND NOT f.justificada
+          ) AS faltas,
+          COUNT(f.id) AS registros
+        FROM matriculas m
+        LEFT JOIN frequencias f ON f.matricula_id = m.id
+        WHERE m.id = ANY($1::uuid[])
+        GROUP BY m.id, m.turma_id
+      ),
+      avaliada AS (
+        SELECT
+          s.id,
+          s.registros,
+          GREATEST(0, 100 - s.faltas * $4::INTEGER) AS frequencia,
+          (
+            SELECT ${cursoConcluido("au", "tu")}
+            FROM turmas tu
+            LEFT JOIN aulas au ON au.turma_id = tu.id
+            WHERE tu.id = s.turma_id
+            GROUP BY tu.id
+          ) AS curso_concluido
+        FROM situacao s
+      ),
+      destino AS (
+        SELECT
+          a.id,
+          CASE
+            WHEN a.frequencia <= $2::INTEGER THEN 'reprovado_falta'
+            WHEN a.curso_concluido
+             AND a.registros > 0
+             AND a.frequencia >= $3::INTEGER THEN 'aprovado'
+            ELSE 'em_andamento'
+          END AS status
+        FROM avaliada a
+      )
+      UPDATE matriculas m
+      SET
+        status = d.status,
+        data_conclusao = CASE
+          WHEN d.status IN ('aprovado', 'reprovado_falta') THEN CURRENT_DATE
+          ELSE NULL
+        END
+      FROM destino d
+      WHERE m.id = d.id
+        AND m.status <> 'cancelado'
+        AND m.status <> d.status
+      `,
+      [
+        matriculaIds,
+        FREQUENCIA_MAXIMA_REPROVACAO,
+        FREQUENCIA_MINIMA_APROVACAO,
+        DESCONTO_FREQUENCIA_POR_FALTA,
+      ],
+    );
+
+    await this.sincronizarCertificados(cliente, matriculaIds);
+  }
+
+  /**
+   * O certificado segue o desfecho da matricula: aprovado tem certificado
+   * emitido, qualquer outro desfecho cancela o que existir. Roda na mesma
+   * transacao da reavaliacao, entao encerrar a turma ja emite e corrigir a
+   * chamada depois ja cancela.
+   *
+   * Nao gera PDF aqui de proposito: o download regenera o arquivo a partir da
+   * linha quando ele nao existe em disco, entao a linha e a fonte da verdade.
+   *
+   * O `WHERE certificados.status <> 'emitido'` no ON CONFLICT preserva codigo e
+   * arquivo de quem ja esta emitido — reemitir a cada chamada lancada trocaria
+   * o codigo de um certificado que o aluno ja baixou.
+   */
+  private async sincronizarCertificados(
+    cliente: PoolClient,
+    matriculaIds: string[],
+  ): Promise<void> {
+    await cliente.query(
+      `
+      INSERT INTO certificados
+        (matricula_id, codigo, status, data_emissao, emitido_por_id, observacao)
+      SELECT
+        m.id,
+        'CERT-ALU-' || EXTRACT(YEAR FROM CURRENT_DATE)::TEXT || '-' ||
+          UPPER(SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', '') FOR 8)),
+        'emitido',
+        CURRENT_DATE,
+        NULL,
+        'Certificado emitido automaticamente ao concluir o curso.'
+      FROM matriculas m
+      WHERE m.id = ANY($1::uuid[])
+        AND m.status = 'aprovado'
+      ON CONFLICT (matricula_id) DO UPDATE SET
+        status = 'emitido',
+        data_emissao = CURRENT_DATE,
+        url_arquivo = NULL,
+        observacao = 'Certificado reemitido automaticamente ao concluir o curso.'
+      WHERE certificados.status <> 'emitido'
+      `,
+      [matriculaIds],
+    );
+
+    await cliente.query(
+      `
+      UPDATE certificados c
+      SET
+        status = 'cancelado',
+        observacao = 'Certificado cancelado automaticamente: o aluno deixou de atender aos criterios.'
+      FROM matriculas m
+      WHERE m.id = c.matricula_id
+        AND m.id = ANY($1::uuid[])
+        AND m.status <> 'aprovado'
+        AND c.status <> 'cancelado'
+      `,
+      [matriculaIds],
+    );
+  }
+
+  /**
+   * Reavalia todas as matriculas ativas da turma. Usado quando uma aula muda
+   * de status: terminar a ultima aula pode aprovar a turma inteira de uma vez.
+   */
+  // Tudo aqui commita junto ou nao commita nada. Sao quatro escritas ligadas —
+  // situacao das matriculas, emissao de certificado, cancelamento de
+  // certificado e status da turma — e sem transacao elas eram autocommits
+  // independentes: uma falha no meio deixava o aluno em "em andamento" com o
+  // certificado ainda valido para download. Como o botao "Encerrar turma" saiu
+  // da tela, desfazer isso exigiria SQL direto no banco de producao.
+  //
+  // Nao ha transacao aberta em nenhum dos chamadores (adicionarAula,
+  // removerAula, atualizarAula); registrarPresencas tem a sua e chama
+  // reavaliarSituacaoMatricula direto, sem passar por aqui.
+  private async reavaliarSituacaoTurma(turmaId: string): Promise<void> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const matriculas = await cliente.query(
+        `SELECT id FROM matriculas
+         WHERE turma_id = $1 AND status <> 'cancelado'`,
+        [turmaId],
+      );
+
+      await this.reavaliarSituacaoMatricula(
+        cliente,
+        matriculas.rows.map((linha) => linha.id),
+      );
+
+      await this.atualizarStatusAutomaticoDaTurma(cliente, turmaId);
+
+      await cliente.query("COMMIT");
+    } catch (erro) {
+      await cliente.query("ROLLBACK");
+      throw erro;
+    } finally {
+      cliente.release();
+    }
+  }
+
+  // A turma encerra sozinha quando o curso acaba — todas as aulas nao
+  // canceladas realizadas, que na pratica e a decima aula sendo dada. Era o
+  // botao "Encerrar turma" da coordenacao, que saiu da tela em 2026-09-10.
+  // Uso a MESMA condicao que aprova as matriculas (`curso_concluido` em
+  // reavaliarSituacaoMatricula): se as duas divergissem, a turma ficaria "em
+  // andamento" com os alunos ja aprovados.
+  //
+  // Reversivel de proposito: desmarcar uma aula como realizada devolve a turma
+  // para "em andamento". Sem isso, corrigir um clique errado exigiria SQL no
+  // banco, porque o botao de encerrar nao existe mais.
+  private async atualizarStatusAutomaticoDaTurma(
+    cliente: PoolClient,
+    turmaId: string,
+  ): Promise<void> {
+    await cliente.query(
+      `
+      WITH situacao AS (
+        SELECT ${cursoConcluido("a", "tu")} AS concluida
+        FROM turmas tu
+        LEFT JOIN aulas a ON a.turma_id = tu.id
+        WHERE tu.id = $1
+        GROUP BY tu.id
+      )
+      UPDATE turmas t
+      SET status = CASE WHEN s.concluida THEN 'encerrada' ELSE 'em_andamento' END
+      FROM situacao s
+      WHERE t.id = $1
+        AND (
+          (s.concluida AND t.status IN ('planejada', 'em_andamento'))
+          OR (NOT s.concluida AND t.status = 'encerrada')
+        )
+      `,
+      [turmaId],
+    );
+  }
+
   private mapearStatusPresenca(
     presente: boolean | null,
-    observacao: string | null,
+    justificada: boolean | null,
   ): StatusPresenca | null {
     if (presente === null || presente === undefined) {
       return null;
     }
 
-    if (presente) {
-      return "presente";
+    if (justificada) {
+      return "justificada";
     }
 
-    return observacao ? "justificada" : "falta";
+    return presente ? "presente" : "falta";
   }
 
   private traduzirStatus(status: StatusPresenca): {
     presente: boolean;
+    justificada: boolean;
     observacao: string | null;
   } {
     if (status === "presente") {
-      return { presente: true, observacao: null };
+      return { presente: true, justificada: false, observacao: null };
     }
 
     if (status === "justificada") {
-      return { presente: false, observacao: "Falta justificada" };
+      return {
+        presente: true,
+        justificada: true,
+        observacao: "Presenca justificada",
+      };
     }
 
-    return { presente: false, observacao: null };
+    return { presente: false, justificada: false, observacao: null };
   }
 }

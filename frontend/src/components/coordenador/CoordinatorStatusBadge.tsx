@@ -1,4 +1,5 @@
 type CoordinatorStatusBadgeTone =
+  | "black"
   | "green"
   | "greenSoft"
   | "greenStrong"
@@ -14,6 +15,7 @@ interface CoordinatorStatusBadgeProps {
 }
 
 const TONE_STYLES: Record<CoordinatorStatusBadgeTone, string> = {
+  black: "border-slate-900 bg-slate-900 text-white",
   green: "border-emerald-200 bg-emerald-50 text-emerald-800",
   greenSoft: "border-emerald-200 bg-emerald-50 text-emerald-700",
   greenStrong: "border-emerald-600 bg-emerald-600 text-white",

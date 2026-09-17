@@ -12,6 +12,7 @@ import {
   getPresencasPorAula,
   registrarPresencas,
   removerAula,
+  removerAvatarInstrutor,
   removerMaterial,
 } from "@/services/instrutorService";
 import type {
@@ -23,6 +24,7 @@ import type {
   AulaResumo,
   RegistrarPresencasInput,
 } from "@/types/instrutor";
+import { mensagemDeErroDeAction } from "@/utils/erroDeAction";
 
 export type ActionResult =
   | { ok: true; mensagem: string }
@@ -33,16 +35,23 @@ export type PresencasActionResult =
   | { ok: false; erro: string };
 
 const traduzirErro = (error: unknown, fallback: string) => {
-  return error instanceof Error ? error.message : fallback;
+  return mensagemDeErroDeAction(error, fallback);
 };
 
-const revalidarInstrutor = () => {
+// As mesmas acoes atendem as duas pontas: o instrutor na turma dele e a
+// coordenacao na turma escolhida no seletor. Revalidar so o lado do instrutor
+// deixava a tela da coordenacao mostrando a chamada anterior.
+const revalidarPaineisDaTurma = () => {
   revalidatePath("/instrutor/dashboard");
   revalidatePath("/instrutor/cronograma");
   revalidatePath("/instrutor/presenca");
   revalidatePath("/instrutor/frequencia");
   revalidatePath("/instrutor/materiais");
   revalidatePath("/instrutor/perfil");
+  revalidatePath("/coordenador/presenca");
+  revalidatePath("/coordenador/frequencia");
+  revalidatePath("/coordenador/cronograma");
+  revalidatePath("/coordenador/materiais");
 };
 
 export const salvarPresencasAction = async (
@@ -50,7 +59,7 @@ export const salvarPresencasAction = async (
 ): Promise<ActionResult> => {
   try {
     await registrarPresencas(input);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return { ok: true, mensagem: "Presença salva com sucesso!" };
   } catch (error) {
     return {
@@ -65,7 +74,7 @@ export const adicionarMaterialAction = async (
 ): Promise<ActionResult> => {
   try {
     await adicionarMaterial(input);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return { ok: true, mensagem: "Material adicionado com sucesso!" };
   } catch (error) {
     return {
@@ -81,7 +90,7 @@ export const removerMaterialAction = async (
 ): Promise<ActionResult> => {
   try {
     await removerMaterial(turmaId, materialId);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return { ok: true, mensagem: "Material removido com sucesso!" };
   } catch (error) {
     return {
@@ -98,7 +107,7 @@ export const atualizarMaterialVisibilidadeAction = async (
 ): Promise<ActionResult> => {
   try {
     await atualizarMaterialVisibilidade(turmaId, materialId, visibilidade);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     revalidatePath("/coordenador/turmas");
     return { ok: true, mensagem: "Visibilidade atualizada com sucesso!" };
   } catch (error) {
@@ -114,7 +123,7 @@ export const adicionarAulaAction = async (
 ): Promise<ActionResult & { aula?: AulaResumo }> => {
   try {
     const aula = await adicionarAula(input);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return { ok: true, mensagem: "Aula adicionada ao cronograma!", aula };
   } catch (error) {
     return {
@@ -130,7 +139,7 @@ export const removerAulaAction = async (
 ): Promise<ActionResult> => {
   try {
     await removerAula(turmaId, aulaId);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return { ok: true, mensagem: "Aula removida com sucesso!" };
   } catch (error) {
     return {
@@ -145,7 +154,7 @@ export const atualizarAulaAction = async (
 ): Promise<ActionResult & { aula?: AulaResumo }> => {
   try {
     const aula = await atualizarAula(input);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return {
       ok: true,
       mensagem:
@@ -183,7 +192,7 @@ export const atualizarAvatarAction = async (
 ): Promise<ActionResult & { avatarUrl?: string }> => {
   try {
     const resultado = await atualizarAvatarInstrutor(instrutorId, arquivo);
-    revalidarInstrutor();
+    revalidarPaineisDaTurma();
     return {
       ok: true,
       mensagem: "Foto de perfil atualizada com sucesso!",
@@ -193,6 +202,21 @@ export const atualizarAvatarAction = async (
     return {
       ok: false,
       erro: traduzirErro(error, "Falha ao atualizar a foto de perfil."),
+    };
+  }
+};
+
+export const removerAvatarAction = async (
+  instrutorId: string,
+): Promise<ActionResult> => {
+  try {
+    await removerAvatarInstrutor(instrutorId);
+    revalidarPaineisDaTurma();
+    return { ok: true, mensagem: "Foto de perfil removida." };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: traduzirErro(error, "Falha ao remover a foto de perfil."),
     };
   }
 };

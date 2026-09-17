@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { atualizarTurmaAction } from "@/app/coordenador/actions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { ClassGroup, Instructor } from "@/types/coordinator";
 
 interface AddInstructorToClassModalProps {
@@ -98,12 +99,9 @@ export const AddInstructorToClassModal = ({
         </div>
 
         {errorMessage && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {errorMessage}
-          </output>
+          </Notificacao>
         )}
 
         <div className="mt-4">

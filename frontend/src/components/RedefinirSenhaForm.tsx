@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { MedidorForcaSenha } from "@/components/shared/MedidorForcaSenha";
+import { Notificacao } from "@/components/shared/Notificacao";
 import {
   type ResetPasswordData,
   resetPasswordDataSchema,
@@ -32,6 +34,7 @@ const PasswordToggle = ({
   <button
     type="button"
     onClick={onClick}
+    onMouseDown={(event) => event.preventDefault()}
     aria-label={label}
     aria-pressed={ativo}
     title={label}
@@ -72,14 +75,17 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
+  const [senhaFocada, setSenhaFocada] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordData>({
     resolver: zodResolver(resetPasswordDataSchema),
   });
+  const novaSenhaField = register("novaSenha");
 
   useEffect(() => {
     if (!isSuccess) return;
@@ -135,9 +141,9 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
           </h2>
 
           {isSuccess ? (
-            <p className="w-full max-w-3xl animate-fade-in rounded-md bg-[#76C043] px-4 py-3 text-center font-medium text-[#454040] text-sm shadow-sm sm:px-6 sm:py-4 sm:text-lg">
+            <Notificacao tipo="sucesso" className="w-full max-w-3xl">
               Senha redefinida com sucesso. Redirecionando para o login...
-            </p>
+            </Notificacao>
           ) : (
             <p className="w-full max-w-3xl text-center text-base leading-7 sm:text-xl lg:text-2xl">
               {token
@@ -161,14 +167,24 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
                 type={mostrarSenha ? "text" : "password"}
                 autoComplete="new-password"
                 disabled={isSuccess || isSubmitting}
-                {...register("novaSenha")}
+                {...novaSenhaField}
+                onFocus={() => setSenhaFocada(true)}
+                onBlur={(evento) => {
+                  setSenhaFocada(false);
+                  return novaSenhaField.onBlur(evento);
+                }}
                 error={errors.novaSenha?.message}
               />
               <PasswordToggle
                 ativo={mostrarSenha}
-                disabled={isSuccess}
+                disabled={isSuccess || isSubmitting}
                 onClick={() => setMostrarSenha((atual) => !atual)}
                 label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+              />
+              <MedidorForcaSenha
+                senha={watch("novaSenha") ?? ""}
+                mostrarRequisitos={senhaFocada}
+                className="mt-2"
               />
             </div>
 
@@ -186,7 +202,7 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
               />
               <PasswordToggle
                 ativo={mostrarConfirmarSenha}
-                disabled={isSuccess}
+                disabled={isSuccess || isSubmitting}
                 onClick={() => setMostrarConfirmarSenha((atual) => !atual)}
                 label={
                   mostrarConfirmarSenha
@@ -197,12 +213,9 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
             </div>
 
             {errorMessage && (
-              <p
-                className="text-center font-medium text-red-700 text-sm"
-                role="alert"
-              >
+              <Notificacao tipo="erro" className="w-full">
                 {errorMessage}
-              </p>
+              </Notificacao>
             )}
 
             {!isSuccess && (

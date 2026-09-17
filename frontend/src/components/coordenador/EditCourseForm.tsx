@@ -5,6 +5,7 @@ import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { atualizarCursoAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { Course, CourseStatus } from "@/types/coordinator";
 
 interface EditCourseFormProps {
@@ -88,12 +89,9 @@ export const EditCourseForm = ({
         </div>
 
         {errorMessage && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {errorMessage}
-          </output>
+          </Notificacao>
         )}
 
         <form onSubmit={handleSubmit} className="mt-5">

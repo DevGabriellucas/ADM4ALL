@@ -11,6 +11,10 @@ import type {
 import type { AuthenticatedFileResponse } from "@/services/apiClient";
 import { configService } from "@/services/configService";
 import * as coordinatorService from "@/services/coordinatorService";
+import {
+  atualizarAvatarCoordenador,
+  removerAvatarCoordenador,
+} from "@/services/coordinatorService";
 import { downloadMaterialTurma } from "@/services/instrutorService";
 import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
@@ -26,6 +30,8 @@ import type {
   Student,
   UserStatus,
 } from "@/types/coordinator";
+import type { ArquivoUpload } from "@/types/instrutor";
+import { mensagemDeErroDeAction } from "@/utils/erroDeAction";
 
 interface ResultadoAction {
   sucesso: boolean;
@@ -77,8 +83,7 @@ export async function criarCursoAction(input: {
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao cadastrar o curso.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao cadastrar o curso."),
     };
   }
 }
@@ -104,8 +109,7 @@ export async function atualizarCursoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao atualizar o curso.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao atualizar o curso."),
     };
   }
 }
@@ -128,8 +132,88 @@ export async function desativarCursoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao desativar o curso.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao desativar o curso."),
+    };
+  }
+}
+
+export async function excluirCursoAction(id: string): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteCourse(id);
+    revalidatePath("/coordenador/cursos");
+    revalidatePath("/coordenador/dashboard");
+    return { sucesso: true, mensagem: "Curso excluído com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem: mensagemDeErroDeAction(error, "Falha ao excluir o curso."),
+    };
+  }
+}
+
+export async function excluirTurmaAction(id: string): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteClass(id);
+    revalidatePath("/coordenador/turmas");
+    revalidatePath("/coordenador/dashboard");
+    return { sucesso: true, mensagem: "Turma excluída com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem: mensagemDeErroDeAction(error, "Falha ao excluir a turma."),
+    };
+  }
+}
+
+export async function excluirInstrutorAction(
+  id: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteInstructor(id);
+    revalidatePath("/coordenador/instrutores");
+    revalidatePath("/coordenador/turmas");
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/dashboard");
+    return { sucesso: true, mensagem: "Instrutor excluído com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem: mensagemDeErroDeAction(error, "Falha ao excluir o instrutor."),
+    };
+  }
+}
+
+export async function excluirUsuarioAction(
+  id: string,
+): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteUser(id);
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/alunos");
+    revalidatePath("/coordenador/instrutores");
+    revalidatePath("/coordenador/dashboard");
+    return { sucesso: true, mensagem: "Usuário excluído com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem: mensagemDeErroDeAction(error, "Falha ao excluir o usuário."),
+    };
+  }
+}
+
+export async function excluirAlunoAction(id: string): Promise<ResultadoAction> {
+  try {
+    await coordinatorService.deleteStudent(id);
+    revalidatePath("/coordenador/alunos");
+    revalidatePath("/coordenador/turmas");
+    revalidatePath("/coordenador/usuarios");
+    revalidatePath("/coordenador/certificados");
+    revalidatePath("/coordenador/dashboard");
+    return { sucesso: true, mensagem: "Aluno excluído com sucesso." };
+  } catch (error) {
+    return {
+      sucesso: false,
+      mensagem: mensagemDeErroDeAction(error, "Falha ao excluir o aluno."),
     };
   }
 }
@@ -147,15 +231,15 @@ export async function convidarInstrutorAction(input: {
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
-      mensagem: `Convite de ativacao enviado para ${convite.nome}.`,
+      mensagem: `Instrutor ${convite.nome} cadastrado. Nenhum e-mail foi enviado — use "Reenviar ativação" quando ele precisar acessar o sistema.`,
     };
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao enviar o convite de ativacao.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao enviar o convite de ativacao.",
+      ),
     };
   }
 }
@@ -178,10 +262,10 @@ export async function convidarCoordenadorAction(input: {
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao enviar o convite de coordenador.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao enviar o convite de coordenador.",
+      ),
     };
   }
 }
@@ -208,10 +292,10 @@ export async function atualizarInstrutorAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar os dados do instrutor.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar os dados do instrutor.",
+      ),
     };
   }
 }
@@ -232,10 +316,10 @@ export async function atualizarStatusInstrutorAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar o status do instrutor.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar o status do instrutor.",
+      ),
     };
   }
 }
@@ -254,10 +338,10 @@ export async function reenviarAtivacaoInstrutorAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao reenviar o link de ativacao.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao reenviar o link de ativacao.",
+      ),
     };
   }
 }
@@ -278,15 +362,15 @@ export async function convidarAlunoAction(input: {
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
-      mensagem: `Convite de ativacao enviado para ${convite.nome}.`,
+      mensagem: `Aluno ${convite.nome} cadastrado. Nenhum e-mail foi enviado — use "Reenviar ativação" quando ele precisar acessar o sistema.`,
     };
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao enviar o convite de ativacao.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao enviar o convite de ativacao.",
+      ),
     };
   }
 }
@@ -311,10 +395,10 @@ export async function atualizarAlunoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar os dados do aluno.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar os dados do aluno.",
+      ),
     };
   }
 }
@@ -333,10 +417,10 @@ export async function reenviarAtivacaoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao reenviar o link de ativação.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao reenviar o link de ativação.",
+      ),
     };
   }
 }
@@ -380,10 +464,10 @@ export async function atualizarStatusContaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar o status da conta.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar o status da conta.",
+      ),
     };
   }
 }
@@ -395,10 +479,10 @@ export async function listarTurmasParaMatriculaAction(): Promise<TurmasParaMatri
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao carregar as turmas disponíveis.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao carregar as turmas disponíveis.",
+      ),
       turmas: [],
     };
   }
@@ -421,10 +505,10 @@ export async function vincularAlunoTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao vincular o aluno à turma.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao vincular o aluno à turma.",
+      ),
     };
   }
 }
@@ -447,10 +531,7 @@ export async function cancelarMatriculaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao cancelar a matrícula.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao cancelar a matrícula."),
     };
   }
 }
@@ -471,10 +552,10 @@ export async function atualizarStatusMatriculaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar o status da matrícula.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar o status da matrícula.",
+      ),
     };
   }
 }
@@ -493,10 +574,10 @@ export async function baixarCertificadoPdfAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao baixar o PDF do certificado.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao baixar o PDF do certificado.",
+      ),
       arquivo: null,
     };
   }
@@ -516,10 +597,10 @@ export async function visualizarCertificadoPdfAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao carregar o PDF do certificado.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao carregar o PDF do certificado.",
+      ),
       arquivo: null,
     };
   }
@@ -541,10 +622,10 @@ export async function emitirCertificadoAlunoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao emitir o certificado do aluno.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao emitir o certificado do aluno.",
+      ),
       certificado: null,
     };
   }
@@ -564,10 +645,10 @@ export async function cancelarCertificadoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao cancelar o certificado.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao cancelar o certificado.",
+      ),
     };
   }
 }
@@ -591,10 +672,10 @@ export async function exportarRelatorioAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível gerar o relatório.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Não foi possível gerar o relatório.",
+      ),
       arquivo: null,
     };
   }
@@ -619,10 +700,10 @@ export async function gerarRelatorioGeradoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível gerar o relatório.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Não foi possível gerar o relatório.",
+      ),
       relatorio: null,
     };
   }
@@ -641,10 +722,7 @@ export async function baixarRelatorioGeradoCsvAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível baixar o CSV.",
+      mensagem: mensagemDeErroDeAction(error, "Não foi possível baixar o CSV."),
       arquivo: null,
     };
   }
@@ -663,10 +741,7 @@ export async function baixarRelatorioGeradoPdfAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível baixar o PDF.",
+      mensagem: mensagemDeErroDeAction(error, "Não foi possível baixar o PDF."),
       arquivo: null,
     };
   }
@@ -686,10 +761,10 @@ export async function deletarRelatorioGeradoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível excluir o relatório.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Não foi possível excluir o relatório.",
+      ),
     };
   }
 }
@@ -718,8 +793,7 @@ export async function criarTurmaAction(input: {
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao cadastrar a turma.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao cadastrar a turma."),
     };
   }
 }
@@ -747,8 +821,7 @@ export async function atualizarTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao atualizar a turma.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao atualizar a turma."),
     };
   }
 }
@@ -771,8 +844,7 @@ export async function encerrarTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao encerrar a turma.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao encerrar a turma."),
     };
   }
 }
@@ -802,10 +874,7 @@ export async function atualizarUsuarioAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar o usuário.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao atualizar o usuário."),
     };
   }
 }
@@ -825,10 +894,10 @@ export async function atualizarStatusUsuarioAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao atualizar o status do usuário.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao atualizar o status do usuário.",
+      ),
     };
   }
 }
@@ -851,8 +920,7 @@ export async function buscarAlunosDaTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao carregar os alunos.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao carregar os alunos."),
       students: [],
     };
   }
@@ -865,8 +933,7 @@ export async function buscarAlunosDisponiveisAction(): Promise<AlunosDisponiveis
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error ? error.message : "Falha ao carregar os alunos.",
+      mensagem: mensagemDeErroDeAction(error, "Falha ao carregar os alunos."),
       students: [],
     };
   }
@@ -888,10 +955,10 @@ export async function adicionarAlunoNaTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao adicionar o aluno na turma.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao adicionar o aluno na turma.",
+      ),
     };
   }
 }
@@ -912,10 +979,10 @@ export async function removerAlunoDaTurmaAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Falha ao remover o aluno da turma.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Falha ao remover o aluno da turma.",
+      ),
     };
   }
 }
@@ -938,10 +1005,10 @@ export async function atualizarInstituicaoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Erro ao atualizar dados da instituição.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Erro ao atualizar dados da instituição.",
+      ),
     };
   }
 }
@@ -961,10 +1028,10 @@ export async function atualizarPeriodoLetivoConfigAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Erro ao atualizar período letivo.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Erro ao atualizar período letivo.",
+      ),
     };
   }
 }
@@ -983,10 +1050,10 @@ export async function atualizarCertificadoAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Erro ao atualizar regras de certificado.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Erro ao atualizar regras de certificado.",
+      ),
     };
   }
 }
@@ -1003,10 +1070,10 @@ export async function atualizarPreferenciasAction(
   } catch (error) {
     return {
       sucesso: false,
-      mensagem:
-        error instanceof Error
-          ? error.message
-          : "Erro ao atualizar preferências.",
+      mensagem: mensagemDeErroDeAction(
+        error,
+        "Erro ao atualizar preferências.",
+      ),
     };
   }
 }
@@ -1016,4 +1083,39 @@ export async function baixarMaterialTurmaAction(
   materialId: string,
 ): Promise<AuthenticatedFileResponse> {
   return await downloadMaterialTurma(turmaId, materialId);
+}
+
+type ResultadoAvatarCoordenador =
+  | { ok: true; mensagem: string; avatarUrl?: string }
+  | { ok: false; erro: string };
+
+const mensagemAvatar = (error: unknown, padrao: string) =>
+  mensagemDeErroDeAction(error, padrao);
+
+export async function salvarFotoCoordenadorAction(
+  arquivo: ArquivoUpload,
+): Promise<ResultadoAvatarCoordenador> {
+  try {
+    const { avatarUrl } = await atualizarAvatarCoordenador(arquivo);
+    revalidatePath("/coordenador/perfil");
+    return { ok: true, mensagem: "Foto de perfil atualizada!", avatarUrl };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: mensagemAvatar(error, "Falha ao atualizar a foto de perfil."),
+    };
+  }
+}
+
+export async function removerFotoCoordenadorAction(): Promise<ResultadoAvatarCoordenador> {
+  try {
+    await removerAvatarCoordenador();
+    revalidatePath("/coordenador/perfil");
+    return { ok: true, mensagem: "Foto de perfil removida." };
+  } catch (error) {
+    return {
+      ok: false,
+      erro: mensagemAvatar(error, "Falha ao remover a foto de perfil."),
+    };
+  }
 }

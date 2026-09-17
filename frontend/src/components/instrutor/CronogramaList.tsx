@@ -8,8 +8,10 @@ import {
   removerAulaAction,
 } from "@/app/instrutor/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { AtualizarAulaInput, AulaResumo } from "@/types/instrutor";
 import { formatData } from "@/utils/format";
+import { agoraNaInstituicao } from "@/utils/fusoInstituicao";
 
 interface CronogramaListProps {
   turmaId: string | null;
@@ -30,6 +32,24 @@ const STATUS_LABEL: Record<string, string> = {
   realizada: "Realizada",
   planejada: "Planejada",
   cancelada: "Cancelada",
+};
+
+// A aula so pode ser dada por encerrada depois do horario de termino. O mesmo
+// corte existe no backend; aqui ele serve para desabilitar o botao e explicar
+// o motivo, em vez de deixar o instrutor clicar e tomar erro.
+const aulaJaTerminou = (data: string, horaFim: string | null) => {
+  if (!data) {
+    return false;
+  }
+
+  // Aula criada quando o horario ainda era opcional nao tem termino, e o
+  // backend trata esse caso como fim do dia (COALESCE(hora_fim, '23:59')).
+  // Recusar aqui deixava o botao "Realizada" desabilitado para sempre nessas
+  // aulas — e, como marcar aula como realizada e o unico gatilho de conclusao
+  // do curso, a turma inteira ficava sem poder fechar.
+  const termino = horaFim || "23:59";
+
+  return `${data}T${termino}` <= agoraNaInstituicao();
 };
 
 export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
@@ -63,6 +83,22 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
 
     if (data.trim() === "") {
       setFeedback({ tipo: "erro", texto: "Informe a data da aula." });
+      return;
+    }
+
+    if (!horaInicio || !horaFim) {
+      setFeedback({
+        tipo: "erro",
+        texto: "Informe o horario de inicio e de termino da aula.",
+      });
+      return;
+    }
+
+    if (horaFim <= horaInicio) {
+      setFeedback({
+        tipo: "erro",
+        texto: "O horario de termino deve ser depois do horario de inicio.",
+      });
       return;
     }
 
@@ -159,6 +195,22 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
       return;
     }
 
+    if (!edicaoHoraInicio || !edicaoHoraFim) {
+      setFeedback({
+        tipo: "erro",
+        texto: "Informe o horario de inicio e de termino da aula.",
+      });
+      return;
+    }
+
+    if (edicaoHoraFim <= edicaoHoraInicio) {
+      setFeedback({
+        tipo: "erro",
+        texto: "O horario de termino deve ser depois do horario de inicio.",
+      });
+      return;
+    }
+
     atualizar(
       aulaEmEdicao,
       {
@@ -223,7 +275,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
-              Inicio (opcional)
+              Inicio
               <input
                 type="time"
                 value={horaInicio}
@@ -233,7 +285,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
             </label>
 
             <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
-              Fim (opcional)
+              Fim
               <input
                 type="time"
                 value={horaFim}
@@ -257,13 +309,12 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
       )}
 
       {feedback && (
-        <output
-          className={`mt-3 block text-sm ${
-            feedback.tipo === "ok" ? "text-emerald-700" : "text-red-700"
-          }`}
+        <Notificacao
+          tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
+          className="mt-3"
         >
           {feedback.texto}
-        </output>
+        </Notificacao>
       )}
 
       {aulasSeguras.length === 0 ? (
@@ -273,6 +324,12 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
           {aulasSeguras.map((aula) => {
             const removendoEsta = isRemovendo && removendoId === aula.id;
             const atualizandoEsta = isAtualizando && atualizandoId === aula.id;
+            const jaTerminou = aulaJaTerminou(aula.data, aula.horaFim);
+            const podeMarcarRealizada =
+              aula.status !== "realizada" &&
+              aula.status !== "cancelada" &&
+              jaTerminou;
+            const aulaRealizada = aula.status === "realizada";
 
             return (
               <li
@@ -322,7 +379,12 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                     <button
                       type="button"
                       onClick={() => atualizar(aula, { status: "realizada" })}
-                      disabled={atualizandoEsta || aula.status === "realizada"}
+                      disabled={atualizandoEsta || !podeMarcarRealizada}
+                      title={
+                        podeMarcarRealizada || aulaRealizada
+                          ? undefined
+                          : "Disponivel depois do horario de termino da aula."
+                      }
                       className="cursor-pointer rounded-md border border-emerald-200 px-2.5 py-1 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Realizada
@@ -338,8 +400,12 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                     <button
                       type="button"
                       onClick={() => setConfirmacao({ tipo: "remover", aula })}
-                      disabled={removendoEsta}
-                      title="Remover aula"
+                      disabled={removendoEsta || aulaRealizada}
+                      title={
+                        aulaRealizada
+                          ? "Aula ja realizada nao pode ser removida. Use Cancelar."
+                          : "Remover aula"
+                      }
                       aria-label="Remover aula"
                       className="shrink-0 cursor-pointer text-red-600 transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -436,7 +502,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
-                  Inicio (opcional)
+                  Inicio
                   <input
                     type="time"
                     value={edicaoHoraInicio}
@@ -448,7 +514,7 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                 </label>
 
                 <label className="flex flex-col gap-y-1 text-slate-600 text-xs">
-                  Fim (opcional)
+                  Fim
                   <input
                     type="time"
                     value={edicaoHoraFim}

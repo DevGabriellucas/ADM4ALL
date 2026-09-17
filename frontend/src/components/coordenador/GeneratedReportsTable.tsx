@@ -8,6 +8,7 @@ import {
   deletarRelatorioGeradoAction,
 } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { GeneratedReport } from "@/types/coordinator";
 import { downloadBase64File } from "@/utils/downloadFile";
 
@@ -89,9 +90,9 @@ export const GeneratedReportsTable = ({
       </div>
 
       {message && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+        <Notificacao tipo="erro" className="mt-4">
           {message}
-        </p>
+        </Notificacao>
       )}
 
       <div className="mt-5 overflow-x-auto">

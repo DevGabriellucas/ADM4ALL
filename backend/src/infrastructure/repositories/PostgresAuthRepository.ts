@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import {
   AuthRepository,
+  SessaoUsuario,
   UsuarioAutenticacao,
 } from "../../domain/repositories/AuthRepository";
 
@@ -46,6 +47,42 @@ export class PostgresAuthRepository implements AuthRepository {
       nome: linha.nome,
       email: linha.email,
       senhaHash: linha.senha_hash,
+      status: linha.status,
+      perfil: linha.perfil,
+      alunoId: linha.aluno_id ?? null,
+      instrutorId: linha.instrutor_id ?? null,
+      coordenadorId: linha.coordenador_id ?? null,
+    };
+  }
+
+  async buscarSessaoPorUsuarioId(
+    usuarioId: string,
+  ): Promise<SessaoUsuario | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        u.status,
+        p.nome AS perfil,
+        a.id AS aluno_id,
+        i.id AS instrutor_id,
+        c.id AS coordenador_id
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      LEFT JOIN alunos a ON a.usuario_id = u.id
+      LEFT JOIN instrutores i ON i.usuario_id = u.id
+      LEFT JOIN coordenadores c ON c.usuario_id = u.id
+      WHERE u.id = $1
+      LIMIT 1
+      `,
+      [usuarioId],
+    );
+    const linha = resultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    return {
       status: linha.status,
       perfil: linha.perfil,
       alunoId: linha.aluno_id ?? null,

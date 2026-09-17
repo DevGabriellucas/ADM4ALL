@@ -1,10 +1,14 @@
 import { z } from "zod/v4";
+import { primeiroErroSenha } from "@/utils/senha";
 
 export const resetPasswordDataSchema = z
   .object({
-    novaSenha: z
-      .string("A senha e obrigatoria.")
-      .min(8, { error: "A senha deve ter no mínimo 8 caracteres." }),
+    novaSenha: z.string("A senha e obrigatoria.").superRefine((valor, ctx) => {
+      const erro = primeiroErroSenha(valor);
+      if (erro) {
+        ctx.addIssue({ code: "custom", message: erro });
+      }
+    }),
     confirmarSenha: z.string("Confirme a nova senha."),
   })
   .refine((data) => data.novaSenha === data.confirmarSenha, {

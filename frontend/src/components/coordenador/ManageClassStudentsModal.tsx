@@ -8,6 +8,7 @@ import {
   removerAlunoDaTurmaAction,
 } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { ClassGroup, Student } from "@/types/coordinator";
 
 interface ManageClassStudentsModalProps {
@@ -123,30 +124,21 @@ export const ManageClassStudentsModal = ({
         </div>
 
         {loadError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {loadError}
-          </output>
+          </Notificacao>
         )}
 
         {addError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {addError}
-          </output>
+          </Notificacao>
         )}
 
         {removeError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {removeError}
-          </output>
+          </Notificacao>
         )}
 
         {isLoading ? (

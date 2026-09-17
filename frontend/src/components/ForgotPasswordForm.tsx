@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ComponentProps, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
+import { Notificacao } from "@/components/shared/Notificacao";
 import {
   type ForgotPasswordData,
   forgotPasswordDataSchema,
@@ -29,10 +30,13 @@ export const ForgotPasswordForm = ({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordData>({
     resolver: zodResolver(forgotPasswordDataSchema),
   });
+
+  const emailField = register("email");
 
   const forgotPasswordSubmit = async (data: ForgotPasswordData) => {
     setErrorMessage(null);
@@ -57,17 +61,21 @@ export const ForgotPasswordForm = ({
         className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-base autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-14 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:text-xl lg:placeholder:text-xl"
         placeholder="E-mail"
         type="email"
-        {...register("email")}
+        autoComplete="email"
+        {...emailField}
+        onChange={(event) => {
+          setValue("email", event.target.value.toLowerCase(), {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }}
         error={errors.email?.message}
       />
 
       {errorMessage && (
-        <p
-          className="text-center font-medium text-red-700 text-sm"
-          role="alert"
-        >
+        <Notificacao tipo="erro" className="w-full max-w-3xl">
           {errorMessage}
-        </p>
+        </Notificacao>
       )}
 
       {!isSuccess ? (

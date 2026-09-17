@@ -1,7 +1,18 @@
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import { calcularPeriodoLetivoAtual } from "../../application/utils/calcularPeriodoLetivo";
+import { BadRequestError } from "../errors/BadRequestError";
+import {
+  FREQUENCIA_ATENCAO,
+  FREQUENCIA_MINIMA_APROVACAO,
+} from "../../domain/regras-academicas";
+import {
+  faltasNaoJustificadas,
+  frequenciaPorMatricula,
+  presencasEfetivas,
+} from "./sql/frequencia";
 import {
   AlunoDetalheCoordenador,
+  AlunoExcluido,
   AlunoListagemCoordenador,
   AlunoParaReenvioAtivacao,
   AtualizarAlunoCoordenadorInput,
@@ -33,6 +44,7 @@ import {
   MatriculaCriada,
   MatriculaEncontrada,
   MatriculaStatusAtualizado,
+  PerfilCoordenador,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
   RelatorioGerado,
@@ -45,6 +57,14 @@ import {
 } from "../../domain/repositories/CoordenadorRepository";
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
+
+// foreign_key_violation. As FKs de turmas e matriculas para treinamentos sao
+// ON DELETE RESTRICT: o banco recusa apagar um curso que ainda tem turma, e
+// isso vira uma explicacao na tela em vez de 500.
+const CODIGO_VIOLACAO_CHAVE_ESTRANGEIRA = "23503";
+
+// invalid_text_representation: id que nao e UUID. Vale como "nao encontrado".
+const CODIGO_TEXTO_INVALIDO = "22P02";
 
 // O periodo letivo e guardado em duas chaves. `periodo_letivo` e a canonica
 // (criada pelo seed e usada pela tela de Configuracoes); `periodo_letivo_atual`
@@ -66,8 +86,23 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           AS certificados_pendentes,
         (SELECT COUNT(*) FROM usuarios WHERE status = 'pendente_ativacao') AS usuarios_pendentes,
         (
-          SELECT COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0)
-          FROM frequencias f
+          -- Media das frequencias individuais (100 menos 10 por falta nao
+          -- justificada), e nao a proporcao de presencas sobre as chamadas.
+          -- Cada aluno pesa o mesmo, com a conta que ele ve no proprio painel.
+          SELECT COALESCE(ROUND(AVG(por_aluno.frequencia)), 0)
+          FROM (
+            SELECT ${frequenciaPorMatricula("f")} AS frequencia
+            FROM matriculas m
+            LEFT JOIN frequencias f ON f.matricula_id = m.id
+            WHERE m.status <> 'cancelado'
+            GROUP BY m.id
+            -- Aluno sem nenhuma chamada nao tem 100% de frequencia: nao tem
+            -- dado. Contando esses como 100, o painel abriria o go-live
+            -- anunciando "Frequencia media 100%" com 150 alunos e zero aula
+            -- dada, enquanto o relatorio de frequencia, que ja os exclui,
+            -- mostrava outro numero.
+            HAVING COUNT(f.id) > 0
+          ) AS por_aluno
         ) AS frequencia_media
     `;
     const resultado = await this.db.query(query);
@@ -178,6 +213,32 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe um curso cadastrado com este nome.");
       }
+      throw error;
+    }
+  }
+
+  // Exclusao real, decisao do usuario em 2026-09-10. O historico academico e
+  // protegido pelo proprio banco: curso com turma vinculada bate no RESTRICT e
+  // e recusado aqui, em vez de levar turmas, aulas e certificados junto.
+  async excluirCurso(id: string): Promise<boolean> {
+    try {
+      const resultado = await this.db.query(
+        "DELETE FROM treinamentos WHERE id = $1",
+        [id],
+      );
+
+      return (resultado.rowCount ?? 0) > 0;
+    } catch (error: any) {
+      if (error?.code === CODIGO_VIOLACAO_CHAVE_ESTRANGEIRA) {
+        throw new BadRequestError(
+          "Este curso tem turmas ou matrículas vinculadas e não pode ser excluído. Exclua as turmas do curso antes.",
+        );
+      }
+
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return false;
+      }
+
       throw error;
     }
   }
@@ -395,6 +456,26 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return await this.buscarInstrutorDetalhe(id);
   }
 
+  // Apaga o usuario; instrutores e turma_instrutores saem em cascata, entao a
+  // turma perde o vinculo mas continua existindo com as aulas dela.
+  async excluirInstrutor(id: string): Promise<boolean> {
+    try {
+      const resultado = await this.db.query(
+        `DELETE FROM usuarios
+         WHERE id = (SELECT usuario_id FROM instrutores WHERE id = $1)`,
+        [id],
+      );
+
+      return (resultado.rowCount ?? 0) > 0;
+    } catch (error: any) {
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
   async buscarUsuarioPorInstrutorId(
     instrutorId: string,
   ): Promise<InstrutorParaReenvioAtivacao | null> {
@@ -454,6 +535,51 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
   // Usado antes de desativar um administrador, para nao deixar o sistema sem
   // nenhum: a interface nao tem como reverter uma conta admin desativada.
+  // Excluir um aluno pela tela de Usuarios tem que dar no mesmo que excluir
+  // pela tela de Alunos: o CPF vai para a lista de bloqueio antes do DELETE.
+  // Sem isso existiriam duas portas com comportamento diferente.
+  async excluirUsuario(id: string, excluidoPorId: string | null): Promise<boolean> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const dados = await cliente.query(
+        `SELECT u.cpf, u.nome, u.email, p.nome AS perfil
+         FROM usuarios u
+         JOIN perfis p ON p.id = u.perfil_id
+         WHERE u.id = $1
+         FOR UPDATE OF u`,
+        [id],
+      );
+      const linha = dados.rows[0];
+
+      if (!linha) {
+        await cliente.query("ROLLBACK");
+        return false;
+      }
+
+      if (linha.perfil === "aluno") {
+        await this.bloquearCpfExcluido(cliente, linha, excluidoPorId);
+      }
+
+      await cliente.query("DELETE FROM usuarios WHERE id = $1", [id]);
+      await cliente.query("COMMIT");
+
+      return true;
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return false;
+      }
+
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
   async contarAdministradoresAtivos(): Promise<number> {
     const resultado = await this.db.query(
       `SELECT COUNT(*)::int AS total
@@ -542,6 +668,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         u.email,
         a.telefone,
         matricula.turma,
+        matricula.status_turma,
         matricula.curso,
         COALESCE(frequencia.percentual, 0) AS frequencia,
         u.status AS status_conta,
@@ -554,6 +681,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           m.id,
           m.status,
           t.nome AS turma,
+          t.status AS status_turma,
           tr.nome AS curso
         FROM matriculas m
         JOIN treinamentos tr ON tr.id = m.treinamento_id
@@ -568,7 +696,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       LEFT JOIN LATERAL (
         SELECT
           COALESCE(
-            ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)),
+            ${frequenciaPorMatricula("f")},
             0
           ) AS percentual
         FROM frequencias f
@@ -588,6 +716,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       frequencia: Number(linha.frequencia),
       statusConta: linha.status_conta,
       statusMatricula: linha.status_matricula ?? null,
+      statusTurma: linha.status_turma ?? null,
       dataCriacao: linha.data_criacao,
     }));
   }
@@ -629,7 +758,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.nome AS curso,
         m.status,
         COALESCE(
-          ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)),
+          ${frequenciaPorMatricula("f")},
           0
         ) AS frequencia,
         to_char(m.data_matricula, 'YYYY-MM-DD') AS data_matricula
@@ -715,6 +844,130 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
 
     return await this.buscarAlunoDetalhe(id);
+  }
+
+  // Exclusao real do aluno. Matriculas, frequencias e certificados saem em
+  // cascata, mas o CPF nao e colocado em lista de bloqueio para permitir novo
+  // cadastro no futuro.
+  async excluirAluno(
+    id: string,
+    bloqueadoPorId: string | null,
+  ): Promise<AlunoExcluido | null> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const dados = await cliente.query(
+        `SELECT u.id AS usuario_id, u.nome, u.email, u.cpf
+         FROM alunos a
+         JOIN usuarios u ON u.id = a.usuario_id
+         WHERE a.id = $1
+         FOR UPDATE OF u`,
+        [id],
+      );
+      const linha = dados.rows[0];
+
+      if (!linha) {
+        await cliente.query("ROLLBACK");
+        return null;
+      }
+
+      await this.bloquearCpfExcluido(cliente, linha, bloqueadoPorId);
+
+      await cliente.query("DELETE FROM usuarios WHERE id = $1", [
+        linha.usuario_id,
+      ]);
+
+      await cliente.query("COMMIT");
+
+      return { nome: linha.nome, email: linha.email, cpf: linha.cpf };
+    } catch (error: any) {
+      await cliente.query("ROLLBACK");
+
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return null;
+      }
+
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
+  // Bloqueia o CPF de um aluno que esta sendo excluido. Roda ANTES do DELETE,
+  // porque a linha do usuario e a unica copia do CPF: apagada, nao ha mais o
+  // que bloquear.
+  //
+  // As duas portas de exclusao passam por aqui de proposito. Enquanto a tela de
+  // Usuarios bloqueava e a de Alunos nao, o bloqueio dependia de qual tela a
+  // coordenacao tinha usado, e quem fosse excluido pela tela de Alunos podia se
+  // recadastrar com o mesmo CPF minutos depois.
+  private async bloquearCpfExcluido(
+    cliente: PoolClient,
+    aluno: { cpf: string; nome: string; email: string },
+    bloqueadoPorId: string | null,
+  ): Promise<void> {
+    await cliente.query(
+      `INSERT INTO cpfs_bloqueados (cpf, nome, email, motivo, bloqueado_por_id)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (cpf) DO UPDATE
+       SET nome = EXCLUDED.nome,
+           email = EXCLUDED.email,
+           motivo = EXCLUDED.motivo,
+           bloqueado_por_id = EXCLUDED.bloqueado_por_id,
+           data_bloqueio = now()`,
+      [
+        aluno.cpf,
+        aluno.nome,
+        aluno.email,
+        "Aluno excluido pela coordenacao",
+        bloqueadoPorId,
+      ],
+    );
+  }
+
+  // Caminho de volta de quem foi excluido por engano: a coordenacao cadastra o
+  // mesmo CPF de novo e o bloqueio cai junto.
+  async liberarCpfBloqueado(cpf: string): Promise<void> {
+    await this.db.query("DELETE FROM cpfs_bloqueados WHERE cpf = $1", [cpf]);
+  }
+
+  // Bloquear a conta sem bloquear o CPF nao resolvia nada: bastava se
+  // cadastrar de novo com outro e-mail. Reativar desfaz o bloqueio.
+  async sincronizarBloqueioCpfDoAluno(
+    alunoId: string,
+    bloquear: boolean,
+    bloqueadoPorId: string | null,
+  ): Promise<void> {
+    if (bloquear) {
+      await this.db.query(
+        `INSERT INTO cpfs_bloqueados (cpf, nome, email, motivo, bloqueado_por_id)
+         SELECT u.cpf, u.nome, u.email, $2, $3
+         FROM alunos a
+         JOIN usuarios u ON u.id = a.usuario_id
+         WHERE a.id = $1
+         ON CONFLICT (cpf) DO UPDATE
+         SET nome = EXCLUDED.nome,
+             email = EXCLUDED.email,
+             motivo = EXCLUDED.motivo,
+             bloqueado_por_id = EXCLUDED.bloqueado_por_id,
+             data_bloqueio = now()`,
+        [alunoId, "Aluno bloqueado pela coordenacao", bloqueadoPorId],
+      );
+      return;
+    }
+
+    await this.db.query(
+      `DELETE FROM cpfs_bloqueados
+       WHERE cpf = (
+         SELECT u.cpf
+         FROM alunos a
+         JOIN usuarios u ON u.id = a.usuario_id
+         WHERE a.id = $1
+       )`,
+      [alunoId],
+    );
   }
 
   async buscarUsuarioPorAlunoId(
@@ -987,16 +1240,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           u.nome AS aluno,
           t.nome AS turma,
           m.status AS status_matricula,
-          COUNT(f.id) FILTER (WHERE f.presente) AS presencas,
-          COUNT(f.id) FILTER (WHERE NOT f.presente) AS faltas,
+          ${presencasEfetivas("f")} AS presencas,
+          ${faltasNaoJustificadas("f")} AS faltas,
           COUNT(f.id) AS registros,
-          COALESCE(
-            ROUND(
-              100.0 * COUNT(f.id) FILTER (WHERE f.presente)
-              / NULLIF(COUNT(f.id), 0)
-            ),
-            0
-          ) AS frequencia
+          ${frequenciaPorMatricula("f")} AS frequencia
         FROM matriculas m
         JOIN alunos a ON a.id = m.aluno_id
         JOIN usuarios u ON u.id = a.usuario_id
@@ -1028,13 +1275,18 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         frequencia,
         CASE
           WHEN status_matricula = 'reprovado_falta' THEN 'reprovado_falta'
+          -- Matricula ja encerrada nao pede acao da coordenacao. Sem esta
+          -- linha o aluno aprovado com frequencia baixa caia em 'risco' e o
+          -- painel dizia "Risco de reprovacao" para quem a tela de Alunos
+          -- mostrava como "Aprovado".
+          WHEN status_matricula = 'aprovado' THEN 'regular'
           -- Sem nenhuma chamada registrada a frequencia e 0 por ausencia de
           -- dado, nao por falta. Antes esses alunos (inclusive quem nunca
           -- ativou a conta) caiam direto em 'risco' e enchiam o painel da
           -- coordenacao de alerta antes da primeira aula.
           WHEN registros = 0 THEN 'sem_registro'
-          WHEN frequencia >= 80 THEN 'regular'
-          WHEN frequencia >= 75 THEN 'atencao'
+          WHEN frequencia >= ${FREQUENCIA_MINIMA_APROVACAO} THEN 'regular'
+          WHEN frequencia >= ${FREQUENCIA_ATENCAO} THEN 'atencao'
           ELSE 'risco'
         END AS situacao
       FROM resumo
@@ -1180,14 +1432,22 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tu.codigo AS turma_codigo,
         tr.nome AS curso,
         to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
-        COALESCE(
-          ROUND(
-            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
-            / NULLIF(COUNT(f.id), 0)
-          ),
-          0
-        ) AS frequencia,
-        COUNT(f.id) FILTER (WHERE f.presente) AS presencas,
+        -- Media das frequencias individuais da turma. A formula e por aluno:
+        -- aplicada sobre a contagem de faltas da turma inteira, ela somava as
+        -- faltas de todos antes de descontar, e qualquer turma com dez faltas
+        -- no total marcava 0% enquanto a listagem de Turmas mostrava 90%.
+        COALESCE((
+          SELECT ROUND(AVG(por_aluno.frequencia))
+            FROM (
+              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
+                FROM matriculas mf
+                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
+               WHERE mf.turma_id = tu.id
+                 AND mf.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
+               GROUP BY mf.id
+            ) AS por_aluno
+        ), 0) AS frequencia,
+        ${presencasEfetivas("f")} AS presencas,
         COUNT(f.id) AS registros
       FROM turmas tu
       JOIN treinamentos tr ON tr.id = tu.treinamento_id
@@ -1224,12 +1484,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       };
     });
 
-    const totalPresencas = rows.reduce(
-      (total, row) => total + (row.metricNumerator ?? 0),
-      0,
+    // A metrica do topo e a media das frequencias das turmas, coerente com a
+    // coluna da tabela. Antes era presencas sobre chamadas, e o resumo dizia
+    // 40% enquanto cada linha dizia 90%. Turma sem chamada nao tem frequencia
+    // e fica de fora da media.
+    const turmasComChamada = rows.filter(
+      (row) => (row.metricDenominator ?? 0) > 0,
     );
-    const totalRegistros = rows.reduce(
-      (total, row) => total + (row.metricDenominator ?? 0),
+    const somaFrequencias = turmasComChamada.reduce(
+      (total, row) => total + row.chartValue,
       0,
     );
 
@@ -1237,12 +1500,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       type: "frequencia_turma",
       title: "Frequência por turma",
       description:
-        "Frequência por turma. A métrica geral considera todas as presenças sobre as chamadas registradas; turmas sem chamada não entram no cálculo.",
+        "Frequência por turma. Cada aluno começa com 100% e perde 10% por falta não justificada; a métrica da turma é a média dos alunos.",
       metricLabel: "Frequência média",
       metricSuffix: "%",
       metricValue:
-        totalRegistros > 0
-          ? Math.round((totalPresencas / totalRegistros) * 100)
+        turmasComChamada.length > 0
+          ? Math.round(somaFrequencias / turmasComChamada.length)
           : 0,
       aggregation: "average",
       columns: [
@@ -1267,10 +1530,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           'YYYY-MM-DD'
         ) AS data_ref,
         COALESCE(
-          ROUND(
-            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
-            / NULLIF(COUNT(f.id), 0)
-          ),
+          ${frequenciaPorMatricula("f")},
           0
         ) AS frequencia
       FROM matriculas m
@@ -1285,7 +1545,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         m.data_conclusao, tu.data_inicio, m.status
       HAVING
         m.status = 'reprovado_falta'
-        OR COUNT(f.id) FILTER (WHERE NOT f.presente) >= 3
+        OR COUNT(f.id) FILTER (WHERE NOT f.presente AND NOT f.justificada) >= 3
       ORDER BY aluno ASC, turma ASC
     `);
 
@@ -1326,6 +1586,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   private async relatorioElegiveisCertificado(): Promise<RelatorioCoordenador> {
+    // Le a mesma configuracao da tela de Certificados. Antes o limite era o
+    // literal 3 aqui, entao mudar "maximo de faltas" em Configuracoes movia a
+    // tela e deixava o relatorio para tras.
+    const { maximoFaltas } = await this.obterConfigCertificado();
+
     const resultado = await this.db.query(`
       SELECT
         m.id AS matricula_id,
@@ -1337,10 +1602,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           'YYYY-MM-DD'
         ) AS data_ref,
         COALESCE(
-          ROUND(
-            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
-            / NULLIF(COUNT(f.id), 0)
-          ),
+          ${frequenciaPorMatricula("f")},
           0
         ) AS frequencia
       FROM matriculas m
@@ -1357,7 +1619,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       GROUP BY
         m.id, u.nome, tr.nome, tu.nome,
         m.data_conclusao, tu.data_fim, tu.data_inicio
-      HAVING COUNT(f.id) FILTER (WHERE NOT f.presente) < 3
+      HAVING COUNT(f.id) FILTER (
+        WHERE NOT f.presente AND NOT f.justificada
+      ) <= ${maximoFaltas}
       ORDER BY aluno ASC, turma ASC
     `);
 
@@ -1589,26 +1853,29 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.nome AS curso,
         tu.nome AS turma,
         COALESCE(
-          ROUND(
-            100.0 * COUNT(f.id) FILTER (WHERE f.presente)
-            / NULLIF(COUNT(f.id), 0)
-          ),
+          ${frequenciaPorMatricula("f")},
           0
         ) AS frequencia,
         (
           m.status = 'aprovado'
           ${turmaStatusElegivel}
           AND u.status = 'ativo'
-          AND COUNT(f.id) FILTER (WHERE NOT f.presente) <= ${maxFaltas}
-          AND c.status IS NULL
+          AND COUNT(f.id) FILTER (
+            WHERE NOT f.presente AND NOT f.justificada
+          ) <= ${maxFaltas}
+          -- Cancelado nao bloqueia: o upsert de emissao reaproveita a linha, e
+          -- so a tela recusava o que o backend ja aceitava.
+          AND (c.status IS NULL OR c.status = 'cancelado')
         ) AS elegivel,
         CASE
           WHEN m.status <> 'aprovado' THEN 'Matrícula ainda não aprovada.'
           ${turmaStatusMotivo}
           WHEN u.status <> 'ativo' THEN 'Conta do aluno não está ativa.'
-          WHEN COUNT(f.id) FILTER (WHERE NOT f.presente) > ${maxFaltas}
+          WHEN COUNT(f.id) FILTER (
+            WHERE NOT f.presente AND NOT f.justificada
+          ) > ${maxFaltas}
             THEN 'Aluno excede o máximo permitido de ${maxFaltas} falta(s).'
-          WHEN c.status IS NOT NULL
+          WHEN c.status IN ('pendente', 'emitido')
             THEN 'A matrícula já possui certificado pendente ou emitido.'
           ELSE NULL
         END AS motivo_inelegibilidade,
@@ -1663,6 +1930,44 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }));
   }
 
+  /**
+   * Um instrutor da uma turma por vez: as aulas acontecem todas no mesmo
+   * horario, entao assumir duas turmas ativas seria conflito de agenda — e o
+   * painel do instrutor mostra uma turma so, o que esconderia a outra.
+   * Turma ja concluida, encerrada ou cancelada nao entra na conta.
+   */
+  private async garantirInstrutorSemOutraTurma(
+    client: PoolClient,
+    instrutorIds: string[],
+    turmaId: string,
+  ): Promise<void> {
+    if (instrutorIds.length === 0) {
+      return;
+    }
+
+    const conflito = await client.query(
+      `
+      SELECT u.nome AS instrutor, t.nome AS turma
+      FROM turma_instrutores ti
+      JOIN turmas t ON t.id = ti.turma_id
+      JOIN instrutores i ON i.id = ti.instrutor_id
+      JOIN usuarios u ON u.id = i.usuario_id
+      WHERE ti.instrutor_id = ANY($1::uuid[])
+        AND ti.turma_id <> $2
+        AND t.status IN ('planejada', 'em_andamento')
+      LIMIT 1
+      `,
+      [instrutorIds, turmaId],
+    );
+    const linha = conflito.rows[0];
+
+    if (linha) {
+      throw new BadRequestError(
+        `${linha.instrutor} ja esta na turma "${linha.turma}". Um instrutor pode assumir apenas uma turma ativa por vez.`,
+      );
+    }
+  }
+
   private async obterConfigCertificado(): Promise<{
     maximoFaltas: number;
     apenasEncerrada: boolean;
@@ -1706,10 +2011,20 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tu.status AS status_turma,
         u.status AS status_usuario,
         (
-          SELECT COUNT(*)
+          SELECT ${faltasNaoJustificadas("f")}
           FROM frequencias f
-          WHERE f.matricula_id = m.id AND NOT f.presente
+          WHERE f.matricula_id = m.id
         ) AS faltas
+        -- Esta tela ja calculou a frequencia como proporcao de presencas sobre
+        -- chamadas. Com isso a coordenacao abria um certificado rotulado 80% e
+        -- Elegivel e recebia "frequencia em 70% ou menos" ao emitir, porque a
+        -- guarda de emissao le justamente este numero. Aluno sem chamada
+        -- lancada tambem caia em 0% e era recusado por frequencia.
+        ,COALESCE((
+          SELECT ${frequenciaPorMatricula("f2")}
+          FROM frequencias f2
+          WHERE f2.matricula_id = m.id
+        ), 100) AS frequencia
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
       JOIN usuarios u ON u.id = a.usuario_id
@@ -1748,6 +2063,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       statusTurma: linha.status_turma,
       statusUsuario: linha.status_usuario,
       faltas: Number(linha.faltas),
+      frequencia: Number(linha.frequencia),
     };
   }
 
@@ -2081,10 +2397,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
         COALESCE((
-          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
-            FROM frequencias fr
-            JOIN matriculas mf ON mf.id = fr.matricula_id
-           WHERE mf.turma_id = t.id
+          SELECT ROUND(AVG(por_aluno.frequencia))
+            FROM (
+              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
+                FROM matriculas mf
+                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
+               WHERE mf.turma_id = t.id
+                 AND mf.status <> 'cancelado'
+               GROUP BY mf.id
+            ) AS por_aluno
         ), 0) AS frequencia_media,
         (
           SELECT COUNT(*)
@@ -2120,10 +2441,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
         COALESCE((
-          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
-            FROM frequencias fr
-            JOIN matriculas mf ON mf.id = fr.matricula_id
-           WHERE mf.turma_id = t.id
+          SELECT ROUND(AVG(por_aluno.frequencia))
+            FROM (
+              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
+                FROM matriculas mf
+                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
+               WHERE mf.turma_id = t.id
+                 AND mf.status <> 'cancelado'
+               GROUP BY mf.id
+            ) AS por_aluno
         ), 0) AS frequencia_media,
         (
           SELECT COUNT(*)
@@ -2161,10 +2487,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
         COALESCE((
-          SELECT ROUND(AVG(CASE WHEN fr.presente THEN 100 ELSE 0 END))
-            FROM frequencias fr
-            JOIN matriculas mf ON mf.id = fr.matricula_id
-           WHERE mf.turma_id = t.id
+          SELECT ROUND(AVG(por_aluno.frequencia))
+            FROM (
+              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
+                FROM matriculas mf
+                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
+               WHERE mf.turma_id = t.id
+                 AND mf.status <> 'cancelado'
+               GROUP BY mf.id
+            ) AS por_aluno
         ), 0) AS frequencia_media,
         (
           SELECT COUNT(*)
@@ -2199,7 +2530,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           a.telefone,
           m.id AS matricula_id,
           m.status,
-          COALESCE(ROUND(AVG(CASE WHEN f.presente THEN 100 ELSE 0 END)), 0) AS frequencia
+          COALESCE(${frequenciaPorMatricula("f")}, 0) AS frequencia
         FROM matriculas m
         JOIN alunos a ON a.id = m.aluno_id
         JOIN usuarios u ON u.id = a.usuario_id
@@ -2265,6 +2596,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
       const turmaId = resultado.rows[0].id;
 
+      await this.garantirInstrutorSemOutraTurma(
+        client,
+        input.instrutorIds,
+        turmaId,
+      );
+
       for (const instrutorId of input.instrutorIds) {
         await client.query(
           "INSERT INTO turma_instrutores (turma_id, instrutor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -2310,6 +2647,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
       await client.query("DELETE FROM turma_instrutores WHERE turma_id = $1", [id]);
 
+      await this.garantirInstrutorSemOutraTurma(client, input.instrutorIds, id);
+
       for (const instrutorId of input.instrutorIds) {
         await client.query(
           "INSERT INTO turma_instrutores (turma_id, instrutor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -2330,6 +2669,58 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  // Excluir a turma leva as aulas por CASCADE, e as aulas levam as frequencias.
+  // As matriculas sobrevivem com turma_id nulo e o status academico congelado:
+  // os alunos continuariam "aprovado" ou "reprovado_falta" sem nenhuma chamada
+  // que sustente isso, e os certificados ja emitidos sumiriam das telas da
+  // coordenacao, que fazem INNER JOIN em turmas. Nao ha desfazer.
+  //
+  // Por isso esta porta recusa em vez de destruir, como o irmao excluirCurso ja
+  // fazia. O dialogo de confirmacao promete preservar as matriculas e nunca
+  // mencionou as chamadas.
+  //
+  // A condicao vai dentro do proprio DELETE para que lancar uma chamada entre a
+  // checagem e a exclusao nao escape pela brecha.
+  async excluirTurma(id: string): Promise<boolean> {
+    try {
+      const resultado = await this.db.query(
+        `DELETE FROM turmas t
+         WHERE t.id = $1
+           AND NOT EXISTS (
+             SELECT 1
+             FROM frequencias f
+             JOIN aulas a ON a.id = f.aula_id
+             WHERE a.turma_id = t.id
+           )`,
+        [id],
+      );
+
+      if ((resultado.rowCount ?? 0) > 0) {
+        return true;
+      }
+
+      // Nada foi apagado: ou a turma nao existe, ou ela tem chamada lancada.
+      const existente = await this.db.query(
+        "SELECT 1 FROM turmas WHERE id = $1 LIMIT 1",
+        [id],
+      );
+
+      if (existente.rows[0]) {
+        throw new BadRequestError(
+          "Esta turma já tem chamadas lançadas e não pode ser excluída. O histórico de frequência dos alunos seria apagado junto com ela.",
+        );
+      }
+
+      return false;
+    } catch (error: any) {
+      if (error?.code === CODIGO_TEXTO_INVALIDO) {
+        return false;
+      }
+
+      throw error;
     }
   }
 
@@ -2399,6 +2790,65 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           ? linha.criado_em.toISOString()
           : String(linha.criado_em),
     };
+  }
+
+  /**
+   * Perfil de quem esta na area da coordenacao. O admin acessa as mesmas telas
+   * sem ter linha em `coordenadores`, entao o LEFT JOIN mantem o perfil de pe
+   * e a foto fica indisponivel para ele ate existir esse vinculo.
+   */
+  async buscarPerfilCoordenador(
+    usuarioId: string,
+  ): Promise<PerfilCoordenador | null> {
+    const resultado = await this.db.query(
+      `
+      SELECT
+        u.id AS usuario_id,
+        c.id AS coordenador_id,
+        u.nome,
+        u.email,
+        p.nome AS perfil,
+        c.area_coordenacao,
+        c.avatar_url
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      LEFT JOIN coordenadores c ON c.usuario_id = u.id
+      WHERE u.id = $1
+      LIMIT 1
+      `,
+      [usuarioId],
+    );
+    const linha = resultado.rows[0];
+
+    if (!linha) {
+      return null;
+    }
+
+    return {
+      usuarioId: linha.usuario_id,
+      coordenadorId: linha.coordenador_id ?? null,
+      nome: linha.nome,
+      email: linha.email,
+      perfil: linha.perfil,
+      areaCoordenacao: linha.area_coordenacao ?? null,
+      avatarUrl: linha.avatar_url ?? null,
+    };
+  }
+
+  async atualizarAvatarCoordenador(
+    usuarioId: string,
+    avatarUrl: string | null,
+  ): Promise<void> {
+    const resultado = await this.db.query(
+      "UPDATE coordenadores SET avatar_url = $1 WHERE usuario_id = $2",
+      [avatarUrl, usuarioId],
+    );
+
+    if (resultado.rowCount === 0) {
+      throw new BadRequestError(
+        "Esta conta nao tem cadastro de coordenador e nao pode ter foto de perfil.",
+      );
+    }
   }
 
   async buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse> {

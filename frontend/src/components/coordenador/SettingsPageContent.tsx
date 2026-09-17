@@ -8,6 +8,7 @@ import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCar
 import { InstituicaoCard } from "@/components/coordenador/InstituicaoCard";
 import { PeriodoLetivoCard } from "@/components/coordenador/PeriodoLetivoCard";
 import { PreferenciasCard } from "@/components/coordenador/PreferenciasCard";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { ConfiguracoesData } from "@/schemas/configuracionsSchema";
 
 interface SettingsPageContentProps {
@@ -78,14 +79,7 @@ export const SettingsPageContent = ({
         />
       </section>
 
-      {error && (
-        <output
-          aria-live="polite"
-          className="block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
-          {error}
-        </output>
-      )}
+      {error && <Notificacao tipo="erro">{error}</Notificacao>}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <InstituicaoCard

@@ -33,7 +33,7 @@ export const ConfirmDialog = ({
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-[2px]"
     >
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <h2

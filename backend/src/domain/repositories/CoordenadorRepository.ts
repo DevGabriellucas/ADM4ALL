@@ -85,6 +85,13 @@ export interface InstrutorParaReenvioAtivacao {
   camposPendentes: CampoPendenteAtivacao[];
 }
 
+export type StatusTurma =
+  | "planejada"
+  | "em_andamento"
+  | "concluida"
+  | "encerrada"
+  | "cancelada";
+
 export interface AlunoListagemCoordenador {
   id: string;
   nome: string;
@@ -100,6 +107,7 @@ export interface AlunoListagemCoordenador {
     | "reprovado_falta"
     | "cancelado"
     | null;
+  statusTurma: StatusTurma | null;
   dataCriacao: string;
 }
 
@@ -337,9 +345,21 @@ export interface CertificadoAlunoDetalhe {
   statusTurma: string;
   statusUsuario: string;
   faltas: number;
+  frequencia: number;
 }
 
 export type CertificadoDetalhe = CertificadoAlunoDetalhe;
+
+export interface PerfilCoordenador {
+  usuarioId: string;
+  /** Nulo quando quem acessa e admin sem registro na tabela de coordenadores. */
+  coordenadorId: string | null;
+  nome: string;
+  email: string;
+  perfil: string;
+  areaCoordenacao: string | null;
+  avatarUrl: string | null;
+}
 
 export interface PeriodoLetivoResponse {
   periodoLetivo: string;
@@ -459,6 +479,15 @@ export interface IdentificadorPorNome {
   id: string;
 }
 
+// Dados do aluno guardados no momento da exclusao. O usuario e apagado do
+// banco, entao o CPF precisa sair de la antes para alimentar a lista de
+// bloqueio do cadastro publico.
+export interface AlunoExcluido {
+  nome: string;
+  email: string;
+  cpf: string;
+}
+
 export interface CoordenadorRepository {
   buscarDashboard(): Promise<DashboardResumo>;
 
@@ -466,6 +495,7 @@ export interface CoordenadorRepository {
   criarCurso(input: CriarCursoInput): Promise<CursoResumo>;
   buscarCursoPorId(id: string): Promise<CursoResumo | null>;
   atualizarCurso(id: string, input: AtualizarCursoInput): Promise<CursoResumo | null>;
+  excluirCurso(id: string): Promise<boolean>;
   listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]>;
 
   listarInstrutores(): Promise<InstrutorListagem[]>;
@@ -480,6 +510,7 @@ export interface CoordenadorRepository {
     id: string,
     statusConta: InstrutorDetalheCoordenador["status"],
   ): Promise<InstrutorDetalheCoordenador | null>;
+  excluirInstrutor(id: string): Promise<boolean>;
   buscarUsuarioPorInstrutorId(
     instrutorId: string,
   ): Promise<InstrutorParaReenvioAtivacao | null>;
@@ -495,6 +526,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorId(
     id: string,
   ): Promise<UsuarioListagemCoordenador | null>;
+  excluirUsuario(id: string, excluidoPorId: string | null): Promise<boolean>;
   contarAdministradoresAtivos(): Promise<number>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
@@ -502,6 +534,20 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarAlunoCoordenadorInput,
   ): Promise<AlunoDetalheCoordenador | null>;
+  excluirAluno(
+    id: string,
+    bloqueadoPorId: string | null,
+  ): Promise<AlunoExcluido | null>;
+  liberarCpfBloqueado(cpf: string): Promise<void>;
+  /**
+   * Espelha o bloqueio da conta na lista de CPFs. Bloquear so o login deixava
+   * a pessoa se cadastrar de novo com outro e-mail; o CPF e o que impede.
+   */
+  sincronizarBloqueioCpfDoAluno(
+    alunoId: string,
+    bloquear: boolean,
+    bloqueadoPorId: string | null,
+  ): Promise<void>;
   buscarUsuarioPorAlunoId(
     alunoId: string,
   ): Promise<AlunoParaReenvioAtivacao | null>;
@@ -551,6 +597,7 @@ export interface CoordenadorRepository {
   buscarInstrutorAtivoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
   buscarUsuarioPorEmail(email: string): Promise<{ id: string } | null>;
   buscarUsuarioPorCpf(cpf: string): Promise<{ id: string } | null>;
+  // Perfil de quem esta logado na area da coordenacao (coordenador ou admin).
   convidarInstrutor(input: ConvidarInstrutorInput): Promise<ConviteCriado>;
   convidarAluno(input: ConvidarAlunoInput): Promise<ConviteCriado>;
   convidarCoordenador(input: ConvidarCoordenadorInput): Promise<ConviteCriado>;
@@ -559,8 +606,14 @@ export interface CoordenadorRepository {
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;
   criarTurma(input: CriarTurmaInput): Promise<TurmaListagem>;
   atualizarTurma(id: string, input: AtualizarTurmaInput): Promise<TurmaListagem | null>;
+  excluirTurma(id: string): Promise<boolean>;
   buscarTreinamentoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
 
+  buscarPerfilCoordenador(usuarioId: string): Promise<PerfilCoordenador | null>;
+  atualizarAvatarCoordenador(
+    usuarioId: string,
+    avatarUrl: string | null,
+  ): Promise<void>;
   buscarPeriodoLetivo(): Promise<PeriodoLetivoResponse>;
   salvarPeriodoLetivo(
     periodoLetivo: string,

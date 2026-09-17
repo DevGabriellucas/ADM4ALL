@@ -7,6 +7,7 @@ import {
   OrigemAtivacao,
 } from "../../domain/repositories/ActivationRepository";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { validarSenhaForte } from "../utils/validarSenha";
 
 const SALT_ROUNDS = 10;
 const ATIVACAO_DIAS = 3;
@@ -68,11 +69,7 @@ export class ActivationUseCase {
 
     const senha = dados.senha?.trim();
     if (campos.has("senha")) {
-      if (!senha || senha.length < 8) {
-        throw new BadRequestError(
-          "A senha deve ter no mínimo 8 caracteres.",
-        );
-      }
+      validarSenhaForte(senha);
       if (senha !== dados.confirmarSenha) {
         throw new BadRequestError(
           "Senha e confirmacao de senha nao conferem.",

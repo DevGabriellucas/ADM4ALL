@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   atualizarStatusInstrutorAction,
+  excluirInstrutorAction,
   reenviarAtivacaoInstrutorAction,
 } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StatusChangeConfirmModal } from "@/components/coordenador/StatusChangeConfirmModal";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { Instructor, UserStatus } from "@/types/coordinator";
 
 interface InstructorTableProps {
@@ -56,6 +59,31 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
   const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [instructorPendingDeletion, setInstructorPendingDeletion] =
+    useState<Instructor | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!instructorPendingDeletion) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setStatusMessage(null);
+    setStatusError(null);
+
+    const result = await excluirInstrutorAction(instructorPendingDeletion.id);
+
+    setIsDeleting(false);
+    setInstructorPendingDeletion(null);
+
+    if (!result.sucesso) {
+      setStatusError(result.mensagem);
+      return;
+    }
+
+    setStatusMessage(result.mensagem);
+  };
 
   const handleResendActivation = async () => {
     if (!instructorPendingResend) {
@@ -121,39 +149,27 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
       </div>
 
       {activationMessage && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className="mb-4">
           {activationMessage}
-        </output>
+        </Notificacao>
       )}
 
       {activationError && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mb-4">
           {activationError}
-        </output>
+        </Notificacao>
       )}
 
       {statusMessage && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className="mb-4">
           {statusMessage}
-        </output>
+        </Notificacao>
       )}
 
       {statusError && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mb-4">
           {statusError}
-        </output>
+        </Notificacao>
       )}
 
       <div className="overflow-x-auto">
@@ -213,12 +229,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                       >
                         Visualizar
                       </Link>
-                      <Link
-                        href={`/coordenador/instrutores/${instructor.id}?modo=editar`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                      >
-                        Editar
-                      </Link>
+
                       {instructor.status === "pendente_ativacao" && (
                         <button
                           type="button"
@@ -231,30 +242,6 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                           {resendingInstructorId === instructor.id
                             ? "Reenviando..."
                             : "Reenviar ativacao"}
-                        </button>
-                      )}
-                      {(instructor.status === "ativo" ||
-                        instructor.status === "pendente_ativacao") && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setStatusChange({
-                              instructorId: instructor.id,
-                              targetStatus: "inativo",
-                              title:
-                                instructor.status === "pendente_ativacao"
-                                  ? "Desativar convite?"
-                                  : "Desativar instrutor?",
-                              description:
-                                instructor.status === "pendente_ativacao"
-                                  ? "O convite deixara de liberar acesso para este instrutor."
-                                  : "O instrutor perdera acesso e nao podera ser selecionado em novas turmas.",
-                              confirmLabel: "Desativar",
-                            })
-                          }
-                          className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
-                        >
-                          Desativar
                         </button>
                       )}
                       {(instructor.status === "inativo" ||
@@ -276,6 +263,13 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                           Reativar
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setInstructorPendingDeletion(instructor)}
+                        className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -295,6 +289,19 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
           </tbody>
         </table>
       </div>
+
+      {instructorPendingDeletion && (
+        <ConfirmDialog
+          title="Excluir instrutor?"
+          description={`${instructorPendingDeletion.nome} será apagado do sistema e desvinculado das turmas dele. As turmas e as aulas continuam existindo. Essa ação não pode ser desfeita.`}
+          confirmLabel={isDeleting ? "Excluindo..." : "Excluir"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isDeleting}
+          onCancel={() => setInstructorPendingDeletion(null)}
+          onConfirm={handleDelete}
+        />
+      )}
 
       {instructorPendingResend && (
         <ResendActivationConfirmModal

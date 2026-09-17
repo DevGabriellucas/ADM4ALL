@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { isCpfValido } from "@/utils/cpf";
+import { primeiroErroSenha } from "@/utils/senha";
 
 const somenteDigitos = (valor: string) => valor.replace(/\D/g, "");
 
@@ -57,11 +58,12 @@ export const cadastroFormDataSchema = z
       ),
     isAlunoUnipe: z.boolean(),
     cursoUnipe: z.string().trim().optional(),
-    senha: z
-      .string()
-      .min(8, { error: "A senha deve ter no mínimo 8 caracteres." })
-      .regex(/[A-Za-z]/, { error: "A senha precisa ter uma letra." })
-      .regex(/\d/, { error: "A senha precisa ter um número." }),
+    senha: z.string().superRefine((valor, ctx) => {
+      const erro = primeiroErroSenha(valor);
+      if (erro) {
+        ctx.addIssue({ code: "custom", message: erro });
+      }
+    }),
     confirmarSenha: z.string().min(1, { error: "Confirme sua senha!" }),
     treinamento: z.string().min(1, { error: "Selecione um treinamento!" }),
     rgm: z.string().trim().transform(somenteDigitos).optional(),

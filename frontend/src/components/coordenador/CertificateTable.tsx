@@ -12,6 +12,7 @@ import { CertificateCancelModal } from "@/components/coordenador/CertificateCanc
 import { CertificateIssueModal } from "@/components/coordenador/CertificateIssueModal";
 import { CertificatePreviewModal } from "@/components/coordenador/CertificatePreviewModal";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   CertificateDetail,
   CertificateDisplayStatus,
@@ -162,11 +163,12 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
           </p>
         </div>
         {feedback && (
-          <p
-            className={`mb-4 rounded-lg px-3 py-2 text-sm ${feedback.type === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}
+          <Notificacao
+            tipo={feedback.type === "success" ? "sucesso" : "erro"}
+            className="mb-4"
           >
             {feedback.message}
-          </p>
+          </Notificacao>
         )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-6xl border-separate border-spacing-0 text-left text-sm">

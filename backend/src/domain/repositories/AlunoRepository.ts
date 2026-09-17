@@ -28,6 +28,9 @@ export type AlunoMatriculaStatus =
 export interface AlunoDashboard {
   nome: string;
   matricula: string | null;
+  avatarUrl: string | null;
+  /** Aluno cadastrado que ainda nao foi vinculado a nenhuma turma. */
+  semMatricula: boolean;
   cursoDeExtensao: {
     nomeCurso: string;
     qtdFaltas: number;
@@ -35,9 +38,35 @@ export interface AlunoDashboard {
     qtdAulasConcluidas: number;
     progresso: number;
     status: AlunoMatriculaStatus;
+    /** Todas as aulas nao canceladas da turma ja foram marcadas como realizadas. */
+    cursoConcluido: boolean;
+    /** Curso concluido e progresso suficiente para o aluno pedir o certificado. */
+    certificadoLiberado: boolean;
   };
   certificadoDisponivel: boolean;
   certificadoUrl: string | null;
+  frequencia: number;
+  proximaAula: {
+    titulo: string;
+    data: string;
+    horaInicio: string | null;
+    horaFim: string | null;
+  } | null;
+  historicoPresencas: {
+    aula: string;
+    data: string;
+    situacao: "presente" | "falta" | "justificada" | "pendente";
+  }[];
+  calendarioTurma: {
+    aula: string;
+    data: string;
+    status: "planejada" | "realizada" | "cancelada";
+  }[];
+  comunicados: {
+    titulo: string;
+    mensagem: string;
+    tipo: "informacao" | "atencao" | "importante";
+  }[];
 }
 
 export interface CertificadoEmitidoDoAluno {
@@ -55,6 +84,8 @@ export interface CertificadoEmitidoDoAluno {
   nomeCoordenadora: string;
   nomeProjeto: string;
   textoDescritivo: string;
+  faltas: number;
+  frequencia: number;
 }
 
 export interface MaterialAluno {
@@ -95,6 +126,8 @@ export interface AlunoRepository {
   cadastrar(aluno: Aluno): Promise<Aluno>;
   buscarPorId(id: string): Promise<Aluno | null>;
   buscarPorCpf(cpf: string): Promise<Aluno | null>;
+  /** CPF na lista de bloqueio: aluno excluido pela coordenacao. */
+  cpfBloqueado(cpf: string): Promise<boolean>;
   buscarPorEmail(email: string): Promise<Aluno | null>;
   buscarPorEmailOuCpf(identificador: string): Promise<Aluno | null>;
   buscarUsuarioIdPorAlunoId(alunoId: string): Promise<string | null>;
@@ -104,6 +137,7 @@ export interface AlunoRepository {
   removerRecuperacaoSenhaPorTokenHash(tokenHash: string): Promise<void>;
   buscarRecuperacaoValidaPorTokenHash(tokenHash: string): Promise<RecuperacaoSenhaValida | null>;
   buscarDashboardPorAlunoId(alunoId: string): Promise<AlunoDashboard | null>;
+  atualizarAvatar(alunoId: string, avatarUrl: string | null): Promise<void>;
   listarMateriaisVisiveis(alunoId: string): Promise<MaterialVisivelAluno[]>;
   redefinirSenhaUsuario(
     usuarioId: string,

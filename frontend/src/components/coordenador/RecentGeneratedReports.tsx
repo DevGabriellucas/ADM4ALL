@@ -5,6 +5,7 @@ import {
   baixarRelatorioGeradoCsvAction,
   baixarRelatorioGeradoPdfAction,
 } from "@/app/coordenador/actions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { GeneratedReport } from "@/types/coordinator";
 
 interface RecentGeneratedReportsProps {
@@ -100,11 +101,7 @@ export const RecentGeneratedReports = ({
         </div>
       ))}
 
-      {errorMessage && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 text-xs">
-          {errorMessage}
-        </p>
-      )}
+      {errorMessage && <Notificacao tipo="erro">{errorMessage}</Notificacao>}
     </div>
   );
 };

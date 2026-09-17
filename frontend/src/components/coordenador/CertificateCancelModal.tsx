@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cancelarCertificadoAction } from "@/app/coordenador/actions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { CertificateRecord } from "@/types/coordinator";
 
 interface CertificateCancelModalProps {
@@ -54,9 +55,9 @@ export const CertificateCancelModal = ({
         </p>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+          <Notificacao tipo="erro" className="mt-4">
             {error}
-          </p>
+          </Notificacao>
         )}
 
         <div className="mt-6 flex justify-end gap-3">

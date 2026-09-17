@@ -30,6 +30,14 @@ export interface TurmaResumo {
   curso: string;
   turno: string;
   local: string | null;
+  /** Periodo letivo da turma no formato AAAA.P (ex.: 2026.1). */
+  periodoLetivo: string;
+  status:
+    | "planejada"
+    | "em_andamento"
+    | "concluida"
+    | "encerrada"
+    | "cancelada";
 }
 
 export interface AulaResumo {
@@ -54,9 +62,20 @@ export interface AlunoPresenca {
   nome: string;
   statusPresenca: StatusPresenca | null;
   presencas: number;
+  /** Ausencias abonadas: nao contam como falta nem derrubam a frequencia. */
+  justificadas: number;
   faltas: number;
   aulasRegistradas: number;
   frequencia: number;
+  /** Desfecho academico da matricula, ja reavaliado pelo backend. */
+  statusMatricula: "em_andamento" | "aprovado" | "reprovado_falta";
+}
+
+export interface SituacaoAula {
+  numero: number;
+  status: "planejada" | "realizada" | "cancelada";
+  /** O horario de termino da aula ja passou (hora de Sao Paulo). */
+  jaTerminou: boolean;
 }
 
 export interface AlunoNotificacaoAula {
@@ -82,6 +101,8 @@ export interface InstrutorDashboard {
   instrutor: InstrutorResumo;
   turma: TurmaResumo | null;
   aulaReferencia: AulaResumo | null;
+  /** Aula que esta por vir: a primeira cujo horario de termino ainda nao passou. */
+  aulaAtual: AulaResumo | null;
   proximaAula: AulaResumo | null;
   metricas: {
     totalAlunos: number;
@@ -91,6 +112,15 @@ export interface InstrutorDashboard {
   alunos: AlunoPresenca[];
   cronograma: AulaResumo[];
   materiais: MaterialResumo[];
+}
+
+// O mesmo painel, recortado pela turma em vez do instrutor: e o que a
+// coordenacao enxerga ao escolher uma turma qualquer. Deriva de
+// InstrutorDashboard de proposito — as duas telas mostram os mesmos numeros,
+// e uma metrica nova aqui nao pode nascer diferente da do instrutor.
+export interface TurmaDashboard
+  extends Omit<InstrutorDashboard, "instrutor" | "turma"> {
+  turma: TurmaResumo;
 }
 
 export interface RegistroPresenca {
@@ -136,6 +166,7 @@ export interface AtualizarAulaInput {
 
 export interface InstrutorRepository {
   buscarDashboard(instrutorId: string): Promise<InstrutorDashboard | null>;
+  buscarDashboardDaTurma(turmaId: string): Promise<TurmaDashboard | null>;
   listarMateriaisTurma(turmaId: string): Promise<MaterialResumo[]>;
   turmaPertenceAoInstrutor(
     turmaId: string,
@@ -159,9 +190,18 @@ export interface InstrutorRepository {
   ): Promise<AlunoNotificacaoAula[]>;
   atualizarAula(input: AtualizarAulaInput): Promise<AulaResumo>;
   removerAula(aulaId: string, turmaId: string): Promise<void>;
+  buscarSituacaoAula(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<SituacaoAula | null>;
+  preencherPresencasPendentes(
+    turmaId: string,
+    aulaId: string,
+  ): Promise<number>;
   buscarPresencasPorAula(
     turmaId: string,
     aulaId: string,
   ): Promise<AlunoPresenca[]>;
   atualizarAvatar(instrutorId: string, avatarUrl: string): Promise<void>;
+  removerAvatar(instrutorId: string): Promise<void>;
 }

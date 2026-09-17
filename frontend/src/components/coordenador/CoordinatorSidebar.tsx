@@ -72,21 +72,10 @@ export const CoordinatorSidebar = ({
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={`flex min-w-max items-center justify-between gap-2 rounded-md px-3 py-2 text-sm tracking-[0.15em] transition-colors hover:bg-white/20 xl:min-w-0 ${
-                item.development ? "text-slate-600" : ""
-              } ${
-                isActive && item.development
-                  ? "bg-white/15 font-semibold text-slate-950"
-                  : isActive
-                    ? "bg-white/25 font-semibold"
-                    : "font-medium"
+                isActive ? "bg-white/25 font-semibold" : "font-medium"
               }`}
             >
               <span className="min-w-0 truncate">{item.label}</span>
-              {item.development && (
-                <span className="shrink-0 rounded-full bg-slate-400/40 px-1.5 py-0.5 font-medium text-[10px] text-slate-700">
-                  Dev
-                </span>
-              )}
             </Link>
           );
         })}

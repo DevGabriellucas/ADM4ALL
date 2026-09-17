@@ -27,6 +27,7 @@ export type ClassMaterialType = "PDF" | "Planilha" | "Apresentação" | "Link";
 export type AttendanceSituation =
   | "regular"
   | "atencao"
+  | "risco"
   | "risco_reprovacao"
   // Matricula sem nenhuma chamada registrada: frequencia 0% por ausencia de
   // dado, e nao por falta. Nao deve ser tratada como alerta.
@@ -110,6 +111,7 @@ export interface Student {
   frequencia: number;
   statusConta: UserStatus | null;
   statusMatricula: MatriculaStatus | null;
+  statusTurma: ClassGroup["status"] | null;
   dataCriacao: string;
   matriculaId?: string;
 }

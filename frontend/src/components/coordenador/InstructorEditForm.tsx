@@ -5,7 +5,9 @@ import type { SubmitEvent } from "react";
 import { useState } from "react";
 import { atualizarInstrutorAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { InstructorDetail } from "@/types/coordinator";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface InstructorEditFormProps {
   instructor: InstructorDetail;
@@ -79,21 +81,15 @@ export const InstructorEditForm = ({
       </div>
 
       {successMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className="mt-4">
           {successMessage}
-        </output>
+        </Notificacao>
       )}
 
       {errorMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mt-4">
           {errorMessage}
-        </output>
+        </Notificacao>
       )}
 
       <form onSubmit={handleSubmit} className="mt-5">
@@ -116,9 +112,13 @@ export const InstructorEditForm = ({
             <input
               required
               type="email"
+              autoComplete="email"
               value={formData.email}
               onChange={(event) =>
-                setFormData({ ...formData, email: event.target.value })
+                setFormData({
+                  ...formData,
+                  email: event.target.value.toLowerCase(),
+                })
               }
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
@@ -128,9 +128,14 @@ export const InstructorEditForm = ({
             Telefone
             <input
               type="tel"
+              inputMode="tel"
+              maxLength={15}
               value={formData.telefone}
               onChange={(event) =>
-                setFormData({ ...formData, telefone: event.target.value })
+                setFormData({
+                  ...formData,
+                  telefone: formatarTelefone(event.target.value),
+                })
               }
               placeholder="(83) 99999-9999"
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"

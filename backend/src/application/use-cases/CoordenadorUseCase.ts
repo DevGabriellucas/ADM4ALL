@@ -35,6 +35,7 @@ import {
   InstrutorListagem,
   MatriculaCriada,
   MatriculaStatusAtualizado,
+  PerfilCoordenador,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
   RelatorioGerado,
@@ -188,17 +189,22 @@ const calcularMetricaRelatorio = (
   relatorio: RelatorioCoordenador,
 ): number => {
   if (relatorio.type === "frequencia_turma") {
-    const numerador = relatorio.rows.reduce(
-      (total, row) => total + (row.metricNumerator ?? 0),
+    // Media das frequencias das turmas, a mesma conta que a coluna da tabela
+    // mostra. Turma sem chamada nao entra: ela nao tem frequencia, e nao 0%.
+    const turmasComChamada = relatorio.rows.filter(
+      (row) => (row.metricDenominator ?? 0) > 0,
+    );
+
+    if (turmasComChamada.length === 0) {
+      return 0;
+    }
+
+    const soma = turmasComChamada.reduce(
+      (total, row) => total + row.chartValue,
       0,
     );
-    const denominador = relatorio.rows.reduce(
-      (total, row) => total + (row.metricDenominator ?? 0),
-      0,
-    );
-    return denominador > 0
-      ? Math.round((numerador / denominador) * 100)
-      : 0;
+
+    return Math.round(soma / turmasComChamada.length);
   }
 
   if (relatorio.aggregation === "count") return relatorio.rows.length;
@@ -573,6 +579,100 @@ export class CoordenadorUseCase {
     return atualizado;
   }
 
+  // As mesmas travas que existiam no desativar valem aqui, e com mais razao:
+  // desativar era reversivel pela interface, excluir nao e.
+  async excluirUsuario(
+    id: string,
+    usuarioLogadoId?: string,
+    perfilLogado?: string,
+  ): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do usuario e invalido.");
+    }
+
+    const usuario = await this.coordenadorRepository.buscarUsuarioPorId(id);
+    if (!usuario) {
+      throw new NotFoundError("Usuario nao encontrado.");
+    }
+
+    if (usuarioLogadoId && usuarioLogadoId === id) {
+      throw new BadRequestError("Voce nao pode excluir a propria conta.");
+    }
+
+    if (
+      perfilLogado === "coordenador" &&
+      (usuario.role === "administrador" || usuario.role === "coordenador")
+    ) {
+      throw new AppError(
+        "Apenas um administrador pode excluir contas de coordenacao ou administracao.",
+        403,
+      );
+    }
+
+    // Trava contra lockout: sem admin ativo ninguem reativa nada pela
+    // interface, e com a exclusao nem por reativacao — so por SQL no banco.
+    if (usuario.role === "administrador") {
+      const administradoresAtivos =
+        await this.coordenadorRepository.contarAdministradoresAtivos();
+
+      if (administradoresAtivos <= 1) {
+        throw new BadRequestError(
+          "Este e o unico administrador ativo. Promova outro administrador antes de excluir esta conta.",
+        );
+      }
+    }
+
+    const excluido = await this.coordenadorRepository.excluirUsuario(
+      id,
+      usuarioLogadoId ?? null,
+    );
+
+    if (!excluido) {
+      throw new NotFoundError("Usuario nao encontrado.");
+    }
+  }
+
+  async excluirCurso(id: string): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do curso e invalido.");
+    }
+
+    const excluido = await this.coordenadorRepository.excluirCurso(id);
+
+    if (!excluido) {
+      throw new NotFoundError("Curso nao encontrado.");
+    }
+  }
+
+  async excluirInstrutor(id: string): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do instrutor e invalido.");
+    }
+
+    const excluido = await this.coordenadorRepository.excluirInstrutor(id);
+
+    if (!excluido) {
+      throw new NotFoundError("Instrutor nao encontrado.");
+    }
+  }
+
+  // Excluir o aluno apaga o usuario e, em cascata, matricula, frequencia e
+  // certificado. A pessoa pode se cadastrar novamente no futuro.
+  async excluirAluno(id: string, excluidoPorId?: string): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID do aluno e invalido.");
+    }
+
+    const excluido = await this.coordenadorRepository.excluirAluno(
+      id,
+      excluidoPorId ?? null,
+    );
+
+    if (!excluido) {
+      throw new NotFoundError("Aluno nao encontrado.");
+    }
+  }
+
   async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
     return await this.coordenadorRepository.listarAlunos();
   }
@@ -652,6 +752,7 @@ export class CoordenadorUseCase {
   async atualizarAluno(
     id: string,
     input: AtualizarAlunoEntrada,
+    atualizadoPorId?: string,
   ): Promise<AlunoDetalheCoordenador> {
     const alunoAtual = await this.buscarAlunoDetalhe(id);
 
@@ -693,6 +794,16 @@ export class CoordenadorUseCase {
 
     if (!aluno) {
       throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    // Bloquear a conta tem que bloquear o CPF tambem: so tirar o login deixava
+    // a pessoa se cadastrar de novo com outro e-mail. Reativar desfaz.
+    if (input.statusConta === "bloqueado" || input.statusConta === "ativo") {
+      await this.coordenadorRepository.sincronizarBloqueioCpfDoAluno(
+        id,
+        input.statusConta === "bloqueado",
+        atualizadoPorId ?? null,
+      );
     }
 
     return aluno;
@@ -1075,6 +1186,16 @@ export class CoordenadorUseCase {
         "O certificado so pode ser emitido para uma matricula aprovada.",
       );
     }
+    if (candidato.frequencia <= 70) {
+      throw new BadRequestError(
+        "O certificado nao pode ser emitido: a frequencia do aluno esta em 70% ou menos.",
+      );
+    }
+    if (candidato.frequencia < 80) {
+      throw new BadRequestError(
+        "O certificado exige frequencia minima de 80%.",
+      );
+    }
     if (candidato.statusUsuario !== "ativo") {
       throw new BadRequestError(
         "O certificado so pode ser emitido para um aluno ativo.",
@@ -1236,23 +1357,12 @@ export class CoordenadorUseCase {
       camposPendentes,
     );
 
-    const frontendUrl = getRequiredEnv("FRONTEND_URL");
-    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${tokenAtivacao}`;
-
-    try {
-      await this.emailService.enviar(
-        convite.email,
-        "Convite para acessar o ADM Para Todos",
-        `<p>Ola, ${convite.nome}!</p>
-         <p>Voce foi cadastrado como instrutor no ADM Para Todos.</p>
-         <p><a href="${linkAtivacao}">Clique aqui para definir sua senha e ativar sua conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
-      );
-    } catch (error) {
-      // A conta ja foi criada no banco; o e-mail e um efeito colateral best-effort.
-      // Uma falha de envio nao deve desfazer o convite ja persistido.
-      console.error("Falha ao enviar e-mail de convite:", error);
-    }
+    // Cadastro pela coordenacao NAO dispara e-mail (decisao do usuario em
+    // 2026-09-10). A ativacao fica registrada e pendente: quando esse
+    // instrutor precisar entrar, a coordenacao usa "Reenviar ativacao" e ai
+    // sim o link vai por e-mail. Quem recebe e-mail sozinho e so o cadastro
+    // publico do aluno, onde a propria pessoa informa o endereco.
+    void tokenAtivacao;
 
     return convite;
   }
@@ -1308,21 +1418,16 @@ export class CoordenadorUseCase {
       "criado_por_coordenador",
       camposPendentes,
     );
-    const frontendUrl = getRequiredEnv("FRONTEND_URL");
-    const linkAtivacao = `${frontendUrl}/ativar-conta?token=${token}`;
+    // Cadastro pela coordenacao NAO dispara e-mail (decisao do usuario em
+    // 2026-09-10): sao ~150 ex-alunos entrando de uma vez, com o historico
+    // deles, e uma rajada dessas queimaria a cota diaria do Gmail. A matricula
+    // ja nasce em andamento; a conta fica pendente de ativacao ate alguem
+    // pedir "Reenviar ativacao".
+    void token;
 
-    try {
-      await this.emailService.enviar(
-        convite.email,
-        "Convite para acessar o ADM Para Todos",
-        `<p>Ola, ${convite.nome}!</p>
-         <p>Voce foi cadastrado como aluno no ADM Para Todos.</p>
-         <p><a href="${linkAtivacao}">Complete seu cadastro e ative sua conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
-      );
-    } catch (error) {
-      console.error("Falha ao enviar e-mail de convite:", error);
-    }
+    // Caminho de volta de quem foi excluido por engano: cadastrar o mesmo CPF
+    // pela coordenacao tira ele da lista de bloqueio do cadastro publico.
+    await this.coordenadorRepository.liberarCpfBloqueado(cpf);
 
     return convite;
   }
@@ -1505,6 +1610,18 @@ export class CoordenadorUseCase {
     }
   }
 
+  async excluirTurma(id: string): Promise<void> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+
+    const excluida = await this.coordenadorRepository.excluirTurma(id);
+
+    if (!excluida) {
+      throw new NotFoundError("Turma nao encontrada.");
+    }
+  }
+
   async criarTurma(input: CriarTurmaEntrada): Promise<TurmaListagem> {
     if (!input.curso || input.curso.trim() === "") {
       throw new BadRequestError("O curso e obrigatorio.");
@@ -1577,6 +1694,42 @@ export class CoordenadorUseCase {
     }
   }
 
+  async obterPerfil(usuarioId: string): Promise<PerfilCoordenador> {
+    if (!usuarioId) {
+      throw new BadRequestError("Usuario nao identificado.");
+    }
+
+    const perfil =
+      await this.coordenadorRepository.buscarPerfilCoordenador(usuarioId);
+
+    if (!perfil) {
+      throw new BadRequestError("Perfil nao encontrado.");
+    }
+
+    return perfil;
+  }
+
+  async atualizarAvatarCoordenador(
+    usuarioId: string,
+    avatarUrl: string,
+  ): Promise<void> {
+    if (!avatarUrl || avatarUrl.trim() === "") {
+      throw new BadRequestError("A foto enviada e invalida.");
+    }
+
+    await this.coordenadorRepository.atualizarAvatarCoordenador(
+      usuarioId,
+      avatarUrl,
+    );
+  }
+
+  async removerAvatarCoordenador(usuarioId: string): Promise<void> {
+    await this.coordenadorRepository.atualizarAvatarCoordenador(
+      usuarioId,
+      null,
+    );
+  }
+
   async obterPeriodoLetivo(): Promise<PeriodoLetivoResponse> {
     return await this.coordenadorRepository.buscarPeriodoLetivo();
   }
@@ -1622,4 +1775,3 @@ export class CoordenadorUseCase {
     }
   }
 }
-

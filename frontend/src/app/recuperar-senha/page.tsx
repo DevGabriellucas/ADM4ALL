@@ -2,61 +2,76 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AuthBrandPanel } from "@/components/auth/AuthBrandPanel";
 import { ForgotPasswordForm } from "@/components/ForgotPasswordForm";
+import { Notificacao } from "@/components/shared/Notificacao";
 
 export default function RecuperarSenha() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   return (
-    <main className="flex min-h-dvh w-full items-center justify-center overflow-y-auto bg-[#E0F0FF] bg-[length:520px_auto] bg-[url(/adm-para-todos-logo.png)] bg-center bg-no-repeat px-4 py-8 font-poppins text-slate-950 sm:bg-[length:720px_auto] lg:bg-[length:960px_auto]">
-      <section className="flex w-full max-w-4xl flex-col items-center gap-y-8 sm:gap-y-10 lg:gap-y-14">
-        <Link
-          href="/"
-          className="inline-flex w-fit items-center gap-x-2 self-start rounded-md bg-white/45 px-3 py-2 font-medium text-brand-dark text-sm transition-colors hover:bg-white/70"
-        >
-          <svg
-            aria-hidden
-            viewBox="0 0 24 24"
-            className="size-4"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          >
-            <title>Voltar</title>
-            <path d="M19 12H5" />
-            <path d="M12 19l-7-7 7-7" />
-          </svg>
-          Voltar
-        </Link>
-
-        <div className="flex w-full flex-col items-center justify-center gap-y-5 text-center sm:gap-y-7">
-          <h2 className="text-center font-medium text-2xl sm:text-3xl lg:text-4xl">
-            Esqueci minha Senha
-          </h2>
-
-          {isSuccess && (
-            <p className="w-full max-w-3xl animate-fade-in rounded-md bg-[#76C043] px-4 py-3 text-center font-medium text-[#454040] text-sm shadow-sm sm:px-6 sm:py-4 sm:text-lg">
-              {successMessage}
-            </p>
-          )}
-
-          <p className="w-full max-w-3xl text-center text-base leading-7 sm:text-xl lg:text-2xl">
-            Informe seu endereco de email que nos enviaremos um link para
-            alteracao da senha
-          </p>
-        </div>
-
-        <ForgotPasswordForm
-          className="flex w-full max-w-3xl flex-col items-center gap-y-7 sm:gap-y-10 lg:gap-y-14"
-          onSuccess={(message) => {
-            setSuccessMessage(message);
-            setIsSuccess(true);
-          }}
-          isSuccess={isSuccess}
+    <main className="min-h-dvh w-full bg-[#f5f7fb] font-poppins text-slate-950 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]">
+      <div className="flex min-h-[25rem] items-center justify-center bg-linear-to-br from-[#252c65] via-brand-dark to-[#59639c] px-6 py-12 sm:px-12 lg:min-h-dvh">
+        <AuthBrandPanel
+          compact
+          eyebrow="Acesso seguro"
+          title="Retome seu caminho de aprendizagem."
+          description="Enviaremos um link seguro para o e-mail cadastrado. O projeto nunca solicita sua senha por e-mail."
         />
+      </div>
+      <section className="flex items-center justify-center px-5 py-10 sm:px-10">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-slate-200/60 shadow-xl sm:p-9">
+          <Link
+            href="/"
+            className="inline-flex w-fit items-center gap-x-2 rounded-md font-medium text-brand-dark text-sm transition-colors hover:text-brand-medium"
+          >
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="size-4"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            >
+              <title>Voltar</title>
+              <path d="M19 12H5" />
+              <path d="M12 19l-7-7 7-7" />
+            </svg>
+            Voltar
+          </Link>
+
+          <div className="mt-8 flex w-full flex-col justify-center text-left">
+            <p className="font-semibold text-brand-dark text-xs uppercase tracking-[0.2em]">
+              Recuperação de acesso
+            </p>
+            <h2 className="mt-2 font-semibold text-2xl tracking-tight">
+              Esqueceu sua senha?
+            </h2>
+
+            {isSuccess && (
+              <Notificacao tipo="sucesso" className="w-full max-w-3xl">
+                {successMessage}
+              </Notificacao>
+            )}
+
+            <p className="mt-3 w-full text-slate-500 text-sm leading-6">
+              Informe o e-mail cadastrado e enviaremos um link para criar uma
+              nova senha.
+            </p>
+          </div>
+
+          <ForgotPasswordForm
+            className="mt-7 flex w-full flex-col items-stretch gap-y-5"
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              setIsSuccess(true);
+            }}
+            isSuccess={isSuccess}
+          />
+        </div>
       </section>
     </main>
   );

@@ -5,7 +5,10 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewStudentForm } from "@/components/coordenador/NewStudentForm";
 import { StudentTable } from "@/components/coordenador/StudentTable";
-import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
+import {
+  FREQUENCIA_LIMITE_RISCO,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import type { ClassGroup, Course, Student } from "@/types/coordinator";
 
 interface StudentsPageContentProps {
@@ -27,11 +30,16 @@ export const StudentsPageContent = ({
   const pendingStudents = students.filter(
     (student) => student.statusConta === "pendente_ativacao",
   ).length;
+  // Turma encerrada nao entra: o aluno ja fechou como Aprovado ou Reprovado e
+  // nao ha mais o que a coordenacao faca. O card conta quem ainda da tempo de
+  // salvar, e o limite e o mesmo da reprovacao por falta.
   const studentsAtRisk = students.filter(
     (student) =>
-      student.statusMatricula === MATRICULA_STATUS.REPROVADO_FALTA ||
-      (student.statusMatricula === MATRICULA_STATUS.EM_ANDAMENTO &&
-        student.frequencia < 75),
+      student.statusMatricula !== null &&
+      student.statusMatricula !== MATRICULA_STATUS.CANCELADO &&
+      student.statusTurma !== "encerrada" &&
+      student.statusTurma !== "concluida" &&
+      student.frequencia <= FREQUENCIA_LIMITE_RISCO,
   ).length;
 
   return (

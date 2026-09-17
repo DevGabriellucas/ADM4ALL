@@ -6,6 +6,7 @@ interface UserTableProps {
   showActions?: boolean;
   onEdit?: (user: BaseUser) => void;
   onStatusChange?: (user: BaseUser, targetStatus: "ativo" | "inativo") => void;
+  onDelete?: (user: BaseUser) => void;
   currentUserId?: string | null;
 }
 
@@ -45,6 +46,7 @@ export const UserTable = ({
   showActions = true,
   onEdit,
   onStatusChange,
+  onDelete,
   currentUserId,
 }: UserTableProps) => {
   return (
@@ -125,22 +127,6 @@ export const UserTable = ({
                         >
                           Editar perfil
                         </button>
-                        {user.status === "ativo" && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusChange?.(user, "inativo")}
-                            disabled={currentUserId === user.id}
-                            title={
-                              currentUserId === user.id
-                                ? "Você não pode desativar sua própria conta."
-                                : undefined
-                            }
-                            className="cursor-pointer font-semibold text-red-600 text-xs transition-colors hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`Desativar ${user.nome}`}
-                          >
-                            Desativar
-                          </button>
-                        )}
                         {user.status === "inativo" && (
                           <button
                             type="button"
@@ -151,6 +137,40 @@ export const UserTable = ({
                             Ativar
                           </button>
                         )}
+                        {/* Revogar acesso sem apagar a conta. Sem este botao so
+                            restava Excluir, que e irreversivel e leva junto o
+                            historico — e o ramo "Ativar" acima ficava
+                            inalcancavel, porque nada mais desativava ninguem. */}
+                        {user.status === "ativo" && (
+                          <button
+                            type="button"
+                            onClick={() => onStatusChange?.(user, "inativo")}
+                            disabled={currentUserId === user.id}
+                            title={
+                              currentUserId === user.id
+                                ? "Você não pode desativar sua própria conta."
+                                : undefined
+                            }
+                            className="cursor-pointer font-semibold text-amber-700 text-xs transition-colors hover:text-amber-900 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Desativar ${user.nome}`}
+                          >
+                            Desativar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onDelete?.(user)}
+                          disabled={currentUserId === user.id}
+                          title={
+                            currentUserId === user.id
+                              ? "Você não pode excluir sua própria conta."
+                              : undefined
+                          }
+                          className="cursor-pointer font-semibold text-red-700 text-xs transition-colors hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Excluir ${user.nome}`}
+                        >
+                          Excluir
+                        </button>
                       </div>
                     </td>
                   )}

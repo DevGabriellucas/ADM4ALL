@@ -15,6 +15,7 @@ describe("AuthUseCase", () => {
   beforeEach(() => {
     mockAuthRepository = {
       buscarUsuarioPorIdentificador: jest.fn(),
+      buscarSessaoPorUsuarioId: jest.fn(),
       registrarUltimoLogin: jest.fn(),
     };
     mockJwtService = {
@@ -101,5 +102,43 @@ describe("AuthUseCase", () => {
     (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
     await expect(authUseCase.login("joao@email.com", "senhaerrada")).rejects.toThrow(UnauthorizedError);
+  });
+
+  describe("validarSessao", () => {
+    const sessaoAtiva = {
+      status: "ativo",
+      perfil: "aluno",
+      alunoId: "a1",
+      instrutorId: null,
+      coordenadorId: null,
+    };
+
+    it("devolve os vinculos atuais quando a conta esta ativa", async () => {
+      mockAuthRepository.buscarSessaoPorUsuarioId.mockResolvedValue(sessaoAtiva);
+
+      await expect(authUseCase.validarSessao("1")).resolves.toEqual(sessaoAtiva);
+    });
+
+    // Token assinado sobrevive a exclusao da conta: sem esta recusa o request
+    // passava pela autenticacao e so estourava na consulta, com um erro que nao
+    // levava o usuario de volta ao login.
+    it("recusa token de conta que nao existe mais", async () => {
+      mockAuthRepository.buscarSessaoPorUsuarioId.mockResolvedValue(null);
+
+      await expect(authUseCase.validarSessao("1")).rejects.toThrow(
+        UnauthorizedError,
+      );
+    });
+
+    it("recusa token de conta bloqueada ou inativa", async () => {
+      mockAuthRepository.buscarSessaoPorUsuarioId.mockResolvedValue({
+        ...sessaoAtiva,
+        status: "bloqueado",
+      });
+
+      await expect(authUseCase.validarSessao("1")).rejects.toThrow(
+        UnauthorizedError,
+      );
+    });
   });
 });

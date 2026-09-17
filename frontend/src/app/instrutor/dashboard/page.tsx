@@ -1,11 +1,17 @@
 import { InstrutorShell } from "@/components/instrutor/InstrutorShell";
 import { MetricCard } from "@/components/instrutor/MetricCard";
 import { getInstrutorDashboard } from "@/services/instrutorService";
+import {
+  AULAS_POR_PERIODO,
+  avancarPeriodoLetivo,
+  blocosConcluidos,
+} from "@/utils/cronograma";
 import { formatData } from "@/utils/format";
+import { dataDeHoje } from "@/utils/fusoInstituicao";
 
 export default async function InstrutorDashboardPage() {
   const dashboard = await getInstrutorDashboard();
-  const { instrutor, turma, aulaReferencia, proximaAula, metricas } = dashboard;
+  const { instrutor, turma, proximaAula, metricas } = dashboard;
   const cronograma = Array.isArray(dashboard.cronograma)
     ? dashboard.cronograma
     : [];
@@ -13,17 +19,19 @@ export default async function InstrutorDashboardPage() {
     ? dashboard.materiais
     : [];
   const alunos = Array.isArray(dashboard.alunos) ? dashboard.alunos : [];
-  const hoje = new Date().toISOString().slice(0, 10);
+  // Data no fuso da instituicao: toISOString() devolve UTC, entao depois das
+  // 21h em Joao Pessoa o servidor ja estava no dia seguinte e a aula de hoje
+  // sumia do painel, junto com a contagem de aulas planejadas atrasadas.
+  const hoje = dataDeHoje();
   const aulaHoje =
     cronograma.find(
       (aula) => aula.data === hoje && aula.status !== "cancelada",
     ) ?? null;
-  const proximaAulaAgenda =
-    proximaAula ??
-    cronograma
-      .filter((aula) => aula.data >= hoje && aula.status !== "cancelada")
-      .sort((a, b) => a.data.localeCompare(b.data))[0] ??
-    null;
+  // O backend ja entrega a agenda em ordem: aulaAtual e a aula que esta por vir
+  // e proximaAula e a SEGUINTE a ela. O card "Proxima aula" quer a que esta por
+  // vir; lendo proximaAula, ele anunciava "Sem aula agendada" sempre que
+  // faltava exatamente uma aula na turma.
+  const proximaAulaAgenda = dashboard.aulaAtual ?? proximaAula;
   const alunosSemPresenca = alunos.filter(
     (aluno) => aluno.statusPresenca === null,
   ).length;
@@ -49,12 +57,27 @@ export default async function InstrutorDashboardPage() {
     ? `${formatData(proximaAulaAgenda.data)} - Aula ${proximaAulaAgenda.numero}`
     : "Sem aula agendada";
 
+  // A cada 10 aulas realizadas a turma fecha um periodo letivo. O aviso mostra
+  // qual periodo comeca agora; quem troca o valor oficial da turma continua
+  // sendo a coordenacao, em Configuracoes.
+  const blocos = blocosConcluidos(cronograma);
+  const periodoSeguinte = turma
+    ? avancarPeriodoLetivo(turma.periodoLetivo, blocos)
+    : null;
+
   return (
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={aulaReferencia?.data ?? null}
+      dataAula={dashboard.aulaAtual?.data ?? null}
     >
+      {periodoSeguinte && (
+        <output className="block rounded-lg border border-brand-light bg-[#F1F4FC] px-5 py-4 text-center font-medium text-brand-dark text-sm">
+          A turma concluiu {blocos * AULAS_POR_PERIODO} aulas. Período letivo{" "}
+          {periodoSeguinte}.
+        </output>
+      )}
+
       <section id="dashboard" aria-label="Resumo do instrutor">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard

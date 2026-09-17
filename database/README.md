@@ -27,8 +27,16 @@ database/
     14-criar-relatorios-gerados.sql
     15-inserir-perfis.sql
     16-inserir-cursos-padrao.sql
+    17-adicionar-justificativa-frequencia.sql
+    18-adicionar-avatar-coordenador-aluno.sql
+    19-criar-cpfs-bloqueados.sql
   migrations/
     20260708_turma_instrutores.sql
+    20260908_avatar_coordenador_aluno.sql
+    20260908_frequencia_justificada.sql
+    20260910_cpfs_bloqueados.sql
+    20260910_encerrar_turmas_concluidas.sql
+    20260916_presenca_justificada_como_presente.sql
 ```
 
 ## Como subir
@@ -61,12 +69,36 @@ em ordem alfabetica na primeira inicializacao. Por isso os arquivos `01` a
 
 ### Aplicar migration em banco existente
 
-Se uma nova tabela for adicionada apos a criacao inicial do banco, execute o
-script de `database/migrations/` manualmente:
+Volume novo ja nasce completo pelos scripts de `init/`. **Banco que ja existe
+precisa das migrations aplicadas na ordem da data**, uma por vez:
 
 ```powershell
 Get-Content .\database\migrations\20260708_turma_instrutores.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260908_avatar_coordenador_aluno.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260908_frequencia_justificada.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260910_cpfs_bloqueados.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260910_encerrar_turmas_concluidas.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260916_presenca_justificada_como_presente.sql | docker compose exec -T db psql -U adm4all -d adm4all
 ```
+
+Todas sao idempotentes (`IF EXISTS` / `IF NOT EXISTS`), entao rodar de novo nao
+quebra nada.
+
+A ordem entre as duas ultimas importa: `20260908_frequencia_justificada.sql`
+cria a constraint que impede presenca marcada como justificada, e
+`20260916_presenca_justificada_como_presente.sql` e quem a remove. Um banco que
+receba so a primeira recusa a chamada com falta justificada — o sistema avisa
+qual migration falta em vez de devolver erro generico, mas a chamada nao salva
+enquanto isso nao for corrigido.
+
+| Migration | O que faz |
+| --- | --- |
+| `20260708_turma_instrutores.sql` | Vinculo de instrutores por turma |
+| `20260908_avatar_coordenador_aluno.sql` | Foto de perfil de coordenacao e aluno |
+| `20260908_frequencia_justificada.sql` | Coluna `justificada` em `frequencias` |
+| `20260910_cpfs_bloqueados.sql` | Bloqueio de CPF apos exclusao de aluno |
+| `20260910_encerrar_turmas_concluidas.sql` | Encerramento automatico de turma |
+| `20260916_presenca_justificada_como_presente.sql` | Libera justificada com credito de presenca |
 
 ## Resetar o banco local
 

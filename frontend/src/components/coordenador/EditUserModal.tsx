@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { atualizarUsuarioAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { BaseUser, UserRole } from "@/types/coordinator";
+import { formatarCpf } from "@/utils/cpf";
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -153,21 +155,15 @@ export const EditUserModal = ({
           </div>
 
           {successMessage && (
-            <output
-              aria-live="polite"
-              className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-            >
+            <Notificacao tipo="sucesso" className="mt-4">
               {successMessage}
-            </output>
+            </Notificacao>
           )}
 
           {errorMessage && (
-            <output
-              aria-live="polite"
-              className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-            >
+            <Notificacao tipo="erro" className="mt-4">
               {errorMessage}
-            </output>
+            </Notificacao>
           )}
 
           <form onSubmit={handleSubmit} className="mt-5">
@@ -190,9 +186,13 @@ export const EditUserModal = ({
                 <input
                   required
                   type="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(event) =>
-                    setFormData({ ...formData, email: event.target.value })
+                    setFormData({
+                      ...formData,
+                      email: event.target.value.toLowerCase(),
+                    })
                   }
                   className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
                 />
@@ -207,7 +207,10 @@ export const EditUserModal = ({
                   maxLength={14}
                   value={formData.cpf}
                   onChange={(event) =>
-                    setFormData({ ...formData, cpf: event.target.value })
+                    setFormData({
+                      ...formData,
+                      cpf: formatarCpf(event.target.value),
+                    })
                   }
                   className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
                 />

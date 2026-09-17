@@ -4,7 +4,7 @@ import { getInstrutorDashboard } from "@/services/instrutorService";
 
 export default async function InstrutorMateriaisPage() {
   const dashboard = await getInstrutorDashboard();
-  const { instrutor, turma, aulaReferencia } = dashboard;
+  const { instrutor, turma } = dashboard;
   const materiais = Array.isArray(dashboard.materiais)
     ? dashboard.materiais
     : [];
@@ -16,7 +16,7 @@ export default async function InstrutorMateriaisPage() {
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={aulaReferencia?.data ?? null}
+      dataAula={dashboard.aulaAtual?.data ?? null}
     >
       {turma ? (
         <MateriaisPanel

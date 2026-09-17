@@ -50,6 +50,7 @@ didáticos, emissão de certificados e relatórios gerenciais.
 Consulte os READMEs específicos:
 
 - [Backend](backend/README.md)
+- [Frontend](frontend/README.md)
 - [Banco de dados](database/README.md)
 
 Resumo rápido:
@@ -63,11 +64,6 @@ cd frontend && npm install && npm run dev
 
 ## Documentação
 
-- [Escopo do MVP](docs/mvp-escopo.md)
-- [Decisões de produto](docs/decisoes-produto.md)
-- [Roteiro de validação](docs/roteiro-validacao-mvp.md)
-- [Pendências pós-MVP](docs/pendencias-pos-mvp.md)
-- [Divergências com o Documento de Visão](docs/divergencias-documento-de-visao.md)
-- [Casos de teste — alunos (seed)](docs/seed-casos-teste.md)
-- [Guia de testes para apresentação](docs/guia-de-testes-para-apresentacao.md)
 - [Modelo entidade-relacionamento](database/docs/modelo-entidade-relacionamento.md)
+- [Migrations do banco](database/migrations/) — aplicar em ordem de data em bancos que já existem
+- [Dados de produção](database/seeds/producao/README.md)

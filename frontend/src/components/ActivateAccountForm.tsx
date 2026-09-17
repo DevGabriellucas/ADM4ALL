@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { MedidorForcaSenha } from "@/components/shared/MedidorForcaSenha";
+import { Notificacao } from "@/components/shared/Notificacao";
 import {
   type ActivateAccountFormData,
   createActivateAccountSchema,
@@ -20,6 +22,7 @@ import type {
   ActivationTokenResponse,
 } from "@/types/auth";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface ActivateAccountFormProps {
   token: string | null;
@@ -58,15 +61,18 @@ const PendingFieldsForm = ({
   onSuccess,
 }: PendingFieldsFormProps) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [senhaFocada, setSenhaFocada] = useState(false);
   const fields = new Set(activation.camposPendentes);
   const schema = createActivateAccountSchema(activation.camposPendentes);
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ActivateAccountFormData>({
     resolver: zodResolver(schema),
   });
+  const senhaField = register("senha");
 
   const onSubmit = async (data: ActivateAccountFormData) => {
     setSubmitError(null);
@@ -102,10 +108,18 @@ const PendingFieldsForm = ({
       <Input
         id={field}
         type={field === "whatsapp" ? "tel" : "text"}
+        inputMode={field === "whatsapp" ? "tel" : undefined}
+        maxLength={field === "whatsapp" ? 15 : undefined}
         placeholder={FIELD_LABELS[field]}
         className="h-14 px-5 text-base"
         autoComplete={field === "whatsapp" ? "tel" : "off"}
         {...register(field)}
+        onChange={(event) => {
+          if (field === "whatsapp") {
+            event.target.value = formatarTelefone(event.target.value);
+          }
+          register(field).onChange(event);
+        }}
         error={errors[field]?.message}
       />
     </label>
@@ -126,8 +140,17 @@ const PendingFieldsForm = ({
               placeholder="Nova senha"
               autoComplete="new-password"
               className="h-14 px-5 text-base"
-              {...register("senha")}
+              {...senhaField}
+              onFocus={() => setSenhaFocada(true)}
+              onBlur={(evento) => {
+                setSenhaFocada(false);
+                return senhaField.onBlur(evento);
+              }}
               error={errors.senha?.message}
+            />
+            <MedidorForcaSenha
+              senha={watch("senha") ?? ""}
+              mostrarRequisitos={senhaFocada}
             />
           </label>
           <label
@@ -152,14 +175,7 @@ const PendingFieldsForm = ({
         .filter((field) => field !== "senha")
         .map((field) => renderTextField(field))}
 
-      {submitError && (
-        <p
-          className="rounded-md bg-red-50 px-4 py-3 text-center text-red-800 text-sm"
-          role="alert"
-        >
-          {submitError}
-        </p>
-      )}
+      {submitError && <Notificacao tipo="erro">{submitError}</Notificacao>}
 
       <Button
         type="submit"

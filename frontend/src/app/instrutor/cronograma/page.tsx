@@ -4,7 +4,7 @@ import { getInstrutorDashboard } from "@/services/instrutorService";
 
 export default async function InstrutorCronogramaPage() {
   const dashboard = await getInstrutorDashboard();
-  const { instrutor, turma, aulaReferencia } = dashboard;
+  const { instrutor, turma } = dashboard;
   const cronograma = Array.isArray(dashboard.cronograma)
     ? dashboard.cronograma
     : [];
@@ -13,7 +13,7 @@ export default async function InstrutorCronogramaPage() {
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={aulaReferencia?.data ?? null}
+      dataAula={dashboard.aulaAtual?.data ?? null}
     >
       <CronogramaList turmaId={turma?.id ?? null} aulas={cronograma} />
     </InstrutorShell>

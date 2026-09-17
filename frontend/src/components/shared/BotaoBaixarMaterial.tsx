@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { AuthenticatedFileResponse } from "@/services/apiClient";
 import { downloadBase64File } from "@/utils/downloadFile";
 import { getErrorMessage } from "@/utils/getErrorMessage";
@@ -13,6 +14,7 @@ interface BotaoBaixarMaterialProps {
   baixar: () => Promise<AuthenticatedFileResponse>;
   rotulo?: string;
   className?: string;
+  modo?: "baixar" | "abrir";
 }
 
 /**
@@ -25,8 +27,9 @@ interface BotaoBaixarMaterialProps {
  */
 export const BotaoBaixarMaterial = ({
   baixar,
-  rotulo = "Abrir material",
+  rotulo,
   className = "",
+  modo = "baixar",
 }: BotaoBaixarMaterialProps) => {
   const [baixando, setBaixando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -36,7 +39,21 @@ export const BotaoBaixarMaterial = ({
     setErro(null);
 
     try {
-      downloadBase64File(await baixar());
+      const arquivo = await baixar();
+
+      if (modo === "abrir") {
+        const binary = atob(arquivo.base64);
+        const bytes = Uint8Array.from(binary, (character) =>
+          character.charCodeAt(0),
+        );
+        const url = URL.createObjectURL(
+          new Blob([bytes], { type: arquivo.contentType }),
+        );
+        window.open(url, "_blank", "noopener,noreferrer");
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else {
+        downloadBase64File(arquivo);
+      }
     } catch (error) {
       setErro(getErrorMessage(error));
     } finally {
@@ -55,14 +72,13 @@ export const BotaoBaixarMaterial = ({
           "inline-flex h-9 w-fit cursor-pointer items-center rounded-md bg-brand-dark px-3 font-semibold text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
         }
       >
-        {baixando ? "Abrindo…" : rotulo}
+        {baixando
+          ? "Abrindo…"
+          : (rotulo ??
+            (modo === "abrir" ? "Abrir material" : "Baixar material"))}
       </button>
 
-      {erro && (
-        <p role="alert" className="text-red-700 text-xs">
-          {erro}
-        </p>
-      )}
+      {erro && <Notificacao tipo="erro">{erro}</Notificacao>}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import {
   removerMaterialAction,
 } from "@/app/instrutor/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   AulaResumo,
   MaterialResumo,
@@ -70,6 +71,7 @@ const EXTENSOES_POR_TIPO: Record<TipoMaterial, string[]> = {
 };
 
 const TAMANHO_MAXIMO_BYTES = 50 * 1024 * 1024;
+const ehUrlExterna = (valor: string) => /^https?:\/\//i.test(valor);
 
 const extensaoDoArquivo = (nome: string) =>
   nome.split(".").pop()?.toLowerCase() ?? "";
@@ -227,6 +229,11 @@ export const MateriaisPanel = ({
   // O arquivo vem pela rota autenticada, que confere o vinculo do instrutor
   // com a turma. Linkar o arquivo estatico direto deixava o material publico.
   const baixar = async (material: MaterialResumo) => {
+    if (material.urlArquivo && ehUrlExterna(material.urlArquivo)) {
+      window.open(material.urlArquivo, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     setBaixandoId(material.id);
     try {
       downloadBase64File(await baixarMaterialTurmaAction(turmaId, material.id));
@@ -428,13 +435,12 @@ export const MateriaisPanel = ({
       )}
 
       {feedback && (
-        <output
-          className={`mt-3 block text-sm ${
-            feedback.tipo === "ok" ? "text-emerald-700" : "text-red-700"
-          }`}
+        <Notificacao
+          tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
+          className="mt-3"
         >
           {feedback.texto}
-        </output>
+        </Notificacao>
       )}
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
@@ -446,7 +452,6 @@ export const MateriaisPanel = ({
             className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
           >
             <option value="todos">Todos os materiais</option>
-            <option value="geral">Material geral da turma</option>
             {aulasSeguras.map((aula) => (
               <option key={aula.id} value={aula.id}>
                 Aula {aula.numero} - {aula.titulo}
@@ -547,7 +552,14 @@ export const MateriaisPanel = ({
                             type="button"
                             onClick={() => baixar(material)}
                             disabled={baixandoId === material.id}
-                            title="Baixar o arquivo"
+                            title={
+                              material.urlArquivo &&
+                              ehUrlExterna(material.urlArquivo)
+                                ? "Abrir link"
+                                : material.tipo === "video"
+                                  ? "Abrir video"
+                                  : "Baixar o arquivo"
+                            }
                             className="cursor-pointer text-slate-900 transition-colors hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <svg

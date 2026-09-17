@@ -19,7 +19,7 @@ const getSituationInfo = (situacao: AttendanceSummary["situacao"]) => {
     return { label: "Em atenção", tone: "amber" as const };
   }
 
-  if (situacao === "risco_reprovacao") {
+  if (situacao === "risco" || situacao === "risco_reprovacao") {
     return { label: "Risco de reprovação", tone: "orange" as const };
   }
 

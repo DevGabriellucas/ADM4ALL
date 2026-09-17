@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { InstructorEditForm } from "@/components/coordenador/InstructorEditForm";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   ClassStatus,
   InstructorDetail,
@@ -219,39 +220,27 @@ export const InstructorDetailContent = ({
         </div>
 
         {activationMessage && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-          >
+          <Notificacao tipo="sucesso" className="mt-4">
             {activationMessage}
-          </output>
+          </Notificacao>
         )}
 
         {activationError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {activationError}
-          </output>
+          </Notificacao>
         )}
 
         {statusMessage && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-          >
+          <Notificacao tipo="sucesso" className="mt-4">
             {statusMessage}
-          </output>
+          </Notificacao>
         )}
 
         {statusError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {statusError}
-          </output>
+          </Notificacao>
         )}
       </header>
 

@@ -1,39 +1,28 @@
+import { AlunoAvatarUpload } from "@/components/aluno/AlunoAvatarUpload";
 import { AlunoLogoutButton } from "@/components/aluno/AlunoLogoutButton";
 import type { AlunoDashboard } from "@/types/aluno";
 
 interface AlunoHeaderProps {
-  aluno: Pick<AlunoDashboard, "matricula" | "nome">;
+  aluno: Pick<AlunoDashboard, "avatarUrl" | "matricula" | "nome">;
 }
 
 export const AlunoHeader = ({ aluno }: AlunoHeaderProps) => {
-  const matricula = aluno.matricula ?? "Não informada";
-  const iniciais = aluno.nome
-    .split(" ")
-    .slice(0, 2)
-    .map((parte) => parte[0])
-    .join("")
-    .toUpperCase();
+  const matricula = aluno.matricula ?? "Não informado(a)";
 
   return (
-    <header className="flex min-h-24 w-full flex-col items-center justify-center gap-5 bg-brand-medium px-5 py-4 text-center text-slate-950 sm:flex-row sm:gap-x-7">
-      <div
-        role="img"
-        aria-label={`Iniciais de ${aluno.nome}`}
-        className="flex size-20 items-center justify-center rounded-full border-2 border-[#E7ECF8] bg-[#2F3F62] font-semibold text-2xl text-white shadow-md"
-      >
-        {iniciais}
-      </div>
+    <header className="flex w-full flex-col gap-5 bg-gradient-to-br from-[#172554] via-brand-dark to-[#3155A6] px-5 py-6 text-white shadow-lg sm:flex-row sm:items-center sm:px-8">
+      <AlunoAvatarUpload nome={aluno.nome} avatarUrl={aluno.avatarUrl} />
 
-      <div className="flex min-w-0 flex-col items-center gap-y-2 text-center sm:items-start sm:text-left">
-        <h1 className="break-words font-medium text-base tracking-[0.2em] sm:text-lg sm:tracking-[0.35em]">
-          {aluno.nome}
+      <div className="flex min-w-0 flex-col items-center gap-y-1 text-center sm:items-start sm:text-left">
+        <h1 className="break-words font-semibold text-xl tracking-tight sm:text-2xl">
+          Olá, {aluno.nome}
         </h1>
-        <p className="text-xs tracking-[0.2em] sm:text-sm sm:tracking-[0.35em]">
-          Matrícula/RGM: {matricula}
-        </p>
+        <p className="text-blue-100 text-sm">RGM: {matricula}</p>
       </div>
 
-      <AlunoLogoutButton />
+      <div className="sm:ml-auto">
+        <AlunoLogoutButton />
+      </div>
     </header>
   );
 };

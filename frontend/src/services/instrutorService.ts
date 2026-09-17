@@ -1,6 +1,7 @@
 // ATENCAO: modulo de uso exclusivo do servidor. Ele le cookies de sessao
 // e por isso so deve ser importado por Server Components ou Server Actions,
 // nunca por componentes "use client".
+import { redirect } from "next/navigation";
 import {
   ApiError,
   authenticatedFileRequest,
@@ -17,6 +18,7 @@ import type {
   InstrutorDashboard,
   MaterialResumo,
   RegistrarPresencasInput,
+  TurmaDashboard,
 } from "@/types/instrutor";
 
 const isErroAutenticacao = (error: unknown): boolean => {
@@ -29,8 +31,12 @@ export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
   const session = await getServerSession();
   const instrutorId = session?.instrutorId;
 
+  // Sessao vencida ou sem vinculo de instrutor manda a pessoa para o login, do
+  // mesmo jeito que o authenticatedRequest faz. Lancar ApiError aqui derrubava
+  // o Server Component e mostrava "Nao foi possivel carregar a area do
+  // instrutor" com digest opaco, em vez da tela de entrar.
   if (!session?.token || !instrutorId) {
-    throw new ApiError("Sessao de instrutor nao encontrada.", 401);
+    redirect("/logout");
   }
 
   try {
@@ -48,6 +54,52 @@ export const getInstrutorDashboard = async (): Promise<InstrutorDashboard> => {
 
     throw error;
   }
+};
+
+/**
+ * Painel de uma turma especifica. O instrutor chega ao dele por
+ * getInstrutorDashboard; a coordenacao escolhe a turma e cai aqui. As duas
+ * pontas leem os mesmos numeros, calculados no backend.
+ */
+export const getPainelDaTurma = async (
+  turmaId: string,
+): Promise<TurmaDashboard> => {
+  return await authenticatedRequest<TurmaDashboard>(
+    `/turmas/${turmaId}/painel`,
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar o painel da turma.",
+    },
+  );
+};
+
+/**
+ * A chamada abre na mesma aula que a barra do topo mostra, e acompanha a virada
+ * dela. Quando nao ha mais aula pela frente, cai na aula de referencia para a
+ * ultima chamada ainda poder ser lancada.
+ *
+ * Os alunos que vem do painel tem o status da aula de referencia. Se a aula
+ * aberta for outra, buscar de novo: sem isso a tela abriria com a marcacao de
+ * uma aula diferente da que esta selecionada.
+ */
+export const resolverChamadaAberta = async (
+  painel: InstrutorDashboard | TurmaDashboard,
+): Promise<{ aulaSelecionada: AulaResumo | null; alunos: AlunoPresenca[] }> => {
+  const aulaSelecionada = painel.aulaAtual ?? painel.aulaReferencia;
+  const alunosDoPainel = Array.isArray(painel.alunos) ? painel.alunos : [];
+
+  if (
+    !painel.turma ||
+    !aulaSelecionada ||
+    aulaSelecionada.id === painel.aulaReferencia?.id
+  ) {
+    return { aulaSelecionada, alunos: alunosDoPainel };
+  }
+
+  return {
+    aulaSelecionada,
+    alunos: await getPresencasPorAula(painel.turma.id, aulaSelecionada.id),
+  };
 };
 
 export const registrarPresencas = async (
@@ -171,6 +223,18 @@ export const atualizarAvatarInstrutor = async (
       method: "POST",
       body: JSON.stringify({ arquivo }),
       fallbackError: "Falha ao atualizar a foto de perfil.",
+    },
+  );
+};
+
+export const removerAvatarInstrutor = async (
+  instrutorId: string,
+): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/instrutores/${instrutorId}/avatar`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao remover a foto de perfil.",
     },
   );
 };

@@ -1,20 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   atualizarStatusContaAction,
+  excluirAlunoAction,
   reenviarAtivacaoAction,
 } from "@/app/coordenador/actions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StatusChangeConfirmModal } from "@/components/coordenador/StatusChangeConfirmModal";
+import { Notificacao } from "@/components/shared/Notificacao";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student, UserStatus } from "@/types/coordinator";
 
 interface StudentTableProps {
   students: Student[];
 }
+
+const NOTIFICATION_CLASS =
+  "fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] -translate-x-1/2 shadow-lg";
 
 interface StatusChangeRequest {
   studentId: string;
@@ -61,6 +67,49 @@ export const StudentTable = ({ students }: StudentTableProps) => {
   const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [studentPendingDeletion, setStudentPendingDeletion] =
+    useState<Student | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (
+      !activationMessage &&
+      !activationError &&
+      !statusMessage &&
+      !statusError
+    ) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setActivationMessage(null);
+      setActivationError(null);
+      setStatusMessage(null);
+      setStatusError(null);
+    }, 3500);
+    return () => window.clearTimeout(timeout);
+  }, [activationMessage, activationError, statusMessage, statusError]);
+
+  const handleDelete = async () => {
+    if (!studentPendingDeletion) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setStatusMessage(null);
+    setStatusError(null);
+
+    const result = await excluirAlunoAction(studentPendingDeletion.id);
+
+    setIsDeleting(false);
+    setStudentPendingDeletion(null);
+
+    if (!result.sucesso) {
+      setStatusError(result.mensagem);
+      return;
+    }
+
+    setStatusMessage(result.mensagem);
+  };
 
   const handleResendActivation = async () => {
     if (!studentPendingResend) {
@@ -126,39 +175,27 @@ export const StudentTable = ({ students }: StudentTableProps) => {
       </div>
 
       {activationMessage && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className={NOTIFICATION_CLASS}>
           {activationMessage}
-        </output>
+        </Notificacao>
       )}
 
       {activationError && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className={NOTIFICATION_CLASS}>
           {activationError}
-        </output>
+        </Notificacao>
       )}
 
       {statusMessage && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className={NOTIFICATION_CLASS}>
           {statusMessage}
-        </output>
+        </Notificacao>
       )}
 
       {statusError && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className={NOTIFICATION_CLASS}>
           {statusError}
-        </output>
+        </Notificacao>
       )}
 
       <div className="overflow-x-auto">
@@ -230,18 +267,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                       >
                         Visualizar
                       </Link>
-                      <Link
-                        href={`/coordenador/alunos/${student.id}?modo=editar`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                      >
-                        Editar
-                      </Link>
-                      <Link
-                        href={`/coordenador/alunos/${student.id}?modo=vincular`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
-                      >
-                        Vincular à turma
-                      </Link>
+
                       {student.statusConta === "pendente_ativacao" && (
                         <button
                           type="button"
@@ -255,40 +281,22 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                         </button>
                       )}
                       {student.statusConta === "ativo" && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setStatusChange({
-                                studentId: student.id,
-                                targetStatus: "inativo",
-                                title: "Desativar aluno?",
-                                description:
-                                  "Este aluno perderá o acesso ao sistema.",
-                                confirmLabel: "Desativar",
-                              })
-                            }
-                            className="font-semibold text-red-600 text-xs transition-colors hover:text-red-800"
-                          >
-                            Desativar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setStatusChange({
-                                studentId: student.id,
-                                targetStatus: "bloqueado",
-                                title: "Bloquear aluno?",
-                                description:
-                                  "O acesso deste aluno será bloqueado.",
-                                confirmLabel: "Bloquear",
-                              })
-                            }
-                            className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
-                          >
-                            Bloquear
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStatusChange({
+                              studentId: student.id,
+                              targetStatus: "bloqueado",
+                              title: "Bloquear aluno?",
+                              description:
+                                "O acesso deste aluno será bloqueado e o CPF dele ficará impedido de criar outra conta.",
+                              confirmLabel: "Bloquear",
+                            })
+                          }
+                          className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                        >
+                          Bloquear
+                        </button>
                       )}
                       {student.statusConta === "inativo" && (
                         <>
@@ -316,7 +324,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                                 targetStatus: "bloqueado",
                                 title: "Bloquear aluno?",
                                 description:
-                                  "O acesso deste aluno será bloqueado.",
+                                  "O acesso deste aluno será bloqueado e o CPF dele ficará impedido de criar outra conta.",
                                 confirmLabel: "Bloquear",
                               })
                             }
@@ -335,7 +343,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                               targetStatus: "ativo",
                               title: "Reativar aluno?",
                               description:
-                                "O acesso deste aluno será liberado novamente.",
+                                "O acesso deste aluno será liberado novamente e o CPF sairá da lista de bloqueio.",
                               confirmLabel: "Reativar",
                             })
                           }
@@ -344,6 +352,13 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                           Reativar
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setStudentPendingDeletion(student)}
+                        className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -363,6 +378,19 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           </tbody>
         </table>
       </div>
+
+      {studentPendingDeletion && (
+        <ConfirmDialog
+          title="Excluir aluno?"
+          description={`${studentPendingDeletion.nome} será apagado do sistema, junto com a matrícula, a frequência e o certificado dele.`}
+          confirmLabel={isDeleting ? "Excluindo..." : "Excluir"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isDeleting}
+          onCancel={() => setStudentPendingDeletion(null)}
+          onConfirm={handleDelete}
+        />
+      )}
 
       {studentPendingResend && (
         <ResendActivationConfirmModal

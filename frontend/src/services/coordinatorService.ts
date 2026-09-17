@@ -32,6 +32,7 @@ import type {
   StudentEnrollmentStatusUpdated,
   UserStatus,
 } from "@/types/coordinator";
+import type { ArquivoUpload } from "@/types/instrutor";
 
 // Modulo server-only: as telas do coordenador consultam a API real.
 
@@ -82,6 +83,7 @@ interface AlunoListagemApi {
   frequencia: number;
   statusConta: UserStatus;
   statusMatricula: string | null;
+  statusTurma: Student["statusTurma"];
   dataCriacao: string;
 }
 
@@ -339,6 +341,50 @@ export const getClassesByCourse = async (
   );
 
   return turmas.map(mapearTurma);
+};
+
+// Exclusao real. O backend recusa curso com turma ou matricula vinculada (as
+// FKs sao ON DELETE RESTRICT) e devolve a explicacao, que sobe ate a tela.
+export const deleteCourse = async (id: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(`/cursos/${id}`, {
+    method: "DELETE",
+    fallbackError: "Falha ao excluir o curso.",
+  });
+};
+
+export const deleteClass = async (id: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(`/turmas/${id}`, {
+    method: "DELETE",
+    fallbackError: "Falha ao excluir a turma.",
+  });
+};
+
+export const deleteInstructor = async (id: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/instrutores/${id}`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao excluir o instrutor.",
+    },
+  );
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(
+    `/coordenador/usuarios/${id}`,
+    {
+      method: "DELETE",
+      fallbackError: "Falha ao excluir o usuário.",
+    },
+  );
+};
+
+// Apaga o aluno e, em cascata, matricula, frequencia e certificado.
+export const deleteStudent = async (id: string): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>(`/alunos/${id}`, {
+    method: "DELETE",
+    fallbackError: "Falha ao excluir o aluno.",
+  });
 };
 
 export const deactivateCourse = async (id: string): Promise<Course | null> => {
@@ -642,6 +688,7 @@ export const getClassStudentsAndLessons = async (
       frequencia: aluno.frequencia,
       statusConta: null,
       statusMatricula: aluno.status,
+      statusTurma: normalizeClassStatus(detalhe.turma.status),
       dataCriacao: "",
       matriculaId: aluno.matriculaId,
     };
@@ -683,6 +730,7 @@ export const getStudents = async (): Promise<Student[]> => {
       frequencia: aluno.frequencia,
       statusConta: aluno.statusConta,
       statusMatricula: aluno.statusMatricula,
+      statusTurma: aluno.statusTurma,
       dataCriacao: aluno.dataCriacao,
     };
   });
@@ -1032,5 +1080,45 @@ export const deleteGeneratedReport = async (id: string): Promise<void> => {
   await authenticatedRequest<void>(`/coordenador/relatorios/gerados/${id}`, {
     method: "DELETE",
     fallbackError: "Falha ao excluir o relatório.",
+  });
+};
+
+export interface PerfilCoordenador {
+  usuarioId: string;
+  coordenadorId: string | null;
+  nome: string;
+  email: string;
+  perfil: string;
+  areaCoordenacao: string | null;
+  avatarUrl: string | null;
+}
+
+export const getPerfilCoordenador = async (): Promise<PerfilCoordenador> => {
+  return await authenticatedRequest<PerfilCoordenador>(
+    "/coordenadores/me/perfil",
+    {
+      cache: "no-store",
+      fallbackError: "Falha ao carregar o perfil.",
+    },
+  );
+};
+
+export const atualizarAvatarCoordenador = async (
+  arquivo: ArquivoUpload,
+): Promise<{ avatarUrl: string }> => {
+  return await authenticatedRequest<{ avatarUrl: string }>(
+    "/coordenadores/me/avatar",
+    {
+      method: "POST",
+      body: JSON.stringify({ arquivo }),
+      fallbackError: "Falha ao atualizar a foto de perfil.",
+    },
+  );
+};
+
+export const removerAvatarCoordenador = async (): Promise<void> => {
+  await authenticatedRequest<{ mensagem: string }>("/coordenadores/me/avatar", {
+    method: "DELETE",
+    fallbackError: "Falha ao remover a foto de perfil.",
   });
 };

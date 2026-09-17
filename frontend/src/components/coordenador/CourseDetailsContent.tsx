@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { desativarCursoAction } from "@/app/coordenador/actions";
+import { excluirCursoAction } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { EditCourseForm } from "@/components/coordenador/EditCourseForm";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
 
 interface CourseDetailsContentProps {
@@ -56,6 +58,7 @@ export const CourseDetailsContent = ({
     null,
   );
   const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false);
+  const router = useRouter();
 
   const status = getCourseStatusInfo(course.status);
 
@@ -69,7 +72,14 @@ export const CourseDetailsContent = ({
     setIsDeactivating(true);
     setDeactivationError(null);
 
-    const resultado = await desativarCursoAction(deactivatingCourse.id);
+    const resultado = await excluirCursoAction(deactivatingCourse.id);
+
+    if (resultado.sucesso) {
+      // O curso deixou de existir: a pagina de detalhe dele nao tem mais o que
+      // mostrar.
+      router.push("/coordenador/cursos");
+      return;
+    }
 
     setIsDeactivating(false);
 
@@ -94,9 +104,9 @@ export const CourseDetailsContent = ({
 
       {deactivatingCourse && (
         <ConfirmDialog
-          title="Desativar curso?"
-          description="O curso deixará de aparecer como ativo, mas os registros vinculados serão preservados."
-          confirmLabel={isDeactivating ? "Desativando..." : "Desativar"}
+          title="Excluir curso?"
+          description={`O curso "${deactivatingCourse.nome}" será apagado do sistema. Essa ação não pode ser desfeita. Cursos com turma ou matrícula vinculada não podem ser excluídos.`}
+          confirmLabel={isDeactivating ? "Excluindo..." : "Excluir"}
           cancelLabel="Cancelar"
           tone="danger"
           isLoading={isDeactivating}
@@ -131,12 +141,9 @@ export const CourseDetailsContent = ({
       )}
 
       {deactivationError && (
-        <output
-          aria-live="polite"
-          className="mb-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mb-4">
           {deactivationError}
-        </output>
+        </Notificacao>
       )}
 
       <section
@@ -164,15 +171,13 @@ export const CourseDetailsContent = ({
             >
               Editar
             </button>
-            {course.status !== "desativado" && (
-              <button
-                type="button"
-                onClick={() => setDeactivatingCourse(course)}
-                className="h-11 cursor-pointer rounded-lg bg-red-600 px-5 font-semibold text-sm text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2"
-              >
-                Desativar
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setDeactivatingCourse(course)}
+              className="h-11 cursor-pointer rounded-lg bg-red-600 px-5 font-semibold text-sm text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-red-600 focus-visible:outline-offset-2"
+            >
+              Excluir
+            </button>
           </div>
         </div>
 

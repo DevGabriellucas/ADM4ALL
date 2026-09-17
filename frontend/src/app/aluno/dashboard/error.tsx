@@ -16,10 +16,11 @@ export default function AlunoDashboardError({
         className="w-full max-w-lg rounded-lg border border-red-200 bg-red-50 p-6 text-center"
       >
         <h1 className="font-semibold text-red-900 text-xl">
-          Nao foi possivel carregar o painel
+          Não foi possível carregar o painel
         </h1>
         <p className="mt-3 text-red-800 text-sm">
-          {error.message || "Verifique sua conexao ou entre novamente."}
+          Verifique sua conexão e tente novamente. Se continuar, entre novamente
+          no sistema.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button

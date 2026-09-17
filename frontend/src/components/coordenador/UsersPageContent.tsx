@@ -1,12 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { atualizarStatusUsuarioAction } from "@/app/coordenador/actions";
+import {
+  atualizarStatusUsuarioAction,
+  excluirUsuarioAction,
+} from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { EditUserModal } from "@/components/coordenador/EditUserModal";
 import { NewUserModal } from "@/components/coordenador/NewUserModal";
 import { UserTable } from "@/components/coordenador/UserTable";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   BaseUser,
   ClassGroup,
@@ -75,6 +79,9 @@ export const UsersPageContent = ({
     user: BaseUser;
     targetStatus: "ativo" | "inativo";
   } | null>(null);
+  const [userPendingDeletion, setUserPendingDeletion] =
+    useState<BaseUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -87,6 +94,24 @@ export const UsersPageContent = ({
     targetStatus: "ativo" | "inativo",
   ) => {
     setConfirmState({ user, targetStatus });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userPendingDeletion) return;
+
+    setIsDeleting(true);
+    setErrorMessage(null);
+
+    const result = await excluirUsuarioAction(userPendingDeletion.id);
+
+    setIsDeleting(false);
+
+    if (!result.sucesso) {
+      setErrorMessage(result.mensagem);
+      return;
+    }
+
+    setUserPendingDeletion(null);
   };
 
   const handleConfirmStatus = async () => {
@@ -190,23 +215,14 @@ export const UsersPageContent = ({
     return sorted;
   }, [users, searchTerm, roleFilter, statusFilter, sortBy]);
 
-  const confirmTitle =
-    confirmState?.targetStatus === "inativo"
-      ? "Desativar usuário?"
-      : "Ativar usuário?";
+  const desativando = confirmState?.targetStatus === "inativo";
 
-  const confirmDescription =
-    confirmState?.targetStatus === "inativo"
-      ? "Este usuário não conseguirá acessar o sistema até ser ativado novamente."
-      : "Este usuário poderá acessar o sistema novamente.";
-
-  const confirmLabel =
-    confirmState?.targetStatus === "inativo"
-      ? "Desativar usuário"
-      : "Ativar usuário";
-
-  const confirmTone =
-    confirmState?.targetStatus === "inativo" ? "danger" : "neutral";
+  const confirmTitle = desativando ? "Desativar usuário?" : "Ativar usuário?";
+  const confirmDescription = desativando
+    ? "A conta perde o acesso ao sistema, mas nada é apagado: os dados e o histórico continuam no lugar e a conta pode ser reativada a qualquer momento."
+    : "Este usuário poderá acessar o sistema novamente.";
+  const confirmLabel = desativando ? "Desativar usuário" : "Ativar usuário";
+  const confirmTone = desativando ? ("danger" as const) : ("neutral" as const);
 
   return (
     <>
@@ -341,6 +357,7 @@ export const UsersPageContent = ({
           showActions
           onEdit={setSelectedUser}
           onStatusChange={handleStatusChange}
+          onDelete={setUserPendingDeletion}
           currentUserId={currentUserId}
         />
       ) : (
@@ -351,6 +368,22 @@ export const UsersPageContent = ({
             </p>
           </div>
         </section>
+      )}
+
+      {userPendingDeletion && (
+        <ConfirmDialog
+          title="Excluir usuário?"
+          description={`${userPendingDeletion.nome} será apagado do sistema, junto com tudo que estiver vinculado à conta. Essa ação não pode ser desfeita.`}
+          confirmLabel={isDeleting ? "Excluindo..." : "Excluir usuário"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isDeleting}
+          onCancel={() => {
+            setErrorMessage(null);
+            setUserPendingDeletion(null);
+          }}
+          onConfirm={handleConfirmDelete}
+        />
       )}
 
       {confirmState && (
@@ -368,12 +401,12 @@ export const UsersPageContent = ({
 
       {errorMessage && (
         <div className="pointer-events-none fixed inset-x-0 top-0 z-60 flex justify-center pt-4">
-          <div
-            role="alert"
-            className="pointer-events-auto w-full max-w-md rounded-lg border border-red-200 bg-red-50 p-4 shadow-lg"
+          <Notificacao
+            tipo="erro"
+            className="pointer-events-auto w-full max-w-md shadow-lg"
           >
-            <p className="text-red-800 text-sm">{errorMessage}</p>
-          </div>
+            {errorMessage}
+          </Notificacao>
         </div>
       )}
     </>

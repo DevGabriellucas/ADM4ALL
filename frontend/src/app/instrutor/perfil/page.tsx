@@ -4,13 +4,13 @@ import { getInstrutorDashboard } from "@/services/instrutorService";
 
 export default async function InstrutorPerfilPage() {
   const dashboard = await getInstrutorDashboard();
-  const { instrutor, turma, aulaReferencia } = dashboard;
+  const { instrutor, turma } = dashboard;
 
   return (
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={aulaReferencia?.data ?? null}
+      dataAula={dashboard.aulaAtual?.data ?? null}
     >
       <div className="flex flex-col gap-6">
         <AvatarUploadPanel

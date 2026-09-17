@@ -13,6 +13,7 @@ import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStat
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StudentEditForm } from "@/components/coordenador/StudentEditForm";
 import { StudentEnrollForm } from "@/components/coordenador/StudentEnrollForm";
+import { Notificacao } from "@/components/shared/Notificacao";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type {
   EditableEnrollmentStatus,
@@ -221,21 +222,15 @@ export const StudentDetailContent = ({
           </div>
 
           {activationMessage && (
-            <output
-              aria-live="polite"
-              className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-            >
+            <Notificacao tipo="sucesso" className="mt-4">
               {activationMessage}
-            </output>
+            </Notificacao>
           )}
 
           {activationError && (
-            <output
-              aria-live="polite"
-              className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-            >
+            <Notificacao tipo="erro" className="mt-4">
               {activationError}
-            </output>
+            </Notificacao>
           )}
         </section>
       )}
@@ -322,21 +317,15 @@ export const StudentDetailContent = ({
         </h2>
 
         {enrollmentMessage && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-          >
+          <Notificacao tipo="sucesso" className="mt-4">
             {enrollmentMessage}
-          </output>
+          </Notificacao>
         )}
 
         {enrollmentError && (
-          <output
-            aria-live="polite"
-            className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-          >
+          <Notificacao tipo="erro" className="mt-4">
             {enrollmentError}
-          </output>
+          </Notificacao>
         )}
 
         <div className="mt-4 overflow-x-auto">

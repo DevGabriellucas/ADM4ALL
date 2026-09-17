@@ -15,9 +15,11 @@ export function GET() {
   // internamente, mantem o Router Cache com as telas do usuario anterior e
   // deixa a URL final a cargo do router. So a navegacao de documento garante
   // que os cookies limpos valham e que a raiz seja buscada do zero.
+  // O "?logout=ok" faz a tela de login mostrar o aviso de saida no mesmo
+  // padrao dos outros avisos do sistema.
   const response = new NextResponse(null, {
     status: 303,
-    headers: { "Cache-Control": "no-store", Location: "/" },
+    headers: { "Cache-Control": "no-store", Location: "/?logout=ok" },
   });
 
   for (const cookieName of Object.values(SESSION_COOKIE_NAMES)) {

@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { baixarCertificadoAlunoAction } from "@/app/aluno/actions";
+import { downloadBase64File } from "@/utils/downloadFile";
 
 interface AlunoCompletionMessageProps {
   curso: string;
   certificadoDisponivel: boolean;
+  mostrarMensagem?: boolean;
 }
 
 export const AlunoCompletionMessage = ({
   curso,
   certificadoDisponivel,
+  mostrarMensagem = true,
 }: AlunoCompletionMessageProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,18 +23,7 @@ export const AlunoCompletionMessage = ({
     setError(null);
     try {
       const result = await baixarCertificadoAlunoAction();
-      const binary = atob(result.base64);
-      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-      const url = URL.createObjectURL(
-        new Blob([bytes], { type: result.contentType }),
-      );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = result.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBase64File(result);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -43,10 +35,17 @@ export const AlunoCompletionMessage = ({
     }
   };
 
+  // O cartao e a tipografia vem do <Notificacao> que envolve esta mensagem no
+  // painel do aluno; aqui fica so o conteudo.
   return (
-    <output className="mx-auto block max-w-3xl text-center font-medium text-xs leading-6 tracking-[0.25em]">
-      <p>Parabéns! Você concluiu o curso {curso} com sucesso.</p>
+    <>
+      {mostrarMensagem && (
+        <p>Parabéns! Você concluiu o curso {curso} com sucesso.</p>
+      )}
 
+      {/* Concluir o curso com a frequencia necessaria ja libera o certificado,
+          mas quem emite o arquivo e a coordenacao. Dizer apenas "nao esta
+          disponivel" fazia o aluno achar que tinha ficado de fora. */}
       {certificadoDisponivel ? (
         <>
           <button
@@ -57,11 +56,14 @@ export const AlunoCompletionMessage = ({
           >
             {loading ? "Baixando..." : "Acessar certificado"}
           </button>
-          {error && <p className="mt-2 text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-red-700">{error}</p>}
         </>
-      ) : (
-        <p className="mt-3">Seu certificado ainda não está disponível.</p>
-      )}
-    </output>
+      ) : mostrarMensagem ? (
+        <p className="mt-3">
+          Seu certificado foi liberado e será emitido pela coordenação. O
+          download aparece aqui assim que estiver pronto.
+        </p>
+      ) : null}
+    </>
   );
 };

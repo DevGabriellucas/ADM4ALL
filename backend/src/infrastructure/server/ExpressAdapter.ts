@@ -125,44 +125,53 @@ export class ExpressAdapter {
     this.app.use(errorMiddleware);
   }
 
-  private autenticar(req: Request, _res: Response, next: NextFunction) {
+  // Assinatura valida nao basta: a conta precisa existir e estar ativa agora.
+  // Ver AuthUseCase.validarSessao.
+  private async autenticar(req: Request): Promise<void> {
     const authorization = req.header("authorization");
     const token = authorization?.startsWith("Bearer ")
       ? authorization.slice("Bearer ".length).trim()
       : null;
 
     if (!token) {
-      next(new UnauthorizedError("Token de acesso não informado."));
-      return;
+      throw new UnauthorizedError("Token de acesso não informado.");
     }
 
+    let payload: TokenPayload;
+
     try {
-      (req as Request & { usuario: TokenPayload }).usuario =
-        this.jwtService.verificar(token);
-      next();
+      payload = this.jwtService.verificar(token);
     } catch (error: any) {
-      next(new UnauthorizedError(error.message ?? "Token invalido."));
+      throw new UnauthorizedError(error.message ?? "Token invalido.");
     }
+
+    const sessao = await this.authUseCase.validarSessao(payload.sub);
+
+    (req as Request & { usuario: TokenPayload }).usuario = {
+      ...payload,
+      perfil: sessao.perfil,
+      alunoId: sessao.alunoId,
+      instrutorId: sessao.instrutorId,
+      coordenadorId: sessao.coordenadorId,
+    };
   }
 
   private exigirPerfis(perfis: Perfil[]) {
-    return (req: Request, res: Response, next: NextFunction) => {
-      this.autenticar(req, res, (erro?: unknown) => {
-        if (erro) {
-          next(erro as Error);
-          return;
-        }
+    // O next() explicito e obrigatorio: asyncHandler so encaminha erro, entao
+    // sem ele todo request autenticado ficaria pendurado.
+    return asyncHandler(
+      async (req: Request, _res: Response, next: NextFunction) => {
+        await this.autenticar(req);
 
         const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!perfis.includes(usuario.perfil as Perfil)) {
-          next(new UnauthorizedError("Perfil sem permissao para esta rota."));
-          return;
+          throw new UnauthorizedError("Perfil sem permissao para esta rota.");
         }
 
         next();
-      });
-    };
+      },
+    );
   }
 
   private async salvarArquivoMaterial(
@@ -263,7 +272,7 @@ export class ExpressAdapter {
     res.download(caminhoAbsoluto, nomeArquivo);
   }
 
-  private async salvarAvatarInstrutor(
+  private async salvarAvatar(
     arquivo: ArquivoUploadJson,
   ): Promise<string> {
     const tiposPermitidos = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -600,18 +609,22 @@ export class ExpressAdapter {
       }),
     );
 
+    // Exclusao real: apaga o usuario e, em cascata, matricula, frequencia e
+    // certificado. O CPF vai para cpfs_bloqueados antes do DELETE, senao a
+    // mesma pessoa se cadastraria de novo pelo formulario publico.
     this.app.delete(
       "/alunos/:id",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!id || typeof id !== "string") {
           throw new BadRequestError("O ID do aluno fornecido e invalido.");
         }
 
-        await this.alunoUseCase.deletar(id);
-        res.json({ mensagem: "Aluno removido com sucesso." });
+        await this.coordenadorUseCase.excluirAluno(id, usuario.sub);
+        res.json({ mensagem: "Aluno excluido com sucesso." });
       }),
     );
 
@@ -632,6 +645,32 @@ export class ExpressAdapter {
 
         const dashboard = await this.instrutorUseCase.obterDashboard(id);
         res.json(dashboard);
+      }),
+    );
+
+    // Painel completo de uma turma: cronograma, alunos com presenca, materiais
+    // e metricas. O instrutor chega por /instrutores/:id/dashboard, que resolve
+    // a turma dele; a coordenacao escolhe a turma e chama esta rota.
+    this.app.get(
+      "/turmas/:turmaId/painel",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { turmaId } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!turmaId || typeof turmaId !== "string") {
+          throw new BadRequestError("O ID da turma e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor") {
+          await this.instrutorUseCase.validarAcessoTurmaDoInstrutor(
+            turmaId,
+            usuario.instrutorId,
+          );
+        }
+
+        const painel = await this.instrutorUseCase.obterDashboardDaTurma(turmaId);
+        res.json(painel);
       }),
     );
 
@@ -1032,6 +1071,17 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.delete(
+      "/cursos/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+
+        await this.coordenadorUseCase.excluirCurso(id);
+        res.json({ mensagem: "Curso excluido com sucesso." });
+      }),
+    );
+
     this.app.get(
       "/cursos/:id/turmas",
       this.exigirPerfis(["coordenador", "admin"]),
@@ -1085,7 +1135,8 @@ export class ExpressAdapter {
         res.status(201).json({
           id: convite.instrutorId,
           nome: convite.nome,
-          mensagem: "Convite de ativacao enviado por e-mail.",
+          mensagem:
+            "Instrutor cadastrado. Nenhum e-mail foi enviado: use Reenviar ativacao quando ele precisar acessar o sistema.",
         });
       }),
     );
@@ -1131,6 +1182,17 @@ export class ExpressAdapter {
             statusConta,
           );
         res.json(instrutor);
+      }),
+    );
+
+    this.app.delete(
+      "/coordenador/instrutores/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+
+        await this.coordenadorUseCase.excluirInstrutor(id);
+        res.json({ mensagem: "Instrutor excluido com sucesso." });
       }),
     );
 
@@ -1196,7 +1258,8 @@ export class ExpressAdapter {
         res.status(201).json({
           id: convite.instrutorId,
           nome: convite.nome,
-          mensagem: "Convite de ativacao enviado por e-mail.",
+          mensagem:
+            "Aluno cadastrado. Nenhum e-mail foi enviado: use Reenviar ativacao quando ele precisar acessar o sistema.",
         });
       }),
     );
@@ -1233,6 +1296,22 @@ export class ExpressAdapter {
         });
 
         res.json(usuario);
+      }),
+    );
+
+    this.app.delete(
+      "/coordenador/usuarios/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        await this.coordenadorUseCase.excluirUsuario(
+          id,
+          usuario.sub,
+          usuario.perfil,
+        );
+        res.json({ mensagem: "Usuario excluido com sucesso." });
       }),
     );
 
@@ -1316,12 +1395,12 @@ export class ExpressAdapter {
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const { nome, email, telefone, statusConta } = req.body ?? {};
-        const aluno = await this.coordenadorUseCase.atualizarAluno(id, {
-          nome,
-          email,
-          telefone,
-          statusConta,
-        });
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        const aluno = await this.coordenadorUseCase.atualizarAluno(
+          id,
+          { nome, email, telefone, statusConta },
+          usuario.sub,
+        );
         res.json(aluno);
       }),
     );
@@ -1579,6 +1658,16 @@ export class ExpressAdapter {
       }),
     );
 
+    this.app.delete(
+      "/turmas/:id",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        await this.coordenadorUseCase.excluirTurma(id);
+        res.json({ mensagem: "Turma excluida com sucesso." });
+      }),
+    );
+
     this.app.get(
       "/turmas/:turmaId/aulas/:aulaId/presencas",
       this.exigirPerfis(["instrutor", "coordenador", "admin"]),
@@ -1631,10 +1720,118 @@ export class ExpressAdapter {
           throw new BadRequestError("Envie uma foto.");
         }
 
-        const avatarUrl = await this.salvarAvatarInstrutor(arquivo);
+        const avatarUrl = await this.salvarAvatar(arquivo);
         await this.instrutorUseCase.atualizarAvatar(id, avatarUrl);
 
         res.status(200).json({ avatarUrl });
+      }),
+    );
+
+    this.app.get(
+      "/coordenadores/me/perfil",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        const perfil = await this.coordenadorUseCase.obterPerfil(usuario.sub);
+
+        res.status(200).json(perfil);
+      }),
+    );
+
+    this.app.post(
+      "/coordenadores/me/avatar",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { arquivo } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!arquivo) {
+          throw new BadRequestError("Envie uma foto.");
+        }
+
+        const avatarUrl = await this.salvarAvatar(arquivo);
+        await this.coordenadorUseCase.atualizarAvatarCoordenador(
+          usuario.sub,
+          avatarUrl,
+        );
+
+        res.status(200).json({ avatarUrl });
+      }),
+    );
+
+    this.app.delete(
+      "/coordenadores/me/avatar",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+        await this.coordenadorUseCase.removerAvatarCoordenador(usuario.sub);
+
+        res.status(200).json({ mensagem: "Foto de perfil removida." });
+      }),
+    );
+
+    this.app.post(
+      "/alunos/me/avatar",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { arquivo } = req.body;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        if (!arquivo) {
+          throw new BadRequestError("Envie uma foto.");
+        }
+
+        const avatarUrl = await this.salvarAvatar(arquivo);
+        await this.alunoUseCase.atualizarAvatar(usuario.alunoId, avatarUrl);
+
+        res.status(200).json({ avatarUrl });
+      }),
+    );
+
+    this.app.delete(
+      "/alunos/me/avatar",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        await this.alunoUseCase.removerAvatar(usuario.alunoId);
+
+        res.status(200).json({ mensagem: "Foto de perfil removida." });
+      }),
+    );
+
+    this.app.delete(
+      "/instrutores/:id/avatar",
+      this.exigirPerfis(["instrutor", "coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!id || typeof id !== "string") {
+          throw new BadRequestError("O ID do instrutor e invalido.");
+        }
+
+        if (usuario.perfil === "instrutor" && usuario.instrutorId !== id) {
+          throw new UnauthorizedError(
+            "Instrutor sem permissao para alterar este perfil.",
+          );
+        }
+
+        await this.instrutorUseCase.removerAvatar(id);
+
+        res.status(200).json({ mensagem: "Foto de perfil removida." });
       }),
     );
 

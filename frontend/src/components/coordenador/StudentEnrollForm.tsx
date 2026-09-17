@@ -8,6 +8,7 @@ import {
   vincularAlunoTurmaAction,
 } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
+import { Notificacao } from "@/components/shared/Notificacao";
 import type { EnrollmentClassOption } from "@/types/coordinator";
 
 interface StudentEnrollFormProps {
@@ -84,21 +85,15 @@ export const StudentEnrollForm = ({
       </p>
 
       {successMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm"
-        >
+        <Notificacao tipo="sucesso" className="mt-4">
           {successMessage}
-        </output>
+        </Notificacao>
       )}
 
       {errorMessage && (
-        <output
-          aria-live="polite"
-          className="mt-4 block rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm"
-        >
+        <Notificacao tipo="erro" className="mt-4">
           {errorMessage}
-        </output>
+        </Notificacao>
       )}
 
       <form onSubmit={handleSubmit} className="mt-5">

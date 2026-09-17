@@ -1,7 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthBrandPanel } from "@/components/auth/AuthBrandPanel";
 import { LoginForm } from "@/components/LoginForm";
+import { Notificacao } from "@/components/shared/Notificacao";
 import { getServerSession } from "@/services/serverSessionService";
 import type { SessionProfile } from "@/services/sessionService";
 
@@ -12,8 +13,34 @@ const DASHBOARD_POR_PERFIL: Record<SessionProfile, string> = {
   admin: "/coordenador/dashboard",
 };
 
+// Avisos que outras telas mandam para ca pela URL: o cadastro publico ao
+// terminar (?cadastro=...) e a saida do sistema (?logout=ok). Assim o usuario
+// chega no login ja sabendo o que aconteceu, no mesmo padrao de aviso do resto
+// do sistema.
+const AVISOS_DE_CADASTRO = {
+  "ativacao-enviada": {
+    tipo: "sucesso",
+    texto:
+      "Cadastro realizado! Enviamos para o seu e-mail o link de ativação da conta. Abra o link para ativar e depois entre aqui. Se não encontrar, procure na caixa de spam.",
+  },
+  "sem-email": {
+    tipo: "aviso",
+    texto:
+      "Cadastro realizado, mas não foi possível enviar o e-mail de ativação. Fale com a coordenação do curso para receber um novo link e liberar o seu acesso.",
+  },
+} as const;
+
+const AVISO_DE_SAIDA = {
+  tipo: "info",
+  texto: "Você saiu do sistema. Entre novamente quando quiser.",
+} as const;
+
 interface HomePageProps {
-  searchParams: Promise<{ redirectTo?: string }>;
+  searchParams: Promise<{
+    redirectTo?: string;
+    cadastro?: string;
+    logout?: string;
+  }>;
 }
 
 export default async function Home({ searchParams }: HomePageProps) {
@@ -23,39 +50,57 @@ export default async function Home({ searchParams }: HomePageProps) {
     redirect(DASHBOARD_POR_PERFIL[session.perfil]);
   }
 
-  const { redirectTo } = await searchParams;
+  const { redirectTo, cadastro, logout } = await searchParams;
+  const aviso =
+    cadastro && cadastro in AVISOS_DE_CADASTRO
+      ? AVISOS_DE_CADASTRO[cadastro as keyof typeof AVISOS_DE_CADASTRO]
+      : logout === "ok"
+        ? AVISO_DE_SAIDA
+        : null;
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center gap-y-5 overflow-y-auto overflow-x-hidden bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 p-4 py-6 font-poppins sm:gap-y-7 xl:flex-row xl:gap-x-20 xl:gap-y-0">
-      <section className="flex w-full max-w-[300px] flex-col items-center justify-center gap-y-4 text-center sm:max-w-md xl:max-w-xl xl:items-start xl:gap-y-8 xl:text-left">
-        <h2 className="font-medium text-3xl tracking-[0.1em] xl:text-4xl">
-          Bem-vindo(a)
-        </h2>
-        <Image
-          src="/login-page-illustration.png"
-          alt="Ilustração conceitual de planejamento estratégico e análise de dados do Administração para todos"
-          width={601}
-          height={328}
-          priority
-          className="w-full max-w-[280px] object-contain sm:max-w-sm xl:max-w-xl"
+    <main className="min-h-screen w-full bg-[#f5f7fb] font-poppins text-slate-950 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]">
+      <div className="flex min-h-[28rem] items-center justify-center bg-linear-to-br from-[#252c65] via-brand-dark to-[#59639c] px-6 py-12 sm:px-12 lg:min-h-screen">
+        <AuthBrandPanel
+          eyebrow="Acesso acadêmico"
+          title="Conhecimento que transforma realidades."
+          description="Entre na plataforma do projeto de extensão e acompanhe sua jornada de aprendizagem."
         />
-      </section>
+      </div>
+      <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-slate-200/60 shadow-xl sm:p-9">
+          <div className="mb-8">
+            <h2 className="mt-2 font-semibold text-2xl tracking-tight">
+              Bem-vindo(a) de volta
+            </h2>
+            <p className="mt-2 text-slate-500 text-sm">
+              Use seu e-mail ou CPF para acessar o painel.
+            </p>
+          </div>
+          {aviso && (
+            <Notificacao
+              tipo={aviso.tipo}
+              className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
+            >
+              {aviso.texto}
+            </Notificacao>
+          )}
 
-      <section className="flex w-full max-w-[300px] flex-col rounded-xl bg-[#9FA3C7E5]/60 px-5 py-6 shadow-sm sm:max-w-md sm:px-6 sm:py-8 xl:max-h-[calc(100vh-2rem)] xl:max-w-xl xl:overflow-y-auto">
-        <LoginForm
-          className="flex w-full flex-col gap-y-4"
-          redirectTo={redirectTo}
-        />
+          <LoginForm
+            className="flex w-full flex-col gap-y-4"
+            redirectTo={redirectTo}
+          />
 
-        <p className="mt-5 text-center text-base text-slate-800 sm:mt-6">
-          Ainda não é aluno?{" "}
-          <Link
-            href="/cadastro"
-            className="font-bold text-[#524ABF] underline underline-offset-2 transition-colors duration-200 hover:brightness-125"
-          >
-            Cadastre-se
-          </Link>
-        </p>
+          <p className="mt-6 border-slate-100 border-t pt-5 text-center text-slate-600 text-sm">
+            Ainda não é aluno?{" "}
+            <Link
+              href="/cadastro"
+              className="font-semibold text-brand-dark underline underline-offset-2 transition-colors hover:text-brand-medium"
+            >
+              Cadastre-se
+            </Link>
+          </p>
+        </div>
       </section>
     </main>
   );

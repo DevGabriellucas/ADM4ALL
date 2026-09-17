@@ -23,6 +23,22 @@ const calcularDigito = (base: number[]): number => {
 
 export const somenteDigitosCpf = (valor: string) => valor.replace(/\D/g, "");
 
+export const formatarCpf = (valor: string) =>
+  somenteDigitosCpf(valor)
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+// Num campo que aceita e-mail OU CPF, diz se o valor INTEIRO e um CPF.
+//
+// Precisa olhar o valor completo, nunca o que foi digitado ate agora: decidindo
+// tecla a tecla, um e-mail institucional que comeca por matricula numerica
+// (20231234@aluno.unipe.br) era mascarado como CPF antes do @ chegar, virava
+// 202.312.34@aluno.unipe.br e nao batia com conta nenhuma.
+export const pareceCpf = (valor: string) =>
+  /^[\d.\s-]+$/.test(valor.trim()) && somenteDigitosCpf(valor).length === 11;
+
 export const isCpfValido = (valor: string): boolean => {
   const cpf = somenteDigitosCpf(valor);
 

@@ -5,6 +5,51 @@
   --color-brand-medium: #7579a9;
   --color-brand-light: #9a9ec6;
   --font-poppins: "Segoe UI", Arial, sans-serif;
+
+  /* Aviso do painel do aluno entrando de cima para baixo. */
+  --animate-descer: descer 0.5s ease-out;
+  --animate-subir: subir 0.35s ease-in forwards;
+
+  @keyframes descer {
+    from {
+      opacity: 0;
+      transform: translateY(-1.25rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes subir {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-1.25rem);
+    }
+  }
+}
+
+/* Quem pede menos movimento no sistema recebe so o aparecer suave, sem o
+   deslocamento vertical. O aviso continua chamando atencao sem provocar o
+   desconforto que o movimento causa em quem ativou essa preferencia. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-descer,
+  .animate-subir {
+    animation: aparecer 0.5s ease-out;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 body {

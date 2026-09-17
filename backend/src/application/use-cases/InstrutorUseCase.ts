@@ -1,5 +1,6 @@
 import { AppError } from "../../infrastructure/errors/AppError";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
+import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 import {
   AdicionarAulaInput,
@@ -16,6 +17,7 @@ import {
   StatusPresenca,
   TIPOS_MATERIAL,
   TipoMaterial,
+  TurmaDashboard,
 } from "../../domain/repositories/InstrutorRepository";
 
 const STATUS_PRESENCA_VALIDOS: StatusPresenca[] = [
@@ -24,6 +26,7 @@ const STATUS_PRESENCA_VALIDOS: StatusPresenca[] = [
   "justificada",
 ];
 const STATUS_AULA_VALIDOS = ["planejada", "realizada", "cancelada"];
+
 const VISIBILIDADES_MATERIAL = ["visivel", "oculto"];
 
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -67,6 +70,24 @@ export class InstrutorUseCase {
     }
 
     return dashboard;
+  }
+
+  // Mesmo painel do instrutor, recortado pela turma escolhida. A coordenacao ve
+  // todas as turmas, entao a permissao aqui e da rota; o instrutor que chamar
+  // esta rota ainda passa por validarAcessoTurmaDoInstrutor.
+  async obterDashboardDaTurma(turmaId: string): Promise<TurmaDashboard> {
+    if (!turmaId || turmaId.trim() === "") {
+      throw new BadRequestError("A turma e obrigatoria.");
+    }
+
+    const painel =
+      await this.instrutorRepository.buscarDashboardDaTurma(turmaId);
+
+    if (!painel) {
+      throw new NotFoundError("Turma nao encontrada.");
+    }
+
+    return painel;
   }
 
   async validarAcessoTurmaDoInstrutor(
@@ -193,11 +214,14 @@ export class InstrutorUseCase {
       throw new BadRequestError("Informe uma data valida (AAAA-MM-DD).");
     }
 
-    if (
-      input.horaInicio &&
-      input.horaFim &&
-      input.horaFim <= input.horaInicio
-    ) {
+    // O horario deixou de ser opcional: e o fim da aula que libera o "Realizada".
+    if (!input.horaInicio || !input.horaFim) {
+      throw new BadRequestError(
+        "Informe o horario de inicio e de termino da aula.",
+      );
+    }
+
+    if (input.horaFim <= input.horaInicio) {
       throw new BadRequestError(
         "O horario de termino deve ser depois do horario de inicio.",
       );
@@ -228,6 +252,17 @@ export class InstrutorUseCase {
       );
     }
 
+    // Na edicao o horario tambem e obrigatorio. A checagem so vale quando o
+    // horario faz parte do envio: marcar status nao mexe nesses campos.
+    const editandoHorario =
+      input.horaInicio !== undefined || input.horaFim !== undefined;
+
+    if (editandoHorario && (!input.horaInicio || !input.horaFim)) {
+      throw new BadRequestError(
+        "Informe o horario de inicio e de termino da aula.",
+      );
+    }
+
     if (
       input.horaInicio &&
       input.horaFim &&
@@ -236,6 +271,23 @@ export class InstrutorUseCase {
       throw new BadRequestError(
         "O horario de termino deve ser depois do horario de inicio.",
       );
+    }
+
+    if (input.status === "realizada") {
+      const situacao = await this.instrutorRepository.buscarSituacaoAula(
+        input.turmaId,
+        input.aulaId,
+      );
+
+      if (!situacao) {
+        throw new BadRequestError("Aula nao encontrada para esta turma.");
+      }
+
+      if (!situacao.jaTerminou) {
+        throw new BadRequestError(
+          "A aula so pode ser marcada como realizada depois do horario de termino.",
+        );
+      }
     }
 
     const aulaAnterior =
@@ -254,6 +306,9 @@ export class InstrutorUseCase {
       dadosAtualizacao.titulo = input.titulo.trim();
     }
 
+    // O preenchimento das presencas pendentes acontece dentro de atualizarAula,
+    // antes da reavaliacao que decide a aprovacao. Feito aqui, depois, ele
+    // chegava tarde demais para valer.
     const aulaAtualizada =
       await this.instrutorRepository.atualizarAula(dadosAtualizacao);
 
@@ -271,6 +326,18 @@ export class InstrutorUseCase {
   async removerAula(aulaId: string, turmaId: string): Promise<void> {
     if (!aulaId || !turmaId) {
       throw new BadRequestError("Aula e turma sao obrigatorias.");
+    }
+
+    // Aula ja dada faz parte do historico da turma: cancelar sim, apagar nao.
+    const situacao = await this.instrutorRepository.buscarSituacaoAula(
+      turmaId,
+      aulaId,
+    );
+
+    if (situacao?.status === "realizada") {
+      throw new BadRequestError(
+        "Uma aula ja realizada nao pode ser removida do cronograma. Cancele a aula se precisar tira-la do calendario.",
+      );
     }
 
     await this.instrutorRepository.removerAula(aulaId, turmaId);
@@ -303,6 +370,14 @@ export class InstrutorUseCase {
     }
 
     await this.instrutorRepository.atualizarAvatar(instrutorId, avatarUrl);
+  }
+
+  async removerAvatar(instrutorId: string): Promise<void> {
+    if (!instrutorId) {
+      throw new BadRequestError("O ID do instrutor e obrigatorio.");
+    }
+
+    await this.instrutorRepository.removerAvatar(instrutorId);
   }
 
   private async notificarCancelamentoAula(

@@ -5,10 +5,19 @@ export const MATRICULA_STATUS = {
   CANCELADO: "cancelado",
 } as const;
 
+export const FREQUENCIA_MINIMA_APROVACAO = 80;
+
+/**
+ * Frequencia igual ou inferior a isto ja reprova por falta. Os cards de
+ * "Alunos em risco" usam o mesmo limite do backend para nao apontarem risco
+ * num aluno que a regra ainda considera regular.
+ */
+export const FREQUENCIA_LIMITE_RISCO = 70;
+
 export type MatriculaStatus =
   (typeof MATRICULA_STATUS)[keyof typeof MATRICULA_STATUS];
 
-export type MatriculaStatusTone = "blue" | "green" | "red" | "slate";
+export type MatriculaStatusTone = "black" | "green" | "red" | "slate";
 
 export const matriculaStatusLabel: Record<MatriculaStatus, string> = {
   em_andamento: "Em andamento",
@@ -19,7 +28,7 @@ export const matriculaStatusLabel: Record<MatriculaStatus, string> = {
 
 export const matriculaStatusTone: Record<MatriculaStatus, MatriculaStatusTone> =
   {
-    em_andamento: "blue",
+    em_andamento: "black",
     aprovado: "green",
     reprovado_falta: "red",
     cancelado: "slate",
