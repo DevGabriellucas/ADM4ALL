@@ -173,7 +173,7 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <Link
                           href={`/coordenador/alunos/${student.id}`}
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                         >
                           Visualizar
                         </Link>
@@ -363,7 +363,7 @@ export const ClassDetailsTabs = ({
                             type="button"
                             onClick={() => baixarMaterial(material.id)}
                             disabled={baixandoId === material.id}
-                            className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {baixandoId === material.id
                               ? "Abrindo…"
@@ -441,7 +441,7 @@ export const ClassDetailsTabs = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <Link
                           href="/coordenador/certificados"
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                         >
                           {certificateStatus === "emitido"
                             ? "Visualizar"

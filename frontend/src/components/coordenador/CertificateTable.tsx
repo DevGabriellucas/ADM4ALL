@@ -244,7 +244,7 @@ export const CertificateTable = ({ certificates }: CertificateTableProps) => {
                               type="button"
                               onClick={() => openPreview(certificate)}
                               disabled={isLoading}
-                              className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {isLoading ? "Carregando..." : "Visualizar"}
                             </button>

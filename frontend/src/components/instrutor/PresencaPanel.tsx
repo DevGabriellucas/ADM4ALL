@@ -13,6 +13,7 @@ import type {
   StatusPresenca,
 } from "@/types/instrutor";
 import { formatData } from "@/utils/format";
+import { dataDeHoje } from "@/utils/fusoInstituicao";
 
 interface PresencaPanelProps {
   turmaId: string;
@@ -78,50 +79,69 @@ export const PresencaPanel = ({
     );
   }, [alunosAtuais, busca]);
 
-  const resumoPresenca = useMemo(
-    () =>
-      alunosAtuais.reduce(
-        (resumo, aluno) => {
-          const status = statuses[aluno.matriculaId];
-          if (status === "presente") {
-            resumo.presentes += 1;
-          } else if (status === "falta") {
-            resumo.faltas += 1;
-          } else if (status === "justificada") {
-            resumo.justificadas += 1;
-          } else {
-            resumo.pendentes += 1;
-          }
+  // Quantos alunos estao sem chamada GRAVADA na aula aberta. Nao e o mesmo que
+  // os pendentes do resumo, que olha a turma inteira: este e o que a pessoa
+  // ainda consegue resolver sem sair da tela.
+  //
+  // Le `statusPresenca` (o que esta no banco) e nao `statuses` (o que esta
+  // marcado na tela) pelo mesmo motivo do resumo: enquanto ninguem salvou, a
+  // chamada continua pendente, por mais botoes que tenham sido clicados.
+  const pendentesDaAula = useMemo(
+    () => alunosAtuais.filter((aluno) => !aluno.statusPresenca).length,
+    [alunosAtuais],
+  );
 
-          return resumo;
-        },
-        { presentes: 0, faltas: 0, justificadas: 0, pendentes: 0 },
+  // Resumo unico da turma, somando TODAS as aulas — nao so a que esta aberta.
+  //
+  // Conta apenas o que ESTA GRAVADO. Marcar um aluno na tela nao mexe em
+  // numero nenhum: a marcacao ainda nao e registro, e ate 18/09 o resumo
+  // acompanhava o clique, o que dava ao instrutor um contador que subia antes
+  // de "Salvar Presença" e voltava atras se ele desistisse. Os totais por aluno
+  // (presencas/justificadas/faltas/aulasRegistradas) ja vem fechados do
+  // backend; depois do salvamento o `router.refresh()` traz os novos.
+  const resumoPresenca = useMemo(() => {
+    const hoje = dataDeHoje();
+
+    // Chamada prevista = aula nao cancelada que ja aconteceu. A aula aberta
+    // entra mesmo se for futura, senao marca-la deixava "Pendentes" negativo.
+    const aulasPrevistas = cronogramaSeguro.filter(
+      (aula) =>
+        aula.status !== "cancelada" &&
+        (aula.data <= hoje || aula.id === aulaSelecionadaId),
+    ).length;
+
+    const total = { presentes: 0, faltas: 0, justificadas: 0 };
+    let lancamentos = 0;
+
+    for (const aluno of alunosAtuais) {
+      total.presentes += aluno.presencas;
+      total.faltas += aluno.faltas;
+      total.justificadas += aluno.justificadas;
+      lancamentos += aluno.aulasRegistradas;
+    }
+
+    return {
+      ...total,
+      aulasPrevistas,
+      // Aluno que entrou depois, ou aula cancelada com chamada ja lancada,
+      // deixam o esperado abaixo do lancado: o piso em 0 evita numero negativo.
+      pendentes: Math.max(
+        0,
+        alunosAtuais.length * aulasPrevistas - lancamentos,
       ),
-    [alunosAtuais, statuses],
+    };
+  }, [alunosAtuais, cronogramaSeguro, aulaSelecionadaId]);
+
+  // Chamadas em aberto de OUTRAS aulas. O total da turma ja inclui os
+  // pendentes da aula aberta; descontar evita cobrar duas vezes o mesmo aluno
+  // no aviso.
+  const pendentesDeOutrasAulas = Math.max(
+    0,
+    resumoPresenca.pendentes - pendentesDaAula,
   );
 
   const definirStatus = (matriculaId: string, status: StatusPresenca) => {
     setStatuses((anterior) => ({ ...anterior, [matriculaId]: status }));
-    setFeedback(null);
-  };
-
-  // Atalho da chamada: numa turma de 30 alunos o caminho normal e "todos
-  // presentes, menos fulano", e sem isto o instrutor dava trinta cliques.
-  //
-  // So preenche quem esta pendente, nunca sobrescreve falta ou justificativa ja
-  // marcada — a mesma regra do preenchimento automatico do backend.
-  const marcarPendentesComoPresentes = () => {
-    setStatuses((anterior) => {
-      const atualizado = { ...anterior };
-
-      for (const aluno of alunosAtuais) {
-        if (!atualizado[aluno.matriculaId]) {
-          atualizado[aluno.matriculaId] = "presente";
-        }
-      }
-
-      return atualizado;
-    });
     setFeedback(null);
   };
 
@@ -204,6 +224,11 @@ export const PresencaPanel = ({
 
   const desabilitado = isSalvando || isTrocandoAula;
 
+  // Durante a troca de aula a lista fica vazia de proposito, e o resumo cairia
+  // para zero: mostrar tracinho evita dar a impressao de que a turma perdeu os
+  // lancamentos ja salvos.
+  const exibirTotal = (valor: number) => (isTrocandoAula ? "—" : valor);
+
   return (
     <section
       id="presenca"
@@ -274,31 +299,80 @@ export const PresencaPanel = ({
         />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
-            Presentes: {resumoPresenca.presentes}
-          </span>
-          <span className="rounded-full bg-red-50 px-3 py-1 font-medium text-red-700">
-            Faltas: {resumoPresenca.faltas}
-          </span>
-          <span className="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700">
-            Justificadas: {resumoPresenca.justificadas}
-          </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
-            Pendentes: {resumoPresenca.pendentes}
+      <section aria-labelledby="resumo-turma-heading" className="mt-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3
+            id="resumo-turma-heading"
+            className="font-semibold text-slate-900 text-sm"
+          >
+            Resumo da turma
+          </h3>
+          <span className="text-slate-500 text-xs">
+            Todas as aulas ({resumoPresenca.aulasPrevistas}{" "}
+            {resumoPresenca.aulasPrevistas === 1
+              ? "chamada prevista"
+              : "chamadas previstas"}
+            )
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={marcarPendentesComoPresentes}
-          disabled={resumoPresenca.pendentes === 0 || isTrocandoAula}
-          className="cursor-pointer rounded-md border border-emerald-600 px-4 py-2 font-medium text-emerald-700 text-xs transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Marcar pendentes como presentes
-        </button>
-      </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <div className="font-medium text-emerald-600 text-xs">
+              Presentes
+            </div>
+            <div className="mt-1 font-bold text-2xl text-emerald-700">
+              {exibirTotal(resumoPresenca.presentes)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+            <div className="font-medium text-red-600 text-xs">Faltas</div>
+            <div className="mt-1 font-bold text-2xl text-red-700">
+              {exibirTotal(resumoPresenca.faltas)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="font-medium text-amber-600 text-xs">
+              Justificadas
+            </div>
+            <div className="mt-1 font-bold text-2xl text-amber-700">
+              {exibirTotal(resumoPresenca.justificadas)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="font-medium text-slate-600 text-xs">Pendentes</div>
+            <div className="mt-1 font-bold text-2xl text-slate-700">
+              {exibirTotal(resumoPresenca.pendentes)}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Chamada esquecida so aparecia como um numero no card "Pendentes", que
+          e facil de passar batido. O aviso diz o que faltou e onde: o que esta
+          aberto na tela (resolve aqui) e o que ficou para tras (troque a aula
+          no seletor). Vale para o instrutor e para a coordenacao, que usam
+          este mesmo painel. */}
+      {!isTrocandoAula && resumoPresenca.pendentes > 0 && (
+        <Notificacao posicao="inline" tipo="aviso" className="mt-4">
+          {pendentesDaAula > 0 && (
+            <>
+              Presença não marcada para {pendentesDaAula}{" "}
+              {pendentesDaAula === 1 ? "aluno" : "alunos"} nesta aula.
+            </>
+          )}
+          {pendentesDaAula > 0 && pendentesDeOutrasAulas > 0 && " "}
+          {pendentesDeOutrasAulas > 0 && (
+            <>
+              {pendentesDeOutrasAulas}{" "}
+              {pendentesDeOutrasAulas === 1
+                ? "chamada de outra aula continua"
+                : "chamadas de outras aulas continuam"}{" "}
+              em aberto — selecione a aula no campo acima para lançar.
+            </>
+          )}
+        </Notificacao>
+      )}
 
       <ul className="mt-4 flex flex-col divide-y divide-slate-100">
         {isTrocandoAula ? (

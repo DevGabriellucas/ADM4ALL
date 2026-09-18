@@ -117,7 +117,7 @@ export const InstructorEditForm = ({
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  email: event.target.value.toLowerCase(),
+                  email: event.target.value,
                 })
               }
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"

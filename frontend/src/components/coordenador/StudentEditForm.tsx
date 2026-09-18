@@ -100,7 +100,7 @@ export const StudentEditForm = ({
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value.toLowerCase())}
+              onChange={(event) => setEmail(event.target.value)}
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
           </label>

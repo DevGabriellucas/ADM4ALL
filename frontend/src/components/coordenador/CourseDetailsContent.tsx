@@ -167,7 +167,7 @@ export const CourseDetailsContent = ({
             <button
               type="button"
               onClick={() => setEditingCourse(course)}
-              className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+              className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
             >
               Editar
             </button>
@@ -249,7 +249,7 @@ export const CourseDetailsContent = ({
             <button
               type="button"
               onClick={() => setIsNewClassModalOpen(true)}
-              className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+              className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
             >
               + Nova turma
             </button>
@@ -265,7 +265,7 @@ export const CourseDetailsContent = ({
               <button
                 type="button"
                 onClick={() => setIsNewClassModalOpen(true)}
-                className="mt-3 cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+                className="mt-3 cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
               >
                 Criar turma para este curso
               </button>
@@ -325,7 +325,7 @@ export const CourseDetailsContent = ({
                       <td className="border-slate-100 border-b px-3 py-3">
                         <Link
                           href={`/coordenador/turmas/${classGroup.id}`}
-                          className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+                          className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
                         >
                           Ver turma
                         </Link>

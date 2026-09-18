@@ -225,7 +225,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <Link
                         href={`/coordenador/instrutores/${instructor.id}`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                       >
                         Visualizar
                       </Link>
@@ -237,7 +237,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                           onClick={() =>
                             setInstructorPendingResend(instructor.id)
                           }
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:text-slate-400"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 disabled:cursor-not-allowed disabled:text-slate-400"
                         >
                           {resendingInstructorId === instructor.id
                             ? "Reenviando..."

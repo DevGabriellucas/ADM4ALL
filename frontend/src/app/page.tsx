@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthBrandPanel } from "@/components/auth/AuthBrandPanel";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { LoginForm } from "@/components/LoginForm";
 import { Notificacao } from "@/components/shared/Notificacao";
 import { getServerSession } from "@/services/serverSessionService";
@@ -59,49 +59,33 @@ export default async function Home({ searchParams }: HomePageProps) {
         : null;
 
   return (
-    <main className="min-h-screen w-full bg-[#f5f7fb] font-poppins text-slate-950 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]">
-      <div className="flex min-h-[28rem] items-center justify-center bg-linear-to-br from-[#252c65] via-brand-dark to-[#59639c] px-6 py-12 sm:px-12 lg:min-h-screen">
-        <AuthBrandPanel
-          eyebrow="Acesso acadêmico"
-          title="Conhecimento que transforma realidades."
-          description="Entre na plataforma do projeto de extensão e acompanhe sua jornada de aprendizagem."
-        />
-      </div>
-      <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-slate-200/60 shadow-xl sm:p-9">
-          <div className="mb-8">
-            <h2 className="mt-2 font-semibold text-2xl tracking-tight">
-              Bem-vindo(a) de volta
-            </h2>
-            <p className="mt-2 text-slate-500 text-sm">
-              Use seu e-mail ou CPF para acessar o painel.
-            </p>
-          </div>
-          {aviso && (
-            <Notificacao
-              tipo={aviso.tipo}
-              className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
-            >
-              {aviso.texto}
-            </Notificacao>
-          )}
+    <AuthShell
+      eyebrow="Administração para Todos"
+      tituloPainel="Formação em rotinas administrativas, aberta à comunidade."
+      descricaoPainel="Curso de extensão presencial da UNIPE. É por aqui que você acompanha as aulas, a sua frequência e o seu certificado."
+      tituloCartao="Entrar na plataforma"
+      descricaoCartao="Use o e-mail ou o CPF que você cadastrou."
+    >
+      {aviso && (
+        <Notificacao posicao="inline" tipo={aviso.tipo} className="mb-5">
+          {aviso.texto}
+        </Notificacao>
+      )}
 
-          <LoginForm
-            className="flex w-full flex-col gap-y-4"
-            redirectTo={redirectTo}
-          />
+      <LoginForm
+        className="flex w-full flex-col gap-y-4"
+        redirectTo={redirectTo}
+      />
 
-          <p className="mt-6 border-slate-100 border-t pt-5 text-center text-slate-600 text-sm">
-            Ainda não é aluno?{" "}
-            <Link
-              href="/cadastro"
-              className="font-semibold text-brand-dark underline underline-offset-2 transition-colors hover:text-brand-medium"
-            >
-              Cadastre-se
-            </Link>
-          </p>
-        </div>
-      </section>
-    </main>
+      <p className="mt-6 border-line border-t pt-5 text-[0.875rem] text-slate-600">
+        Ainda não tem cadastro?{" "}
+        <Link
+          href="/cadastro"
+          className="rounded font-semibold text-azure-700 underline underline-offset-2 transition-colors hover:text-azure-600 focus-visible:outline-2 focus-visible:outline-azure-600 focus-visible:outline-offset-2"
+        >
+          Criar minha conta
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

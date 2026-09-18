@@ -1,9 +1,37 @@
 @import "tailwindcss";
 
+/* Toda a paleta sai do logo do projeto: o marinho do wordmark e o azul vivo de
+   "DE EXTENSAO / PARA TODOS". A paleta anterior era um indigo arroxeado que
+   nao aparece em lugar nenhum da identidade.
+
+   A divisao segue 60 / 30 / 10:
+     60%  --color-paper e branco, fundo e superficie dos formularios
+     30%  --color-navy-*, paineis e estrutura
+     10%  --color-azure-*, so acao: botao principal, link, foco, icone ativo
+
+   Os tres tokens `brand-*` continuam existindo porque 58 arquivos das telas
+   internas apontam para eles. Foram religados ao logo, e o mapeamento segue o
+   uso real: `brand-medium` e `brand-light` aparecem quase so em
+   `focus:border-` e `focus:ring-`, entao receberam o azul de acao — o foco do
+   sistema inteiro passou a ser o mesmo das telas de acesso. */
 @theme {
-  --color-brand-dark: #3a3f7a;
-  --color-brand-medium: #7579a9;
-  --color-brand-light: #9a9ec6;
+  --color-brand-dark: #12294e;
+  --color-brand-medium: #1877d6;
+  --color-brand-light: #a9cdf2;
+
+  --color-navy-900: #0c1f3d;
+  --color-navy-800: #12294e;
+  --color-navy-700: #1a3a6b;
+  --color-navy-600: #24518f;
+
+  --color-azure-700: #1363b5;
+  --color-azure-600: #1877d6;
+  --color-azure-500: #3c93e8;
+  --color-azure-100: #dcebfb;
+
+  --color-paper: #f2f5f9;
+  --color-line: #dde3ec;
+
   --font-poppins: "Segoe UI", Arial, sans-serif;
 
   /* Aviso do painel do aluno entrando de cima para baixo. */

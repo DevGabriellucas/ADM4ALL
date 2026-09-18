@@ -125,7 +125,7 @@ export default async function CoordinatorDashboardPage() {
               </p>
               <Link
                 href="/coordenador/relatorios"
-                className="mt-2 inline-block cursor-pointer font-semibold text-brand-dark text-sm underline transition-colors hover:text-[#23275F]"
+                className="mt-2 inline-block cursor-pointer font-semibold text-brand-dark text-sm underline transition-colors hover:text-navy-900"
               >
                 Ir para relatórios
               </Link>

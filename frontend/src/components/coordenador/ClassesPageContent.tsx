@@ -6,10 +6,10 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
 import type {
-  ClassGroup,
   ClassStatus,
   Course,
   Instructor,
+  PaginaDeTurmas,
 } from "@/types/coordinator";
 
 interface DefaultClassValues {
@@ -19,48 +19,28 @@ interface DefaultClassValues {
 }
 
 interface ClassesPageContentProps {
-  classes: ClassGroup[];
+  pagina: PaginaDeTurmas;
   courses: Course[];
   instructors: Instructor[];
   defaultClassValues?: DefaultClassValues;
 }
 
 export const ClassesPageContent = ({
-  classes,
+  pagina,
   courses,
   instructors,
   defaultClassValues,
 }: ClassesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const activeClasses = classes.filter(
-    (classGroup) => classGroup.status === "em_andamento",
-  );
-  const completedClasses = classes.filter(
-    (classGroup) => classGroup.status === "encerrada",
-  ).length;
-  const enrolledStudents = classes
-    .filter(
-      (classGroup) =>
-        classGroup.status === "em_andamento" ||
-        classGroup.status === "planejada",
-    )
-    .reduce((total, classGroup) => total + classGroup.alunos, 0);
-  // Só entram na média as turmas que já têm chamada registrada. Turma sem
-  // chamada vinha como 0% e derrubava o indicador — era o que fazia esta tela
-  // mostrar 7% enquanto o painel mostrava 84% para os mesmos dados.
-  const classesWithAttendance = activeClasses.filter(
-    (classGroup) => classGroup.registrosFrequencia > 0,
-  );
-  const averageAttendance =
-    classesWithAttendance.length > 0
-      ? Math.round(
-          classesWithAttendance.reduce(
-            (total, classGroup) => total + classGroup.frequenciaMedia,
-            0,
-          ) / classesWithAttendance.length,
-        )
-      : 0;
+  // A tabela mostra a pagina; os cartoes contam a base inteira e vem do
+  // servidor, que aplica as mesmas regras de antes — turma sem chamada fica
+  // fora da media, senao ela entrava como 0% e derrubava o indicador.
+  const classes = pagina.itens;
+  const activeClassesCount = pagina.resumo.emAndamento;
+  const completedClasses = pagina.resumo.encerradas;
+  const enrolledStudents = pagina.resumo.matriculados;
+  const averageAttendance = pagina.resumo.mediaFrequencia;
 
   return (
     <>
@@ -72,7 +52,7 @@ export const ClassesPageContent = ({
             type="button"
             onClick={() => setIsFormOpen((currentValue) => !currentValue)}
             aria-expanded={isFormOpen}
-            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Nova Turma
           </button>
@@ -93,7 +73,7 @@ export const ClassesPageContent = ({
       >
         <CoordinatorStatCard
           title="Turmas ativas"
-          value={activeClasses.length}
+          value={activeClassesCount}
           subtitle="Em andamento"
           variant="green"
         />
@@ -107,8 +87,8 @@ export const ClassesPageContent = ({
           title="Frequência média"
           value={`${averageAttendance}%`}
           subtitle={
-            classesWithAttendance.length > 0
-              ? `Média de ${classesWithAttendance.length} turma(s) com chamada`
+            averageAttendance > 0
+              ? "Média das turmas em andamento com chamada"
               : "Nenhuma turma com chamada registrada"
           }
           variant="blue"

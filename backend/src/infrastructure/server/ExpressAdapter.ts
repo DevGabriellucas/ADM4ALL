@@ -4,6 +4,12 @@ import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { JwtService, TokenPayload } from "../../application/security/JwtService";
+import { normalizarPaginacao } from "../../domain/paginacao";
+
+// Query string entrega string, string[] ou undefined. So texto simples serve
+// como filtro; o resto vira "sem filtro".
+const textoDaQuery = (valor: unknown): string | null =>
+  typeof valor === "string" && valor.trim() !== "" ? valor.trim() : null;
 import { AlunoUseCase } from "../../application/use-cases/AlunoUseCase";
 import { AuthUseCase } from "../../application/use-cases/AuthUseCase";
 import { ActivationUseCase } from "../../application/use-cases/ActivationUseCase";
@@ -810,13 +816,18 @@ export class ExpressAdapter {
         const turma = getQueryValue(req.query.turma);
         const aluno = getQueryValue(req.query.aluno);
         const periodo = getQueryValue(req.query.periodo);
-        const frequencias = await this.coordenadorUseCase.listarFrequencias({
+        const filtros = {
           ...(curso ? { curso } : {}),
           ...(turma ? { turma } : {}),
           ...(aluno ? { aluno } : {}),
           ...(periodo ? { periodo } : {}),
-        });
-        res.json(frequencias);
+        };
+
+        // Esta rota continua devolvendo o array puro: o painel e a tela de
+        // detalhe da turma somam sobre a lista inteira. A versao paginada e
+        // /listagens/frequencias.
+        const pagina = await this.coordenadorUseCase.listarFrequencias(filtros);
+        res.json(pagina.itens);
       }),
     );
 
@@ -1032,6 +1043,112 @@ export class ExpressAdapter {
         const { id } = req.params as { id: string };
         await this.coordenadorUseCase.deletarRelatorioGerado(id);
         res.status(204).send();
+      }),
+    );
+
+    // As rotas de /listagens/* devolvem uma pagina: { itens, total, pagina,
+    // porPagina }. Ficam num prefixo proprio porque as rotas simples continuam
+    // existindo e entregando a colecao inteira — elas alimentam os combos das
+    // telas (curso e turma no cadastro de aluno, nos filtros de certificado e
+    // de relatorio), que precisam de todas as opcoes, nao da primeira pagina.
+    //
+    // O prefixo tambem evita colidir com as rotas de /cursos/:id e /turmas/:id.
+    this.app.get(
+      "/listagens/cursos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarCursosPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/alunos",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarAlunosPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/turmas",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarTurmasPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/instrutores",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarInstrutoresPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/usuarios",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarUsuariosPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+          {
+            busca: textoDaQuery(req.query.busca),
+            perfil: textoDaQuery(req.query.perfil),
+            status: textoDaQuery(req.query.status),
+            ordenacao: textoDaQuery(req.query.ordenacao),
+          },
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/certificados",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const pagina = await this.coordenadorUseCase.listarCertificadosPaginado(
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+          {
+            curso: textoDaQuery(req.query.curso),
+            turma: textoDaQuery(req.query.turma),
+            status: textoDaQuery(req.query.status),
+          },
+        );
+        res.json(pagina);
+      }),
+    );
+
+    this.app.get(
+      "/listagens/frequencias",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const curso = textoDaQuery(req.query.curso);
+        const turma = textoDaQuery(req.query.turma);
+        const aluno = textoDaQuery(req.query.aluno);
+        const periodo = textoDaQuery(req.query.periodo);
+
+        const pagina = await this.coordenadorUseCase.listarFrequencias(
+          {
+            ...(curso ? { curso } : {}),
+            ...(turma ? { turma } : {}),
+            ...(aluno ? { aluno } : {}),
+            ...(periodo ? { periodo } : {}),
+          },
+          normalizarPaginacao(req.query.pagina, req.query.porPagina),
+        );
+        res.json(pagina);
       }),
     );
 

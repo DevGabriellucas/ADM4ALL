@@ -19,12 +19,19 @@ import {
   TurmaResumo,
 } from "../../domain/repositories/InstrutorRepository";
 import {
-  DESCONTO_FREQUENCIA_POR_FALTA,
   FREQUENCIA_MAXIMA_REPROVACAO,
   FREQUENCIA_MINIMA_APROVACAO,
 } from "../../domain/regras-academicas";
-import { faltasNaoJustificadas, presencasEfetivas } from "./sql/frequencia";
-import { cursoConcluido } from "./sql/turma";
+import {
+  chamadasLancadas,
+  faltasNaoJustificadas,
+  frequenciaPorMatricula,
+  presencasEfetivas,
+} from "./sql/frequencia";
+import {
+  atualizarStatusDerivadoDaTurma,
+  cursoConcluido,
+} from "./sql/turma";
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
 
@@ -341,14 +348,11 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         COALESCE(freq.justificadas, 0) AS justificadas,
         COALESCE(freq.faltas, 0) AS faltas,
         COALESCE(freq.aulas_registradas, 0) AS aulas_registradas,
-        -- Mesma conta do progresso no painel do aluno: comeca em 100 e cada
-        -- falta nao justificada desconta uma fatia fixa. Antes isso era uma
+        -- Mesma conta do painel do aluno: comeca em zero, presenca e
+        -- justificada somam uma fatia, falta subtrai. Antes isso era uma
         -- proporcao sobre as chamadas lancadas, e as duas telas mostravam
         -- numeros diferentes para o mesmo aluno.
-        GREATEST(
-          0,
-          100 - COALESCE(freq.faltas, 0) * $3::INTEGER
-        ) AS frequencia
+        COALESCE(freq.frequencia, 0) AS frequencia
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
       JOIN usuarios u ON u.id = a.usuario_id
@@ -365,7 +369,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
           COUNT(*) FILTER (WHERE f2.justificada) AS justificadas,
           -- Falta justificada nao entra na conta, igual ao painel do aluno.
           ${faltasNaoJustificadas("f2")} AS faltas,
-          COUNT(*) AS aulas_registradas
+          ${chamadasLancadas("f2")} AS aulas_registradas,
+          ${frequenciaPorMatricula("f2")} AS frequencia
         FROM frequencias f2
         WHERE f2.matricula_id = m.id
       ) freq ON TRUE
@@ -375,11 +380,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         AND m.status <> 'cancelado'
       ORDER BY u.nome ASC
     `;
-    const resultado = await this.db.query(query, [
-      turmaId,
-      aulaReferenciaId,
-      DESCONTO_FREQUENCIA_POR_FALTA,
-    ]);
+    const resultado = await this.db.query(query, [turmaId, aulaReferenciaId]);
 
     return resultado.rows.map((linha) => ({
       matriculaId: linha.matricula_id,
@@ -403,13 +404,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       -- Media das frequencias individuais, e nao das chamadas: cada aluno vale
       -- o mesmo peso, com a mesma conta que ele ve no proprio painel.
       WITH por_aluno AS (
-        SELECT
-          GREATEST(
-            0,
-            100 - COUNT(f.id) FILTER (
-              WHERE NOT f.presente AND NOT f.justificada
-            ) * $2::INTEGER
-          ) AS frequencia
+        SELECT ${frequenciaPorMatricula("f")} AS frequencia
         FROM matriculas m
         LEFT JOIN frequencias f ON f.matricula_id = m.id
         WHERE m.turma_id = $1
@@ -421,10 +416,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         COUNT(*) AS total
       FROM por_aluno
     `;
-    const resultado = await this.db.query(query, [
-      turmaId,
-      DESCONTO_FREQUENCIA_POR_FALTA,
-    ]);
+    const resultado = await this.db.query(query, [turmaId]);
     const linha = resultado.rows[0];
 
     const total = Number(linha?.total ?? 0);
@@ -757,42 +749,6 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     };
   }
 
-  /**
-   * Fecha a chamada da aula preenchendo com presenca quem ficou sem
-   * lancamento. Nao encosta em quem ja recebeu falta ou justificativa do
-   * instrutor.
-   */
-  async preencherPresencasPendentes(
-    turmaId: string,
-    aulaId: string,
-  ): Promise<number> {
-    const resultado = await this.db.query(
-      `
-      INSERT INTO frequencias (
-        matricula_id, aula_id, data_aula, presente, justificada, observacao
-      )
-      SELECT m.id, au.id, au.data_aula, TRUE, FALSE, NULL
-      FROM matriculas m
-      JOIN aulas au ON au.id = $2
-      WHERE m.turma_id = $1
-        AND m.status <> 'cancelado'
-        -- A tabela tem dois indices unicos: (matricula, data_aula) e
-        -- (matricula, aula_id). Checar so a data deixava passar o caso em que
-        -- a aula ja tinha chamada mas a data dela foi editada depois.
-        AND NOT EXISTS (
-          SELECT 1
-          FROM frequencias f
-          WHERE f.matricula_id = m.id
-            AND (f.data_aula = au.data_aula OR f.aula_id = au.id)
-        )
-      ON CONFLICT DO NOTHING
-      `,
-      [turmaId, aulaId],
-    );
-
-    return resultado.rowCount ?? 0;
-  }
-
   async removerAula(aulaId: string, turmaId: string): Promise<void> {
     const frequenciasResultado = await this.db.query(
       "SELECT 1 FROM frequencias WHERE aula_id = $1 LIMIT 1",
@@ -875,18 +831,18 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         );
       }
 
-      // Marcar a aula como realizada encerra a chamada dela, entao quem ficou
-      // sem lancamento entra como presente. Falta e justificativa ja lancadas
-      // pelo instrutor sao preservadas pelo NOT EXISTS da propria consulta.
+      // Marcar a aula como realizada NAO lanca presenca para ninguem.
       //
-      // Isso precisa acontecer ANTES da reavaliacao. Rodando depois, as
-      // presencas nao chegavam a tempo da decisao de aprovacao: a turma
-      // encerrava com todo mundo parado em "em andamento", sem certificado e
-      // fora da lista de candidatos. E, preso ao fim de cada bloco de dez, nem
-      // chegava a rodar em turma de oito, nove ou doze aulas.
-      if (input.status === "realizada") {
-        await this.preencherPresencasPendentes(input.turmaId, input.aulaId);
-      }
+      // Ate 18/09 marcava: quem ficasse sem lancamento entrava como presente.
+      // Isso dava presenca de graca a turma inteira so por mexer no cronograma
+      // — o instrutor montava as aulas e os alunos ja apareciam com chamada
+      // que ninguem tinha feito. Presenca agora so existe quando alguem lanca
+      // a chamada e salva, que e o unico momento em que uma pessoa olhou para
+      // a turma e disse quem estava la.
+      //
+      // O que protege a aprovacao continua sendo o `registros > 0` da
+      // reavaliacao: turma que fecha sem chamada nao aprova ninguem. E o aviso
+      // de chamada pendente na tela de Presenca e que cobra o lancamento.
 
       // Mudar o status da aula pode fechar (ou reabrir) o curso, e e o que
       // decide a aprovacao automatica da turma inteira.
@@ -977,14 +933,16 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
    * - qualquer outro caso volta para "em andamento", o que faz justificar uma
    *   falta desfazer a reprovacao.
    *
-   * A frequencia e a MESMA conta das telas (100 menos 10 por falta nao
-   * justificada). Antes aqui era a proporcao de presencas sobre as chamadas
-   * lancadas, e isso reprovava o aluno que faltasse na primeira aula: 0 de 1
-   * chamada dava 0%, enquanto a tela mostrava 90%.
+   * A frequencia e a MESMA conta das telas, vinda do helper: comeca em zero,
+   * presenca e justificada somam, falta subtrai.
    *
-   * `registros > 0` guarda a aprovacao: sem nenhuma chamada lancada o aluno nao
-   * tem falta, entao a frequencia vale 100 — encerrar a turma nesse estado
-   * aprovava a turma inteira e liberava certificado para quem nunca teve aula.
+   * OS DOIS desfechos exigem o curso concluido. Para a reprovacao isso nao e
+   * detalhe: como a contagem parte do zero, no comeco do periodo a turma
+   * inteira esta abaixo do limite de reprovacao, e sem esta guarda todo aluno
+   * novo nasceria reprovado por falta.
+   *
+   * `registros > 0` guarda a aprovacao contra a turma que fecha sem nenhuma
+   * chamada lancada.
    *
    * So matricula cancelada nao e tocada, porque o aluno saiu da turma. A
    * aprovacao E revista: lancar falta depois de aprovar tem que reprovar.
@@ -1003,10 +961,8 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         SELECT
           m.id,
           m.turma_id,
-          COUNT(f.id) FILTER (
-            WHERE NOT f.presente AND NOT f.justificada
-          ) AS faltas,
-          COUNT(f.id) AS registros
+          ${frequenciaPorMatricula("f")} AS frequencia,
+          ${chamadasLancadas("f")} AS registros
         FROM matriculas m
         LEFT JOIN frequencias f ON f.matricula_id = m.id
         WHERE m.id = ANY($1::uuid[])
@@ -1016,9 +972,9 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         SELECT
           s.id,
           s.registros,
-          GREATEST(0, 100 - s.faltas * $4::INTEGER) AS frequencia,
+          s.frequencia,
           (
-            SELECT ${cursoConcluido("au", "tu")}
+            SELECT ${cursoConcluido("au")}
             FROM turmas tu
             LEFT JOIN aulas au ON au.turma_id = tu.id
             WHERE tu.id = s.turma_id
@@ -1030,10 +986,11 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         SELECT
           a.id,
           CASE
-            WHEN a.frequencia <= $2::INTEGER THEN 'reprovado_falta'
             WHEN a.curso_concluido
              AND a.registros > 0
              AND a.frequencia >= $3::INTEGER THEN 'aprovado'
+            WHEN a.curso_concluido
+             AND a.frequencia <= $2::INTEGER THEN 'reprovado_falta'
             ELSE 'em_andamento'
           END AS status
         FROM avaliada a
@@ -1054,7 +1011,6 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         matriculaIds,
         FREQUENCIA_MAXIMA_REPROVACAO,
         FREQUENCIA_MINIMA_APROVACAO,
-        DESCONTO_FREQUENCIA_POR_FALTA,
       ],
     );
 
@@ -1161,40 +1117,14 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
     }
   }
 
-  // A turma encerra sozinha quando o curso acaba — todas as aulas nao
-  // canceladas realizadas, que na pratica e a decima aula sendo dada. Era o
-  // botao "Encerrar turma" da coordenacao, que saiu da tela em 2026-09-10.
-  // Uso a MESMA condicao que aprova as matriculas (`curso_concluido` em
-  // reavaliarSituacaoMatricula): se as duas divergissem, a turma ficaria "em
-  // andamento" com os alunos ja aprovados.
-  //
-  // Reversivel de proposito: desmarcar uma aula como realizada devolve a turma
-  // para "em andamento". Sem isso, corrigir um clique errado exigiria SQL no
-  // banco, porque o botao de encerrar nao existe mais.
+  // A regra do status derivado mora em sql/turma.ts porque a coordenacao
+  // tambem precisa dela: matricular ou desvincular aluno muda a contagem que
+  // decide entre "planejada" e "em andamento".
   private async atualizarStatusAutomaticoDaTurma(
     cliente: PoolClient,
     turmaId: string,
   ): Promise<void> {
-    await cliente.query(
-      `
-      WITH situacao AS (
-        SELECT ${cursoConcluido("a", "tu")} AS concluida
-        FROM turmas tu
-        LEFT JOIN aulas a ON a.turma_id = tu.id
-        WHERE tu.id = $1
-        GROUP BY tu.id
-      )
-      UPDATE turmas t
-      SET status = CASE WHEN s.concluida THEN 'encerrada' ELSE 'em_andamento' END
-      FROM situacao s
-      WHERE t.id = $1
-        AND (
-          (s.concluida AND t.status IN ('planejada', 'em_andamento'))
-          OR (NOT s.concluida AND t.status = 'encerrada')
-        )
-      `,
-      [turmaId],
-    );
+    await cliente.query(atualizarStatusDerivadoDaTurma(), [turmaId]);
   }
 
   private mapearStatusPresenca(

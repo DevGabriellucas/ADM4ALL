@@ -8,16 +8,22 @@ export const MATRICULA_STATUS = {
 export const FREQUENCIA_MINIMA_APROVACAO = 80;
 
 /**
- * Frequencia igual ou inferior a isto ja reprova por falta. Os cards de
- * "Alunos em risco" usam o mesmo limite do backend para nao apontarem risco
- * num aluno que a regra ainda considera regular.
+ * Quantas faltas o aluno ainda pode levar sem perder a aprovacao. Espelha
+ * FALTAS_TOLERADAS do backend (`domain/regras-academicas.ts`).
+ *
+ * As telas classificam risco por ISTO, e nao por faixa de frequencia: a
+ * frequencia comeca em zero e se acumula, entao no meio do periodo ate quem
+ * nunca faltou esta abaixo de 80% — a faixa antiga marcava a turma inteira
+ * como "abaixo de 75%" na primeira semana.
  */
-export const FREQUENCIA_LIMITE_RISCO = 70;
+export const FALTAS_TOLERADAS = 1;
 
 export type MatriculaStatus =
   (typeof MATRICULA_STATUS)[keyof typeof MATRICULA_STATUS];
 
-export type MatriculaStatusTone = "black" | "green" | "red" | "slate";
+// Subconjunto dos tons do CoordinatorStatusBadge. Os mesmos que a tabela de
+// turmas usa — ver matriculaStatusTone.
+export type MatriculaStatusTone = "blue" | "green" | "red" | "slate";
 
 export const matriculaStatusLabel: Record<MatriculaStatus, string> = {
   em_andamento: "Em andamento",
@@ -26,12 +32,16 @@ export const matriculaStatusLabel: Record<MatriculaStatus, string> = {
   cancelado: "Cancelado",
 };
 
+// As mesmas cores do status de TURMA, para as duas colunas "Status" da
+// coordenacao lerem igual. "Em andamento" era uma pilula preta chapada aqui e
+// azul clara na tabela de turmas: na mesma tela, o mesmo estado parecia duas
+// coisas diferentes.
 export const matriculaStatusTone: Record<MatriculaStatus, MatriculaStatusTone> =
   {
-    em_andamento: "black",
+    em_andamento: "blue",
     aprovado: "green",
     reprovado_falta: "red",
-    cancelado: "slate",
+    cancelado: "red",
   };
 
 const matriculaStatusValues = new Set<string>(Object.values(MATRICULA_STATUS));

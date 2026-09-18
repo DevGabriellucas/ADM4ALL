@@ -41,7 +41,7 @@ export default function AppError({ error, reset }: AppErrorProps) {
           <button
             type="button"
             onClick={reset}
-            className="inline-flex cursor-pointer items-center rounded-lg bg-brand-dark px-4 py-2.5 font-semibold text-sm text-white transition-colors hover:bg-[#23275F]"
+            className="inline-flex cursor-pointer items-center rounded-lg bg-brand-dark px-4 py-2.5 font-semibold text-sm text-white transition-colors hover:bg-navy-900"
           >
             Tentar novamente
           </button>

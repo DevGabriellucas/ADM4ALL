@@ -22,7 +22,7 @@ export const CoordinatorFormActions = ({
       <button
         type="submit"
         disabled={disabled}
-        className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 enabled:hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitLabel}
       </button>

@@ -143,7 +143,7 @@ export const NewStudentForm = ({
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  email: event.target.value.toLowerCase(),
+                  email: event.target.value,
                 })
               }
               placeholder="aluno@email.com"

@@ -71,7 +71,7 @@ export const CertificateIssueModal = ({
             type="button"
             onClick={handleIssue}
             disabled={loading}
-            className="cursor-pointer rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="cursor-pointer rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Emitindo..." : "Emitir certificado"}
           </button>

@@ -16,7 +16,7 @@ export const AlunoLogoutButton = () => {
         type="button"
         onClick={() => setConfirmandoSaida(true)}
         aria-label="Sair da conta"
-        className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-semibold text-red-700 text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700 focus-visible:outline-offset-2"
+        className="flex cursor-pointer items-center gap-2 rounded-md bg-red-600 px-3 py-2.5 text-left font-semibold text-sm text-white tracking-[0.15em] transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
       >
         <svg
           aria-hidden

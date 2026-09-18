@@ -22,7 +22,7 @@ export const settingsLabelClass =
 export const settingsErrorClass = "mt-1 text-red-700 text-xs";
 
 export const settingsSubmitButtonClass =
-  "h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 export const SettingsSectionCard = ({
   children,

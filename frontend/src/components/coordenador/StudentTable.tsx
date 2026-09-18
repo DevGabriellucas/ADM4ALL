@@ -11,16 +11,16 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StatusChangeConfirmModal } from "@/components/coordenador/StatusChangeConfirmModal";
-import { Notificacao } from "@/components/shared/Notificacao";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student, UserStatus } from "@/types/coordinator";
 
 interface StudentTableProps {
   students: Student[];
 }
-
-const NOTIFICATION_CLASS =
-  "fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] -translate-x-1/2 shadow-lg";
 
 interface StatusChangeRequest {
   studentId: string;
@@ -85,7 +85,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
       setActivationError(null);
       setStatusMessage(null);
       setStatusError(null);
-    }, 3500);
+    }, PRAZO_PARA_LIMPAR_AVISO);
     return () => window.clearTimeout(timeout);
   }, [activationMessage, activationError, statusMessage, statusError]);
 
@@ -175,28 +175,18 @@ export const StudentTable = ({ students }: StudentTableProps) => {
       </div>
 
       {activationMessage && (
-        <Notificacao tipo="sucesso" className={NOTIFICATION_CLASS}>
-          {activationMessage}
-        </Notificacao>
+        <Notificacao tipo="sucesso">{activationMessage}</Notificacao>
       )}
 
       {activationError && (
-        <Notificacao tipo="erro" className={NOTIFICATION_CLASS}>
-          {activationError}
-        </Notificacao>
+        <Notificacao tipo="erro">{activationError}</Notificacao>
       )}
 
       {statusMessage && (
-        <Notificacao tipo="sucesso" className={NOTIFICATION_CLASS}>
-          {statusMessage}
-        </Notificacao>
+        <Notificacao tipo="sucesso">{statusMessage}</Notificacao>
       )}
 
-      {statusError && (
-        <Notificacao tipo="erro" className={NOTIFICATION_CLASS}>
-          {statusError}
-        </Notificacao>
-      )}
+      {statusError && <Notificacao tipo="erro">{statusError}</Notificacao>}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-4xl border-separate border-spacing-0 border-slate-200 text-left text-sm">
@@ -239,10 +229,13 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                     {student.turma}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
+                    {/* Vermelho so no desfecho ja decidido. Pintar por faixa
+                        ("abaixo de 75%") marcava a lista inteira no comeco do
+                        periodo, porque a frequencia se acumula e todo mundo
+                        comeca baixo. */}
                     <span
                       className={
-                        student.frequencia < 75 &&
-                        student.statusConta !== "pendente_ativacao"
+                        student.statusMatricula === "reprovado_falta"
                           ? "font-semibold text-red-700"
                           : "text-slate-700"
                       }
@@ -263,7 +256,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <Link
                         href={`/coordenador/alunos/${student.id}`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                       >
                         Visualizar
                       </Link>
@@ -273,7 +266,7 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                           type="button"
                           disabled={resendingStudentId === student.id}
                           onClick={() => setStudentPendingResend(student.id)}
-                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:text-slate-400"
+                          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 disabled:cursor-not-allowed disabled:text-slate-400"
                         >
                           {resendingStudentId === student.id
                             ? "Reenviando..."

@@ -105,7 +105,7 @@ export const PeriodoLetivoEditor = ({
               type="button"
               onClick={salvar}
               disabled={loading}
-              className="cursor-pointer rounded-md bg-brand-dark px-2.5 py-1 text-white text-xs transition-colors hover:bg-[#23275F] disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-md bg-brand-dark px-2.5 py-1 text-white text-xs transition-colors hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar"}
             </button>

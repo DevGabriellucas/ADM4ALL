@@ -5,27 +5,24 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { InstructorTable } from "@/components/coordenador/InstructorTable";
 import { NewInstructorForm } from "@/components/coordenador/NewInstructorForm";
-import type { Instructor } from "@/types/coordinator";
+import { Paginacao } from "@/components/shared/Paginacao";
+import type { PaginaDeInstrutores } from "@/types/coordinator";
 
 interface InstructorsPageContentProps {
-  instructors: Instructor[];
+  pagina: PaginaDeInstrutores;
 }
 
 export const InstructorsPageContent = ({
-  instructors,
+  pagina,
 }: InstructorsPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const activeInstructors = instructors.filter(
-    (instructor) => instructor.status === "ativo",
-  ).length;
-  const pendingInvites = instructors.filter(
-    (instructor) => instructor.status === "pendente_ativacao",
-  ).length;
-  const linkedClasses = instructors.reduce(
-    (total, instructor) => total + instructor.turmasVinculadas,
-    0,
-  );
+  // A tabela mostra a pagina; os cartoes contam a base inteira e vem do
+  // servidor.
+  const instructors = pagina.itens;
+  const activeInstructors = pagina.resumo.ativos;
+  const pendingInvites = pagina.resumo.pendentes;
+  const linkedClasses = pagina.resumo.turmasVinculadas;
 
   return (
     <>
@@ -37,7 +34,7 @@ export const InstructorsPageContent = ({
             type="button"
             onClick={() => setIsFormOpen((currentValue) => !currentValue)}
             aria-expanded={isFormOpen}
-            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Novo Instrutor
           </button>
@@ -55,7 +52,7 @@ export const InstructorsPageContent = ({
       >
         <CoordinatorStatCard
           title="Total de instrutores"
-          value={instructors.length}
+          value={pagina.total}
           subtitle="Instrutores cadastrados"
           variant="neutral"
         />
@@ -80,6 +77,15 @@ export const InstructorsPageContent = ({
       </section>
 
       <InstructorTable instructors={instructors} />
+
+      <Paginacao
+        pagina={pagina.pagina}
+        porPagina={pagina.porPagina}
+        total={pagina.total}
+        href="/coordenador/instrutores"
+        rotulo="instrutor"
+        rotuloPlural="instrutores"
+      />
     </>
   );
 };

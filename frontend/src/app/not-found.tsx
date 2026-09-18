@@ -19,7 +19,7 @@ export default function NotFound() {
 
         <Link
           href="/"
-          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-dark px-6 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-dark px-6 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
         >
           Voltar para o início
         </Link>

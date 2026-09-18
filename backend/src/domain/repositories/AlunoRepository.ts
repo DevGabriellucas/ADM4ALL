@@ -34,6 +34,13 @@ export interface AlunoDashboard {
   cursoDeExtensao: {
     nomeCurso: string;
     qtdFaltas: number;
+    /**
+     * Chamadas ja lancadas para esta matricula. A frequencia parte de 100 e so
+     * cai com falta: com zero chamadas ela vale 100 sem que o aluno tenha
+     * assistido nada, e a tela precisa deste numero para nao anunciar isso
+     * como desempenho.
+     */
+    qtdChamadasLancadas: number;
     qtdTotalAulas: number;
     qtdAulasConcluidas: number;
     progresso: number;

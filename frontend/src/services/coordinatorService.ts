@@ -26,6 +26,14 @@ import type {
   Instructor,
   InstructorDetail,
   Lesson,
+  PaginaDeAlunos,
+  PaginaDeCertificados,
+  PaginaDeCursos,
+  PaginaDeInstrutores,
+  PaginaDeTurmas,
+  ResumoDeCursos,
+  ResumoDeInstrutores,
+  ResumoDeTurmas,
   Student,
   StudentDetail,
   StudentEnrollmentCreated,
@@ -33,6 +41,12 @@ import type {
   UserStatus,
 } from "@/types/coordinator";
 import type { ArquivoUpload } from "@/types/instrutor";
+import type {
+  Pagina,
+  ResumoDeAlunos,
+  ResumoDeCertificados,
+} from "@/types/paginacao";
+import { ITENS_POR_PAGINA } from "@/types/paginacao";
 
 // Modulo server-only: as telas do coordenador consultam a API real.
 
@@ -701,6 +715,33 @@ export const getClassStudentsAndLessons = async (
   return { students, lessons };
 };
 
+const mapearAluno = (aluno: AlunoListagemApi): Student => {
+  if (
+    aluno.statusMatricula !== null &&
+    !isMatriculaStatus(aluno.statusMatricula)
+  ) {
+    throw new Error(
+      `Status de matrícula inválido recebido para ${aluno.nome}.`,
+    );
+  }
+
+  return {
+    id: aluno.id,
+    nome: aluno.nome,
+    email: aluno.email,
+    telefone: aluno.telefone ?? undefined,
+    turma: aluno.turma ?? "Não vinculada",
+    curso: aluno.curso ?? "Não informado",
+    frequencia: aluno.frequencia,
+    statusConta: aluno.statusConta,
+    statusMatricula: aluno.statusMatricula,
+    statusTurma: aluno.statusTurma,
+    dataCriacao: aluno.dataCriacao,
+  };
+};
+
+// Lista inteira: alimenta o seletor de "adicionar aluno na turma". A tela de
+// Alunos usa getStudentsPage.
 export const getStudents = async (): Promise<Student[]> => {
   const alunos = await authenticatedRequest<AlunoListagemApi[]>(
     "/coordenador/alunos",
@@ -710,30 +751,7 @@ export const getStudents = async (): Promise<Student[]> => {
     },
   );
 
-  return alunos.map((aluno) => {
-    if (
-      aluno.statusMatricula !== null &&
-      !isMatriculaStatus(aluno.statusMatricula)
-    ) {
-      throw new Error(
-        `Status de matrícula inválido recebido para ${aluno.nome}.`,
-      );
-    }
-
-    return {
-      id: aluno.id,
-      nome: aluno.nome,
-      email: aluno.email,
-      telefone: aluno.telefone ?? undefined,
-      turma: aluno.turma ?? "Não vinculada",
-      curso: aluno.curso ?? "Não informado",
-      frequencia: aluno.frequencia,
-      statusConta: aluno.statusConta,
-      statusMatricula: aluno.statusMatricula,
-      statusTurma: aluno.statusTurma,
-      dataCriacao: aluno.dataCriacao,
-    };
-  });
+  return alunos.map(mapearAluno);
 };
 
 export const getStudentById = async (
@@ -908,6 +926,29 @@ export const getClassMaterials = async (
   return resposta.materiais.map((material) => mapearMaterial(material, turma));
 };
 
+const mapearFrequencia = (
+  record: Omit<AttendanceSummary, "situacao"> & { situacao: string },
+): AttendanceSummary => {
+  const situacao =
+    record.situacao === "risco" ? "risco_reprovacao" : record.situacao;
+
+  if (
+    situacao !== "regular" &&
+    situacao !== "atencao" &&
+    situacao !== "risco_reprovacao" &&
+    situacao !== "sem_registro" &&
+    situacao !== "reprovado_falta"
+  ) {
+    throw new Error(
+      `Situação de frequência inválida recebida para ${record.aluno}.`,
+    );
+  }
+
+  return { ...record, situacao };
+};
+
+// Lista inteira: o painel e a tela de detalhe da turma somam sobre ela. A tela
+// de Frequencia usa getAttendanceSummaryPage.
 export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
   const attendance = await authenticatedRequest<
     Array<Omit<AttendanceSummary, "situacao"> & { situacao: string }>
@@ -916,24 +957,7 @@ export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
     fallbackError: "Falha ao carregar a frequência dos alunos.",
   });
 
-  return attendance.map((record) => {
-    const situacao =
-      record.situacao === "risco" ? "risco_reprovacao" : record.situacao;
-
-    if (
-      situacao !== "regular" &&
-      situacao !== "atencao" &&
-      situacao !== "risco_reprovacao" &&
-      situacao !== "sem_registro" &&
-      situacao !== "reprovado_falta"
-    ) {
-      throw new Error(
-        `Situação de frequência inválida recebida para ${record.aluno}.`,
-      );
-    }
-
-    return { ...record, situacao };
-  });
+  return attendance.map(mapearFrequencia);
 };
 
 // As operacoes de aula (criar/atualizar/remover) vivem em instrutorService.ts,
@@ -1122,3 +1146,145 @@ export const removerAvatarCoordenador = async (): Promise<void> => {
     fallbackError: "Falha ao remover a foto de perfil.",
   });
 };
+
+// ---------------------------------------------------------------------------
+// Listagens paginadas
+//
+// As funcoes acima continuam existindo e devolvendo a colecao inteira: elas
+// alimentam os combos das telas (curso e turma no cadastro de aluno, nos
+// filtros de certificado e de relatorio), que precisam de todas as opcoes.
+// As funcoes daqui para baixo servem as telas de listagem.
+// ---------------------------------------------------------------------------
+
+const enderecoDaListagem = (
+  recurso: string,
+  parametros: Record<string, string | number | undefined>,
+): string => {
+  const query = new URLSearchParams();
+
+  for (const [chave, valor] of Object.entries(parametros)) {
+    if (valor !== undefined && valor !== "") query.set(chave, String(valor));
+  }
+
+  return `/listagens/${recurso}?${query.toString()}`;
+};
+
+// `Resumo` carrega os contadores dos cartoes, que vem junto com a pagina. As
+// listagens sem cartao usam o padrao, que e nada a mais.
+const buscarPagina = async <Api, Item, Resumo = Record<string, never>>(
+  recurso: string,
+  parametros: Record<string, string | number | undefined>,
+  mapear: (item: Api) => Item,
+  erro: string,
+): Promise<Pagina<Item> & Resumo> => {
+  const resposta = await authenticatedRequest<Pagina<Api> & Resumo>(
+    enderecoDaListagem(recurso, parametros),
+    { cache: "no-store", fallbackError: erro },
+  );
+
+  return { ...resposta, itens: resposta.itens.map(mapear) };
+};
+
+export const getCoursesPage = async (
+  pagina: number,
+  porPagina = ITENS_POR_PAGINA,
+): Promise<PaginaDeCursos> =>
+  await buscarPagina<CursoApi, Course, { resumo: ResumoDeCursos }>(
+    "cursos",
+    { pagina, porPagina },
+    mapearCurso,
+    "Falha ao carregar os cursos.",
+  );
+
+export const getClassesPage = async (
+  pagina: number,
+  porPagina = ITENS_POR_PAGINA,
+): Promise<PaginaDeTurmas> =>
+  await buscarPagina<TurmaApi, ClassGroup, { resumo: ResumoDeTurmas }>(
+    "turmas",
+    { pagina, porPagina },
+    mapearTurma,
+    "Falha ao carregar as turmas.",
+  );
+
+export const getInstructorsPage = async (
+  pagina: number,
+  porPagina = ITENS_POR_PAGINA,
+): Promise<PaginaDeInstrutores> =>
+  await buscarPagina<InstrutorApi, Instructor, { resumo: ResumoDeInstrutores }>(
+    "instrutores",
+    { pagina, porPagina },
+    mapearInstrutor,
+    "Falha ao carregar os instrutores.",
+  );
+
+export const getStudentsPage = async (
+  pagina: number,
+  porPagina = ITENS_POR_PAGINA,
+): Promise<PaginaDeAlunos> => {
+  const resposta = await authenticatedRequest<
+    Pagina<AlunoListagemApi> & { resumo: ResumoDeAlunos }
+  >(enderecoDaListagem("alunos", { pagina, porPagina }), {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os alunos.",
+  });
+
+  return { ...resposta, itens: resposta.itens.map(mapearAluno) };
+};
+
+export const getUsersPage = async (
+  pagina: number,
+  filtros: {
+    busca?: string;
+    perfil?: string;
+    status?: string;
+    ordenacao?: string;
+  } = {},
+  porPagina = ITENS_POR_PAGINA,
+): Promise<Pagina<BaseUser>> =>
+  await authenticatedRequest<Pagina<BaseUser>>(
+    enderecoDaListagem("usuarios", { pagina, porPagina, ...filtros }),
+    { cache: "no-store", fallbackError: "Falha ao carregar os usuarios." },
+  );
+
+export const getCertificatesPage = async (
+  pagina: number,
+  filtros: { curso?: string; turma?: string; status?: string } = {},
+  porPagina = ITENS_POR_PAGINA,
+): Promise<PaginaDeCertificados> => {
+  const resposta = await authenticatedRequest<
+    Pagina<CertificadoApi> & { resumo: ResumoDeCertificados }
+  >(enderecoDaListagem("certificados", { pagina, porPagina, ...filtros }), {
+    cache: "no-store",
+    fallbackError: "Falha ao carregar os certificados.",
+  });
+
+  return {
+    ...resposta,
+    itens: resposta.itens.map((certificado) => ({
+      ...certificado,
+      aluno: certificado.nome,
+      certificado: certificado.codigo,
+    })),
+  };
+};
+
+export const getAttendanceSummaryPage = async (
+  pagina: number,
+  filtros: {
+    curso?: string;
+    turma?: string;
+    aluno?: string;
+    periodo?: string;
+  } = {},
+  porPagina = ITENS_POR_PAGINA,
+): Promise<Pagina<AttendanceSummary>> =>
+  await buscarPagina<
+    Omit<AttendanceSummary, "situacao"> & { situacao: string },
+    AttendanceSummary
+  >(
+    "frequencias",
+    { pagina, porPagina, ...filtros },
+    mapearFrequencia,
+    "Falha ao carregar a frequência dos alunos.",
+  );

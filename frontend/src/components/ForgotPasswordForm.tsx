@@ -57,14 +57,14 @@ export const ForgotPasswordForm = ({
     >
       <Input
         id="email"
-        label="E-mail"
-        className="h-12 w-full rounded-lg bg-[#B6AEAE] px-4 py-3 text-base opacity-60 outline-none placeholder:font-normal placeholder:text-[#454040] placeholder:text-base autofill:shadow-[inset_0_0_0_1000px_#B6AEAE] sm:h-14 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:text-xl lg:placeholder:text-xl"
-        placeholder="E-mail"
+        label="E-mail cadastrado"
+        placeholder="seu@email.com"
+        hint="Enviamos o link de redefinição para este endereço."
         type="email"
         autoComplete="email"
         {...emailField}
         onChange={(event) => {
-          setValue("email", event.target.value.toLowerCase(), {
+          setValue("email", event.target.value, {
             shouldDirty: true,
             shouldValidate: true,
           });
@@ -73,25 +73,21 @@ export const ForgotPasswordForm = ({
       />
 
       {errorMessage && (
-        <Notificacao tipo="erro" className="w-full max-w-3xl">
+        <Notificacao posicao="inline" tipo="erro">
           {errorMessage}
         </Notificacao>
       )}
 
       {!isSuccess ? (
-        <Button
-          className="h-12 w-full max-w-xs cursor-pointer rounded-[5rem] bg-[#456CA9E5] px-4 py-3 font-medium text-base hover:brightness-110 disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 sm:h-14 sm:text-lg lg:max-w-80 lg:text-xl"
-          disabled={isSubmitting}
-          type="submit"
-        >
-          {isSubmitting ? "Enviando" : "Enviar"}
+        <Button className="mt-1" disabled={isSubmitting} type="submit">
+          {isSubmitting ? "Enviando..." : "Enviar link de redefinição"}
         </Button>
       ) : (
         <Link
           href="/"
-          className="h-12 w-full max-w-xs cursor-pointer rounded-[5rem] bg-[#456CA9E5] px-4 py-3 text-center font-medium text-base hover:brightness-110 sm:h-14 sm:text-lg lg:max-w-80 lg:text-xl"
+          className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-lg border border-line bg-white px-5 font-semibold text-[0.9375rem] text-navy-800 transition-colors hover:border-azure-500 hover:text-azure-700 focus-visible:outline-2 focus-visible:outline-azure-600 focus-visible:outline-offset-2"
         >
-          Voltar ao login
+          Voltar para o acesso
         </Link>
       )}
     </form>

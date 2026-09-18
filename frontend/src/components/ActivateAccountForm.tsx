@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { BotaoVerSenha } from "@/components/shared/BotaoVerSenha";
 import { MedidorForcaSenha } from "@/components/shared/MedidorForcaSenha";
 import { Notificacao } from "@/components/shared/Notificacao";
 import {
@@ -62,6 +63,8 @@ const PendingFieldsForm = ({
 }: PendingFieldsFormProps) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [senhaFocada, setSenhaFocada] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const fields = new Set(activation.camposPendentes);
   const schema = createActivateAccountSchema(activation.camposPendentes);
   const {
@@ -134,20 +137,29 @@ const PendingFieldsForm = ({
             className="flex flex-col gap-2 text-slate-800 text-sm"
           >
             <span className="font-semibold">Nova senha</span>
-            <Input
-              id="senha"
-              type="password"
-              placeholder="Nova senha"
-              autoComplete="new-password"
-              className="h-14 px-5 text-base"
-              {...senhaField}
-              onFocus={() => setSenhaFocada(true)}
-              onBlur={(evento) => {
-                setSenhaFocada(false);
-                return senhaField.onBlur(evento);
-              }}
-              error={errors.senha?.message}
-            />
+            <div className="relative">
+              <Input
+                id="senha"
+                type={mostrarSenha ? "text" : "password"}
+                placeholder="Nova senha"
+                autoComplete="new-password"
+                className="h-14 pr-14 pl-5 text-base"
+                {...senhaField}
+                onFocus={() => setSenhaFocada(true)}
+                onBlur={(evento) => {
+                  setSenhaFocada(false);
+                  return senhaField.onBlur(evento);
+                }}
+                error={errors.senha?.message}
+              />
+              <BotaoVerSenha
+                posicao="campoAlto"
+                visivel={mostrarSenha}
+                controla="senha"
+                descricao="nova senha"
+                onClick={() => setMostrarSenha((atual) => !atual)}
+              />
+            </div>
             <MedidorForcaSenha
               senha={watch("senha") ?? ""}
               mostrarRequisitos={senhaFocada}
@@ -158,15 +170,24 @@ const PendingFieldsForm = ({
             className="flex flex-col gap-2 text-slate-800 text-sm"
           >
             <span className="font-semibold">Confirmar nova senha</span>
-            <Input
-              id="confirmarSenha"
-              type="password"
-              placeholder="Confirmar nova senha"
-              autoComplete="new-password"
-              className="h-14 px-5 text-base"
-              {...register("confirmarSenha")}
-              error={errors.confirmarSenha?.message}
-            />
+            <div className="relative">
+              <Input
+                id="confirmarSenha"
+                type={mostrarConfirmarSenha ? "text" : "password"}
+                placeholder="Confirmar nova senha"
+                autoComplete="new-password"
+                className="h-14 pr-14 pl-5 text-base"
+                {...register("confirmarSenha")}
+                error={errors.confirmarSenha?.message}
+              />
+              <BotaoVerSenha
+                posicao="campoAlto"
+                visivel={mostrarConfirmarSenha}
+                controla="confirmarSenha"
+                descricao="confirmação de senha"
+                onClick={() => setMostrarConfirmarSenha((atual) => !atual)}
+              />
+            </div>
           </label>
         </>
       )}
@@ -175,13 +196,13 @@ const PendingFieldsForm = ({
         .filter((field) => field !== "senha")
         .map((field) => renderTextField(field))}
 
-      {submitError && <Notificacao tipo="erro">{submitError}</Notificacao>}
+      {submitError && (
+        <Notificacao posicao="inline" tipo="erro">
+          {submitError}
+        </Notificacao>
+      )}
 
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="h-14 w-full rounded-lg bg-brand-dark font-semibold text-white hover:brightness-110 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={isSubmitting} className="mt-2">
         {isSubmitting ? "Ativando..." : "Ativar conta"}
       </Button>
     </form>
@@ -261,7 +282,7 @@ export const ActivateAccountForm = ({ token }: ActivateAccountFormProps) => {
           </p>
           <Link
             href="/"
-            className="mt-7 inline-flex h-12 items-center justify-center rounded-lg bg-brand-dark px-7 font-semibold text-white hover:brightness-110"
+            className="mt-7 inline-flex h-11 items-center justify-center rounded-lg bg-azure-600 px-6 font-semibold text-[0.9375rem] text-white transition-colors hover:bg-azure-700 focus-visible:outline-2 focus-visible:outline-azure-600 focus-visible:outline-offset-2"
           >
             Ir para login
           </Link>
@@ -290,8 +311,8 @@ export const ActivateAccountForm = ({ token }: ActivateAccountFormProps) => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-linear-to-bl from-brand-dark/90 via-brand-medium/90 to-brand-light/90 px-4 py-10 font-poppins">
-      <section className="w-full max-w-lg rounded-xl bg-white p-7 shadow-xl sm:p-10">
+    <main className="flex min-h-dvh items-center justify-center bg-paper px-4 py-10 font-poppins text-slate-900">
+      <section className="w-full max-w-lg rounded-xl border border-line bg-white p-7 shadow-[0_1px_2px_rgba(15,31,61,0.04)] sm:p-9">
         {renderContent()}
       </section>
     </main>
@@ -310,7 +331,7 @@ const MessageState = ({
     <p className="mt-3 text-slate-700">{children}</p>
     <Link
       href="/"
-      className="mt-7 inline-flex h-12 items-center justify-center rounded-lg border border-brand-dark px-7 font-semibold text-brand-dark hover:bg-brand-light/20"
+      className="mt-7 inline-flex h-11 items-center justify-center rounded-lg border border-line bg-white px-6 font-semibold text-[0.9375rem] text-navy-800 transition-colors hover:border-azure-500 hover:text-azure-700 focus-visible:outline-2 focus-visible:outline-azure-600 focus-visible:outline-offset-2"
     >
       Voltar ao login
     </Link>

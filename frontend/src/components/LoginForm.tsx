@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ComponentProps, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
+import { BotaoVerSenha } from "@/components/shared/BotaoVerSenha";
 import { Notificacao } from "@/components/shared/Notificacao";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
@@ -117,20 +118,21 @@ export const LoginForm = ({
       <Input
         id="identifier"
         label="E-mail ou CPF"
-        className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none transition placeholder:font-normal placeholder:text-base focus:border-brand-medium focus:bg-white focus:ring-4 focus:ring-brand-light/30"
-        placeholder="E-mail ou CPF"
+        placeholder="seu@email.com ou 000.000.000-00"
         type="text"
         autoCapitalize="none"
         autoComplete="username"
         spellCheck={false}
         {...identifierField}
         onChange={(event) => {
-          // Nenhuma mascara enquanto digita. A mascara so pode ser decidida
-          // com o valor inteiro em maos: aplicada tecla a tecla, ela reescrevia
-          // o comeco de um e-mail institucional com matricula numerica e ainda
-          // descartava tudo depois do 11o digito, e o aluno so descobria no
-          // "Credenciais invalidas", sem nada na tela explicando.
-          setValue("identifier", event.target.value.toLowerCase(), {
+          // O valor vai cru para o estado, sem mascara e sem minuscula
+          // forcada.
+          //
+          // Mascara tecla a tecla reescrevia o comeco de e-mail institucional
+          // com matricula numerica e cortava tudo depois do 11o digito.
+          // Minuscula forcada impedia quem digita com maiuscula — e o e-mail e
+          // normalizado no envio, que e onde de fato importa.
+          setValue("identifier", event.target.value, {
             shouldDirty: true,
             shouldValidate: true,
           });
@@ -153,85 +155,39 @@ export const LoginForm = ({
       <div className="relative">
         <Input
           id="password"
-          label="Senha de acesso"
-          className="mt-4 h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 pr-14 text-base outline-none transition placeholder:font-normal placeholder:text-base focus:border-brand-medium focus:bg-white focus:ring-4 focus:ring-brand-light/30"
-          placeholder="Senha de acesso"
+          label="Senha"
+          className="pr-11"
+          placeholder="Sua senha"
           type={isPasswordVisible ? "text" : "password"}
           {...register("password")}
           error={errors.password?.message}
         />
-        <button
-          type="button"
-          className="-translate-y-1/2 absolute top-[2.5rem] right-3 flex size-9 cursor-pointer items-center justify-center rounded text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-brand-medium sm:top-[3.61rem] sm:right-6 sm:size-10"
-          aria-controls="password"
-          aria-label={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
-          aria-pressed={isPasswordVisible}
-          title={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setIsPasswordVisible((visible) => !visible);
-          }}
-        >
-          {isPasswordVisible ? (
-            <svg
-              aria-hidden="true"
-              className="size-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m3 3 18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.2A10.7 10.7 0 0 1 12 4c5.5 0 9 5 9 5a16.8 16.8 0 0 1-3.1 3.6M6.6 6.6A17.3 17.3 0 0 0 3 9s3.5 5 9 5c.8 0 1.6-.1 2.3-.3"
-              />
-            </svg>
-          ) : (
-            <svg
-              aria-hidden="true"
-              className="size-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 12s3.5-5 9-5 9 5 9 5-3.5 5-9 5-9-5-9-5Z"
-              />
-              <circle cx="12" cy="12" r="2.5" />
-            </svg>
-          )}
-        </button>
+        <BotaoVerSenha
+          visivel={isPasswordVisible}
+          controla="password"
+          onClick={() => setIsPasswordVisible((visible) => !visible)}
+        />
       </div>
 
       <Link
         href="/recuperar-senha"
-        className="block w-full max-w-full pr-1 text-right font-medium text-brand-dark text-sm underline underline-offset-2 duration-200 hover:text-brand-medium"
+        className="-mt-1 block w-fit self-end rounded font-medium text-[0.8125rem] text-slate-600 transition-colors hover:text-azure-700 focus-visible:outline-2 focus-visible:outline-azure-600 focus-visible:outline-offset-2"
       >
-        Recuperar Senha
+        Esqueci minha senha
       </Link>
 
       {/* Erro e sucesso saem no mesmo lugar e com o mesmo cartao: antes o
           "bem-vindo" aparecia embaixo do botao, fora do padrao do sistema. */}
       {message && (
         <Notificacao
+          posicao="inline"
           tipo={message.type === "error" ? "erro" : "sucesso"}
-          className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
         >
           {message.text}
         </Notificacao>
       )}
 
-      <Button
-        className="h-12 w-full cursor-pointer rounded-lg bg-brand-dark px-4 py-3 font-semibold text-base text-white transition hover:bg-[#252c65] disabled:pointer-events-none disabled:opacity-60"
-        disabled={isSubmitting}
-        type="submit"
-      >
+      <Button className="mt-2" disabled={isSubmitting} type="submit">
         {isSubmitting ? "Entrando..." : "Entrar"}
       </Button>
     </form>

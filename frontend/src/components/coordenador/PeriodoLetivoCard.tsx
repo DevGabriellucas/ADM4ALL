@@ -11,7 +11,10 @@ import {
   settingsLabelClass,
   settingsSubmitButtonClass,
 } from "@/components/coordenador/SettingsSectionCard";
-import { Notificacao } from "@/components/shared/Notificacao";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
 import {
   type PeriodoLetivoFormData,
   periodoLetivoSchema,
@@ -59,7 +62,7 @@ export const PeriodoLetivoCard = ({
       }
       setSuccessMessage(resultado.mensagem);
       await onSuccess?.();
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), PRAZO_PARA_LIMPAR_AVISO);
     } catch (error) {
       setErrorMessage(
         error instanceof Error

@@ -44,24 +44,22 @@ export default async function AlunoDashboardPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F6F8FC] font-poppins text-slate-950">
       <div className="flex min-h-screen w-full flex-col gap-y-7">
-        {/* Avisos de desfecho do curso abrem a pagina, descendo por cima do
-            conteudo. Antes ficavam depois dos materiais, no fim da rolagem,
-            onde o aluno raramente chegava. */}
+        {/* A reprovacao e estado, nao recado: abre a pagina e nao sai dela.
+            Como aviso flutuante de 7s ela sumiria e o aluno nao teria como
+            traze-la de volta. */}
         {aluno.status === MATRICULA_STATUS.REPROVADO_FALTA && (
-          <Notificacao tipo="erro">
+          <Notificacao posicao="inline" tipo="erro">
             Você foi reprovado por falta. O limite máximo permitido é de 2
             faltas.
           </Notificacao>
         )}
 
-        {/* O certificado e liberado quando todas as aulas terminam e a
-            frequencia minima de 80% e atingida. */}
+        {/* A conclusao e comemoracao e o estado dela continua no cartao de
+            certificado logo abaixo, entao ela pode passar. O certificado e
+            liberado quando todas as aulas terminam e a frequencia minima de
+            80% e atingida. */}
         {aluno.certificadoLiberado && (
-          <Notificacao
-            tipo="sucesso"
-            className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
-            autoDismissAfterMs={7000}
-          >
+          <Notificacao tipo="sucesso">
             Parabéns! Você concluiu o curso {aluno.curso} com sucesso.
           </Notificacao>
         )}

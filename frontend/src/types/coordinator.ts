@@ -2,6 +2,11 @@ import type {
   MATRICULA_STATUS,
   MatriculaStatus,
 } from "@/constants/matriculaStatus";
+import type {
+  Pagina,
+  ResumoDeAlunos,
+  ResumoDeCertificados,
+} from "@/types/paginacao";
 
 export type UserRole = "administrador" | "coordenador" | "instrutor" | "aluno";
 
@@ -10,6 +15,46 @@ export type UserStatus =
   | "pendente_ativacao"
   | "inativo"
   | "bloqueado";
+
+export interface PaginaDeAlunos extends Pagina<Student> {
+  resumo: ResumoDeAlunos;
+}
+
+export interface PaginaDeCertificados extends Pagina<CertificateRecord> {
+  resumo: ResumoDeCertificados;
+}
+
+export interface ResumoDeCursos {
+  ativos: number;
+  desativados: number;
+  emPlanejamento: number;
+  semTurma: number;
+}
+
+export interface PaginaDeCursos extends Pagina<Course> {
+  resumo: ResumoDeCursos;
+}
+
+export interface ResumoDeTurmas {
+  emAndamento: number;
+  encerradas: number;
+  matriculados: number;
+  mediaFrequencia: number;
+}
+
+export interface PaginaDeTurmas extends Pagina<ClassGroup> {
+  resumo: ResumoDeTurmas;
+}
+
+export interface ResumoDeInstrutores {
+  ativos: number;
+  pendentes: number;
+  turmasVinculadas: number;
+}
+
+export interface PaginaDeInstrutores extends Pagina<Instructor> {
+  resumo: ResumoDeInstrutores;
+}
 
 export type CourseStatus = "ativo" | "em_planejamento" | "desativado";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlunoCompletionMessage } from "@/components/aluno/AlunoCompletionMessage";
-import { FREQUENCIA_MINIMA_APROVACAO } from "@/constants/matriculaStatus";
+import { FALTAS_TOLERADAS } from "@/constants/matriculaStatus";
 import type { AlunoDashboard } from "@/types/aluno";
 
 interface AlunoDashboardExtrasProps {
@@ -10,6 +10,7 @@ interface AlunoDashboardExtrasProps {
     | "curso"
     | "certificadoDisponivel"
     | "certificadoLiberado"
+    | "chamadasLancadas"
     | "faltas"
     | "frequencia"
     | "proximaAula"
@@ -24,6 +25,7 @@ const formatarData = (data: string) => {
 
 export const AlunoDashboardExtras = ({ aluno }: AlunoDashboardExtrasProps) => {
   const certificadoAtivo = aluno.certificadoLiberado;
+  const semChamada = aluno.chamadasLancadas === 0;
 
   return (
     <section
@@ -58,26 +60,51 @@ export const AlunoDashboardExtras = ({ aluno }: AlunoDashboardExtrasProps) => {
         <p className="font-medium text-slate-500 text-sm">
           Resumo de frequência
         </p>
-        <div className="mt-3 flex items-end justify-between gap-4">
-          <strong className="font-semibold text-3xl text-slate-950">
-            {aluno.frequencia}%
-          </strong>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600 text-xs">
-            {aluno.faltas} {aluno.faltas === 1 ? "falta" : "faltas"}
-          </span>
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className={`h-full rounded-full ${
-              aluno.frequencia < FREQUENCIA_MINIMA_APROVACAO
-                ? "bg-red-500"
-                : "bg-emerald-500"
-            }`}
-            style={{
-              width: `${Math.min(Math.max(aluno.frequencia, 0), 100)}%`,
-            }}
-          />
-        </div>
+
+        {/* A frequencia parte de 100 e cai 10 pontos a cada falta nao
+            justificada — nao e proporcao de presencas sobre chamadas. Enquanto
+            ninguem lancou chamada nenhuma para este aluno, os 100% sao so o
+            ponto de partida da regra, e anuncia-los como nota fazia o aluno ler
+            frequencia cheia sem ter assistido a uma aula. */}
+        {semChamada ? (
+          <>
+            <strong className="mt-3 block font-semibold text-slate-950 text-xl">
+              Sem chamada registrada
+            </strong>
+            <p className="mt-2 text-slate-600 text-sm leading-6">
+              Sua frequência aparece aqui assim que o instrutor lançar a
+              primeira chamada da turma.
+            </p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100" />
+          </>
+        ) : (
+          <>
+            <div className="mt-3 flex items-end justify-between gap-4">
+              <strong className="font-semibold text-3xl text-slate-950">
+                {aluno.frequencia}%
+              </strong>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600 text-xs">
+                {aluno.faltas} {aluno.faltas === 1 ? "falta" : "faltas"}
+              </span>
+            </div>
+            {/* A barra e vermelha por FALTA, nao por estar abaixo de 80%. A
+                frequencia se acumula ao longo do curso: na segunda aula ate
+                quem nunca faltou esta em 20%, e pintar isso de vermelho dizia
+                ao aluno que ele estava mal quando ele estava em dia. */}
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full ${
+                  aluno.faltas > FALTAS_TOLERADAS
+                    ? "bg-red-500"
+                    : "bg-emerald-500"
+                }`}
+                style={{
+                  width: `${Math.min(Math.max(aluno.frequencia, 0), 100)}%`,
+                }}
+              />
+            </div>
+          </>
+        )}
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

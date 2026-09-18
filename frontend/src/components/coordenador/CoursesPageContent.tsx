@@ -7,14 +7,18 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { CourseTable } from "@/components/coordenador/CourseTable";
 import { NewCourseForm } from "@/components/coordenador/NewCourseForm";
-import { Notificacao } from "@/components/shared/Notificacao";
-import type { Course } from "@/types/coordinator";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
+import { Paginacao } from "@/components/shared/Paginacao";
+import type { Course, PaginaDeCursos } from "@/types/coordinator";
 
 interface CoursesPageContentProps {
-  courses: Course[];
+  pagina: PaginaDeCursos;
 }
 
-export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
+export const CoursesPageContent = ({ pagina }: CoursesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -22,24 +26,17 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
 
   useEffect(() => {
     if (!deletionError) return;
-    const timeout = window.setTimeout(() => setDeletionError(null), 3500);
+    const timeout = window.setTimeout(
+      () => setDeletionError(null),
+      PRAZO_PARA_LIMPAR_AVISO,
+    );
     return () => window.clearTimeout(timeout);
   }, [deletionError]);
 
-  const activeCourses = courses.filter(
-    (course) => course.status === "ativo",
-  ).length;
-  const deactivatedCourses = courses.filter(
-    (course) => course.status === "desativado",
-  ).length;
-  // Sem este contador os cartoes nao somavam o total: um curso em planejamento
-  // nao aparecia nem como ativo nem como desativado.
-  const plannedCourses = courses.filter(
-    (course) => course.status === "em_planejamento",
-  ).length;
-  const coursesWithoutClasses = courses.filter(
-    (course) => course.quantidadeTurmas === 0,
-  ).length;
+  // A tabela mostra a pagina; os cartoes contam a base inteira e vem do
+  // servidor. Contar sobre `itens` faria os numeros mudarem a cada pagina.
+  const courses = pagina.itens;
+  const { resumo } = pagina;
 
   const handleDeleteConfirm = async () => {
     if (!deletingCourse) return;
@@ -71,7 +68,7 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
             type="button"
             onClick={() => setIsFormOpen((currentValue) => !currentValue)}
             aria-expanded={isFormOpen}
-            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Novo Curso
           </button>
@@ -99,14 +96,7 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
         />
       )}
 
-      {deletionError && (
-        <Notificacao
-          tipo="erro"
-          className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
-        >
-          {deletionError}
-        </Notificacao>
-      )}
+      {deletionError && <Notificacao tipo="erro">{deletionError}</Notificacao>}
 
       <section
         aria-label="Indicadores de cursos"
@@ -114,31 +104,31 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
       >
         <CoordinatorStatCard
           title="Total de cursos"
-          value={courses.length}
+          value={pagina.total}
           subtitle="Cursos cadastrados"
           variant="neutral"
         />
         <CoordinatorStatCard
           title="Cursos ativos"
-          value={activeCourses}
+          value={resumo.ativos}
           subtitle="Disponíveis no período"
           variant="green"
         />
         <CoordinatorStatCard
           title="Em planejamento"
-          value={plannedCourses}
+          value={resumo.emPlanejamento}
           subtitle="Ainda não abertos"
           variant="amber"
         />
         <CoordinatorStatCard
           title="Cursos desativados"
-          value={deactivatedCourses}
+          value={resumo.desativados}
           subtitle="Fora de oferta"
           variant="neutral"
         />
         <CoordinatorStatCard
           title="Cursos sem turma"
-          value={coursesWithoutClasses}
+          value={resumo.semTurma}
           subtitle="Aguardando formação de turma"
           variant="amber"
         />
@@ -147,6 +137,14 @@ export const CoursesPageContent = ({ courses }: CoursesPageContentProps) => {
       <CourseTable
         courses={courses}
         onDelete={(course) => setDeletingCourse(course)}
+      />
+
+      <Paginacao
+        pagina={pagina.pagina}
+        porPagina={pagina.porPagina}
+        total={pagina.total}
+        href="/coordenador/cursos"
+        rotulo="curso"
       />
     </>
   );

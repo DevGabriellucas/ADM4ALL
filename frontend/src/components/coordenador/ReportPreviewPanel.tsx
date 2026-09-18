@@ -216,7 +216,7 @@ export const ReportPreviewPanel = ({
               type="button"
               onClick={handleGenerate}
               disabled={loadingFormat !== null || isGenerating}
-              className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-white text-xs transition-colors hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isGenerating ? "Gerando..." : "Gerar relatório"}
             </button>

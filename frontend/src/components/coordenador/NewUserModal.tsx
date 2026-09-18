@@ -130,7 +130,7 @@ export const NewUserModal = ({
               <button
                 type="button"
                 onClick={handleBack}
-                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-[#23275F]"
+                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900"
               >
                 Voltar
               </button>
@@ -148,7 +148,7 @@ export const NewUserModal = ({
               <button
                 type="button"
                 onClick={handleBack}
-                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-[#23275F]"
+                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900"
               >
                 Voltar
               </button>
@@ -161,7 +161,7 @@ export const NewUserModal = ({
               <button
                 type="button"
                 onClick={handleBack}
-                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-[#23275F]"
+                className="w-fit cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900"
               >
                 Voltar
               </button>

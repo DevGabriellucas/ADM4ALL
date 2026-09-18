@@ -14,7 +14,7 @@ interface ConfirmDialogProps {
 const CONFIRM_BUTTON_CLASS = {
   danger: "bg-red-600 text-white hover:bg-red-700",
   warning: "bg-amber-600 text-white hover:bg-amber-700",
-  neutral: "bg-brand-dark text-white hover:bg-[#292E68]",
+  neutral: "bg-brand-dark text-white hover:bg-navy-900",
 } as const;
 
 export const ConfirmDialog = ({

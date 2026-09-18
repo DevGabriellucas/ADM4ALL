@@ -83,7 +83,7 @@ export const InstrutorShell = ({
       <InstrutorSidebar instrutor={instrutor} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between bg-[#7579A9] px-4 py-3 text-slate-950 xl:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between bg-brand-medium px-4 py-3 text-slate-950 xl:hidden">
           <div className="flex min-w-0 items-center gap-3">
             <span
               className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-dark bg-center bg-cover font-semibold text-sm text-white"
@@ -104,7 +104,7 @@ export const InstrutorShell = ({
             onClick={() => setIsMenuOpen(true)}
             aria-label="Abrir menu"
             aria-expanded={isMenuOpen}
-            className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-950 transition-colors hover:bg-white/20"
+            className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-black transition-colors hover:bg-brand-light/80"
           >
             <svg
               aria-hidden
@@ -166,7 +166,7 @@ export const InstrutorShell = ({
               type="button"
               onClick={fecharMenu}
               aria-label="Fechar menu"
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-950 transition-colors hover:bg-white/20"
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-black transition-colors hover:bg-brand-light/80"
             >
               <svg
                 aria-hidden
@@ -199,8 +199,10 @@ export const InstrutorShell = ({
                   href={item.href}
                   onClick={fecharMenu}
                   aria-current={ativo ? "page" : undefined}
-                  className={`flex items-center rounded-md px-3 py-2.5 text-sm tracking-[0.15em] transition-colors hover:bg-white/20 ${
-                    ativo ? "bg-white/25 font-semibold" : "font-medium"
+                  className={`flex items-center rounded-md px-3 py-2.5 text-sm tracking-[0.15em] transition-colors ${
+                    ativo
+                      ? "font-bold text-black bg-brand-light/80 hover:bg-brand-light"
+                      : "font-semibold text-black hover:bg-brand-light/50"
                   }`}
                 >
                   <span className="min-w-0 truncate">{item.label}</span>
@@ -213,7 +215,7 @@ export const InstrutorShell = ({
             <button
               type="button"
               onClick={() => setConfirmandoSaida(true)}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-left font-semibold text-red-700 text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md bg-red-600 px-3 py-2.5 text-left font-semibold text-sm text-white tracking-[0.15em] transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
             >
               <svg
                 aria-hidden

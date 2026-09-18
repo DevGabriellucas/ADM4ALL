@@ -1,63 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { CertificateTable } from "@/components/coordenador/CertificateTable";
 import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageHeader";
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
+import { Paginacao } from "@/components/shared/Paginacao";
 import type {
-  CertificateDisplayStatus,
-  CertificateRecord,
   ClassGroup,
   Course,
+  PaginaDeCertificados,
 } from "@/types/coordinator";
-import { getCertificateStatus } from "@/utils/getCertificateStatus";
+
+export type FiltrosDeCertificados = Record<string, string | undefined> & {
+  curso?: string | undefined;
+  turma?: string | undefined;
+  status?: string | undefined;
+};
 
 interface CertificatesPageContentProps {
-  certificates: CertificateRecord[];
+  pagina: PaginaDeCertificados;
+  filtros: FiltrosDeCertificados;
   courses: Course[];
   classes: ClassGroup[];
 }
 
 export const CertificatesPageContent = ({
-  certificates,
+  pagina,
+  filtros,
   courses,
   classes,
 }: CertificatesPageContentProps) => {
-  const [courseFilter, setCourseFilter] = useState("");
-  const [classFilter, setClassFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    CertificateDisplayStatus | ""
-  >("");
+  const router = useRouter();
+
+  const courseFilter = filtros.curso ?? "";
+  const classFilter = filtros.turma ?? "";
+  const statusFilter = filtros.status ?? "";
+
+  // A tabela mostra a pagina; os cartoes contam o resultado FILTRADO inteiro e
+  // vem do servidor. Contar sobre `itens` faria os numeros mudarem a cada
+  // pagina.
+  const filteredCertificates = pagina.itens;
+  const eligibleCertificates = pagina.resumo.elegiveis;
+  const pendingCertificates = pagina.resumo.pendentes;
+  const issuedCertificates = pagina.resumo.emitidos;
+  const ineligibleCertificates = pagina.resumo.inelegiveis;
 
   const availableClasses = classes.filter(
     (classGroup) => !courseFilter || classGroup.curso === courseFilter,
   );
-  const filteredCertificates = certificates.filter((certificate) => {
-    if (courseFilter && certificate.curso !== courseFilter) {
-      return false;
-    }
-    if (classFilter && certificate.turma !== classFilter) {
-      return false;
-    }
-    if (statusFilter && getCertificateStatus(certificate) !== statusFilter) {
-      return false;
-    }
 
-    return true;
-  });
+  const aplicarFiltros = useCallback(
+    (novos: FiltrosDeCertificados) => {
+      const query = new URLSearchParams();
+      const combinado: FiltrosDeCertificados = {
+        curso: courseFilter,
+        turma: classFilter,
+        status: statusFilter,
+        ...novos,
+      };
 
-  const eligibleCertificates = filteredCertificates.filter(
-    (certificate) => getCertificateStatus(certificate) === "elegivel",
-  ).length;
-  const pendingCertificates = filteredCertificates.filter(
-    (certificate) => getCertificateStatus(certificate) === "pendente",
-  ).length;
-  const issuedCertificates = filteredCertificates.filter(
-    (certificate) => getCertificateStatus(certificate) === "emitido",
-  ).length;
-  const ineligibleCertificates = filteredCertificates.filter(
-    (certificate) => getCertificateStatus(certificate) === "nao_elegivel",
-  ).length;
+      for (const [chave, valor] of Object.entries(combinado)) {
+        if (valor) query.set(chave, valor);
+      }
+
+      // Volta para a primeira pagina: o resultado mudou.
+      const texto = query.toString();
+      router.push(
+        texto
+          ? `/coordenador/certificados?${texto}`
+          : "/coordenador/certificados",
+      );
+    },
+    [router, courseFilter, classFilter, statusFilter],
+  );
 
   return (
     <>
@@ -105,10 +121,10 @@ export const CertificatesPageContent = ({
             Curso
             <select
               value={courseFilter}
-              onChange={(event) => {
-                setCourseFilter(event.target.value);
-                setClassFilter("");
-              }}
+              onChange={(event) =>
+                // Trocar de curso zera a turma: a lista depende dele.
+                aplicarFiltros({ curso: event.target.value, turma: "" })
+              }
               className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
               <option value="">Todos os cursos</option>
@@ -124,7 +140,9 @@ export const CertificatesPageContent = ({
             Turma
             <select
               value={classFilter}
-              onChange={(event) => setClassFilter(event.target.value)}
+              onChange={(event) =>
+                aplicarFiltros({ turma: event.target.value })
+              }
               className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
               <option value="">Todas as turmas</option>
@@ -141,9 +159,7 @@ export const CertificatesPageContent = ({
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(
-                  event.target.value as CertificateDisplayStatus | "",
-                )
+                aplicarFiltros({ status: event.target.value })
               }
               className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 text-sm outline-none focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             >
@@ -159,6 +175,15 @@ export const CertificatesPageContent = ({
       </section>
 
       <CertificateTable certificates={filteredCertificates} />
+
+      <Paginacao
+        pagina={pagina.pagina}
+        porPagina={pagina.porPagina}
+        total={pagina.total}
+        href="/coordenador/certificados"
+        parametros={filtros}
+        rotulo="certificado"
+      />
     </>
   );
 };

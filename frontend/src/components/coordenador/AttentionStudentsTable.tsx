@@ -96,7 +96,7 @@ export const AttentionStudentsTable = ({
                   <td className="border-slate-100 border-b px-3 py-3">
                     <Link
                       href="/coordenador/alunos"
-                      className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                      className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                     >
                       Ver aluno
                     </Link>

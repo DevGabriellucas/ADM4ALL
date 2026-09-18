@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import type { Pagina, Paginacao } from "../../domain/paginacao";
 import {
   CampoPendenteAtivacao,
 } from "../../domain/repositories/ActivationRepository";
@@ -15,6 +16,10 @@ import {
 import {
   AlunoDetalheCoordenador,
   AlunoListagemCoordenador,
+  FiltrosDeCertificados,
+  FiltrosDeUsuarios,
+  PaginaDeAlunos,
+  PaginaDeCertificados,
   AlunoParaReenvioAtivacao,
   AtualizarInstrutorCoordenadorInput,
   AtualizarStatusMatriculaInput,
@@ -263,6 +268,50 @@ export class CoordenadorUseCase {
 
   async listarCursos(): Promise<CursoResumo[]> {
     return await this.coordenadorRepository.listarCursos();
+  }
+
+  async listarCursosPaginado(
+    paginacao: Paginacao,
+  ): Promise<Pagina<CursoResumo>> {
+    return await this.coordenadorRepository.listarCursosPaginado(paginacao);
+  }
+
+  async listarAlunosPaginado(paginacao: Paginacao): Promise<PaginaDeAlunos> {
+    return await this.coordenadorRepository.listarAlunosPaginado(paginacao);
+  }
+
+  async listarTurmasPaginado(
+    paginacao: Paginacao,
+  ): Promise<Pagina<TurmaListagem>> {
+    return await this.coordenadorRepository.listarTurmasPaginado(paginacao);
+  }
+
+  async listarUsuariosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeUsuarios,
+  ): Promise<Pagina<UsuarioListagemCoordenador>> {
+    return await this.coordenadorRepository.listarUsuariosPaginado(
+      paginacao,
+      filtros,
+    );
+  }
+
+  async listarInstrutoresPaginado(
+    paginacao: Paginacao,
+  ): Promise<Pagina<InstrutorListagem>> {
+    return await this.coordenadorRepository.listarInstrutoresPaginado(
+      paginacao,
+    );
+  }
+
+  async listarCertificadosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeCertificados,
+  ): Promise<PaginaDeCertificados> {
+    return await this.coordenadorRepository.listarCertificadosPaginado(
+      paginacao,
+      filtros,
+    );
   }
 
   async listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]> {
@@ -987,7 +1036,8 @@ export class CoordenadorUseCase {
 
   async listarFrequencias(
     input: FiltrosFrequenciaEntrada = {},
-  ): Promise<FrequenciaCoordenador[]> {
+    paginacao?: Paginacao,
+  ): Promise<Pagina<FrequenciaCoordenador>> {
     if (input.periodo && !/^\d{4}\.[12]$/.test(input.periodo)) {
       throw new BadRequestError(
         "Periodo invalido. Use o formato YYYY.S, por exemplo: 2026.1.",
@@ -1000,7 +1050,10 @@ export class CoordenadorUseCase {
     if (input.aluno?.trim()) filtros.aluno = input.aluno.trim();
     if (input.periodo) filtros.periodo = input.periodo;
 
-    return await this.coordenadorRepository.listarFrequencias(filtros);
+    return await this.coordenadorRepository.listarFrequencias(
+      filtros,
+      paginacao,
+    );
   }
 
   async listarRelatorios(): Promise<RelatorioCoordenador[]> {

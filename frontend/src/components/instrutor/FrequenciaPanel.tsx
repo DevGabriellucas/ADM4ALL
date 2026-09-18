@@ -1,6 +1,6 @@
 import { MetricCard } from "@/components/instrutor/MetricCard";
 import {
-  FREQUENCIA_LIMITE_RISCO,
+  FALTAS_TOLERADAS,
   MATRICULA_STATUS,
 } from "@/constants/matriculaStatus";
 import type { AlunoPresenca } from "@/types/instrutor";
@@ -14,10 +14,10 @@ interface FrequenciaPanelProps {
 }
 
 // O desfecho da matricula manda na coluna: com a turma encerrada, "Reprovado
-// por falta" e a informacao util, nao a faixa de percentual. As faixas ficam
-// para quem ainda esta em andamento.
+// por falta" e a informacao util, nao a margem de faltas. A margem fica para
+// quem ainda esta em andamento.
 const situacaoAluno = (aluno: AlunoPresenca) => {
-  const { frequencia, aulasRegistradas, statusMatricula } = aluno;
+  const { aulasRegistradas, statusMatricula } = aluno;
 
   if (statusMatricula === MATRICULA_STATUS.REPROVADO_FALTA) {
     return {
@@ -40,22 +40,26 @@ const situacaoAluno = (aluno: AlunoPresenca) => {
     };
   }
 
-  if (frequencia < 75) {
+  // Classifica por falta, nao por faixa de frequencia. A frequencia se acumula
+  // ao longo do periodo, entao no meio do curso ate quem nunca faltou esta
+  // abaixo de 80% — as faixas antigas diziam "Risco" para a turma inteira na
+  // primeira semana. Falta ja e definitiva no dia em que acontece.
+  if (aluno.faltas > FALTAS_TOLERADAS) {
     return {
-      texto: "Risco: abaixo de 75%",
+      texto: "Risco: não alcança mais 80%",
       classe: "bg-red-50 text-red-700",
     };
   }
 
-  if (frequencia < 80) {
+  if (aluno.faltas === FALTAS_TOLERADAS) {
     return {
-      texto: "Atenção: abaixo de 80%",
+      texto: "Atenção: sem margem para faltar",
       classe: "bg-amber-50 text-amber-700",
     };
   }
 
   return {
-    texto: "Regular: 80% ou mais",
+    texto: "Regular: sem faltas",
     classe: "bg-emerald-50 text-emerald-700",
   };
 };
@@ -76,11 +80,7 @@ export const FrequenciaPanel = ({
   // nao tem mais como reverter.
   const alunosEmRisco = turmaEncerrada
     ? 0
-    : alunosSeguro.filter(
-        (aluno) =>
-          aluno.aulasRegistradas > 0 &&
-          aluno.frequencia <= FREQUENCIA_LIMITE_RISCO,
-      ).length;
+    : alunosSeguro.filter((aluno) => aluno.faltas > FALTAS_TOLERADAS).length;
   const alunosSemRegistros = alunosSeguro.filter(
     (aluno) => aluno.aulasRegistradas === 0,
   ).length;

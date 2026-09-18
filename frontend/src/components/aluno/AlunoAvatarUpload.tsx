@@ -5,7 +5,10 @@ import {
   removerFotoAlunoAction,
   salvarFotoAlunoAction,
 } from "@/app/aluno/actions";
-import { Notificacao } from "@/components/shared/Notificacao";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
 
 interface AlunoAvatarUploadProps {
   nome: string;
@@ -52,7 +55,10 @@ export const AlunoAvatarUpload = ({
 
   useEffect(() => {
     if (!feedback) return;
-    const timeout = window.setTimeout(() => setFeedback(null), 3500);
+    const timeout = window.setTimeout(
+      () => setFeedback(null),
+      PRAZO_PARA_LIMPAR_AVISO,
+    );
     return () => window.clearTimeout(timeout);
   }, [feedback]);
 
@@ -171,10 +177,7 @@ export const AlunoAvatarUpload = ({
         />
       </div>
       {feedback && (
-        <Notificacao
-          tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
-          className="-translate-x-1/2 fixed top-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl shadow-lg"
-        >
+        <Notificacao tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}>
           {feedback.texto}
         </Notificacao>
       )}

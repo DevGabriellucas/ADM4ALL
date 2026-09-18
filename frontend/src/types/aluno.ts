@@ -10,6 +10,7 @@ export interface AlunoDashboardResponse {
   cursoDeExtensao: {
     nomeCurso: string;
     qtdFaltas: number;
+    qtdChamadasLancadas: number;
     qtdTotalAulas: number;
     qtdAulasConcluidas: number;
     progresso: number;
@@ -57,6 +58,12 @@ export interface AlunoDashboard {
   semMatricula: boolean;
   curso: string;
   faltas: number;
+  /**
+   * Chamadas ja lancadas para o aluno. Enquanto for zero a frequencia de 100%
+   * e so o ponto de partida da regra, e nao desempenho: a tela mostra isso em
+   * vez do percentual.
+   */
+  chamadasLancadas: number;
   aulasPlanejadas: number;
   aulasConcluidas: number;
   progresso: number;

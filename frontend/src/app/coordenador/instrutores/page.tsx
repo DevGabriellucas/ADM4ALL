@@ -1,14 +1,22 @@
 import { InstructorsPageContent } from "@/components/coordenador/InstructorsPageContent";
 import { BackButton } from "@/components/shared/BackButton";
-import { getInstructors } from "@/services/coordinatorService";
+import { getInstructorsPage } from "@/services/coordinatorService";
+import { paginaDaUrl } from "@/types/paginacao";
 
-export default async function CoordinatorInstructorsPage() {
-  const instructors = await getInstructors();
+interface CoordinatorInstructorsPageProps {
+  searchParams: Promise<{ pagina?: string }>;
+}
+
+export default async function CoordinatorInstructorsPage({
+  searchParams,
+}: CoordinatorInstructorsPageProps) {
+  const { pagina } = await searchParams;
+  const instrutores = await getInstructorsPage(paginaDaUrl(pagina));
 
   return (
     <>
       <BackButton className="mb-4" />
-      <InstructorsPageContent instructors={instructors} />
+      <InstructorsPageContent pagina={instrutores} />
     </>
   );
 }

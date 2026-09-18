@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { excluirTurmaAction } from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
-import { Notificacao } from "@/components/shared/Notificacao";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
 import type { ClassGroup } from "@/types/coordinator";
 
 interface ClassTableProps {
@@ -36,7 +39,10 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
 
   useEffect(() => {
     if (!feedback) return;
-    const timeout = window.setTimeout(() => setFeedback(null), 3500);
+    const timeout = window.setTimeout(
+      () => setFeedback(null),
+      PRAZO_PARA_LIMPAR_AVISO,
+    );
     return () => window.clearTimeout(timeout);
   }, [feedback]);
 
@@ -55,12 +61,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
   return (
     <>
       {feedback && (
-        <Notificacao
-          tipo={feedback.tipo}
-          className="-translate-x-1/2 fixed top-4 left-1/2 z-[60] w-[min(92vw,42rem)] shadow-lg"
-        >
-          {feedback.mensagem}
-        </Notificacao>
+        <Notificacao tipo={feedback.tipo}>{feedback.mensagem}</Notificacao>
       )}
       {deletingClass && (
         <ConfirmDialog
@@ -156,7 +157,7 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                       <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                         <Link
                           href={`/coordenador/turmas/${classGroup.id}`}
-                          className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                          className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                         >
                           Visualizar
                         </Link>

@@ -1,19 +1,54 @@
 import { Pool, PoolClient } from "pg";
 import { calcularPeriodoLetivoAtual } from "../../application/utils/calcularPeriodoLetivo";
 import { BadRequestError } from "../errors/BadRequestError";
+import type { Pagina, Paginacao } from "../../domain/paginacao";
+
+// O perfil 'admin' aparece como 'administrador' na tela. A expressao se repete
+// no SELECT e no WHERE, entao vive num lugar so.
+const ROLE_DO_USUARIO = `CASE WHEN p.nome = 'admin' THEN 'administrador' ELSE p.nome END`;
+
+// ORDER BY nao aceita parametro, entao a opcao vira SQL por uma tabela fixa.
+// Nada do que chega pela query string entra na consulta: o que nao estiver
+// aqui cai no padrao.
+const ORDENACOES_DE_USUARIOS = {
+  nome_asc: "u.nome ASC",
+  nome_desc: "u.nome DESC",
+  acesso_recente: "u.ultimo_login DESC NULLS LAST",
+  acesso_antigo: "u.ultimo_login ASC NULLS LAST",
+} as const;
+
+const ordenacaoDeUsuarios = (opcao?: string | null): string =>
+  ORDENACOES_DE_USUARIOS[opcao as keyof typeof ORDENACOES_DE_USUARIOS] ??
+  ORDENACOES_DE_USUARIOS.nome_asc;
 import {
-  FREQUENCIA_ATENCAO,
-  FREQUENCIA_MINIMA_APROVACAO,
+  FALTAS_TOLERADAS,
+  FREQUENCIA_MAXIMA_REPROVACAO,
 } from "../../domain/regras-academicas";
 import {
+  TOTAL_DA_CONSULTA,
+  limiteEDeslocamento,
+  totalDasLinhas,
+  valoresDeLimiteEDeslocamento,
+} from "./sql/paginacao";
+import {
+  chamadasLancadas,
   faltasNaoJustificadas,
+  frequenciaAgregadaPorTurma,
   frequenciaPorMatricula,
   presencasEfetivas,
 } from "./sql/frequencia";
+import { atualizarStatusDerivadoDaTurma } from "./sql/turma";
 import {
   AlunoDetalheCoordenador,
   AlunoExcluido,
   AlunoListagemCoordenador,
+  FiltrosDeCertificados,
+  FiltrosDeUsuarios,
+  PaginaDeAlunos,
+  PaginaDeCertificados,
+  PaginaDeCursos,
+  PaginaDeInstrutores,
+  PaginaDeTurmas,
   AlunoParaReenvioAtivacao,
   AtualizarAlunoCoordenadorInput,
   AtualizarCursoInput,
@@ -120,22 +155,79 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     };
   }
 
-  async listarCursos(): Promise<CursoResumo[]> {
-    const query = `
+  // A coluna de total entra no SELECT, e nao no fim da consulta, porque o
+  // GROUP BY fica no meio. COUNT(*) OVER() roda depois do agrupamento, entao
+  // conta cursos, nao linhas do join com turmas.
+  private selectCurso(colunasExtras = ""): string {
+    return `
       SELECT
         t.id,
         t.nome,
         t.descricao,
         t.carga_horaria,
         t.status,
-        COUNT(tu.id) AS quantidade_turmas
+        COUNT(tu.id) AS quantidade_turmas${colunasExtras}
       FROM treinamentos t
       LEFT JOIN turmas tu ON tu.treinamento_id = t.id
       GROUP BY t.id, t.nome, t.descricao, t.carga_horaria, t.status
-      ORDER BY t.nome ASC
     `;
-    const resultado = await this.db.query(query);
+  }
+
+  // Sem paginacao de proposito: alimenta o combo de cursos do formulario de
+  // cadastro (/treinamentos/publicos) e os seletores de turma, que precisam da
+  // lista inteira. A tela da coordenacao usa listarCursosPaginado.
+  async listarCursos(): Promise<CursoResumo[]> {
+    const resultado = await this.db.query(`
+      ${this.selectCurso()}
+      ORDER BY t.nome ASC
+    `);
     return resultado.rows.map((linha) => this.mapearCurso(linha));
+  }
+
+  async listarCursosPaginado(
+    paginacao: Paginacao,
+  ): Promise<PaginaDeCursos> {
+    // Os cartoes do topo contam a base inteira. As janelas rodam depois do
+    // GROUP BY e antes do LIMIT, entao "sem turma" pode olhar o proprio
+    // COUNT(tu.id) do curso.
+    const agregados = `,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (WHERE t.status = 'ativo') OVER () AS total_ativos,
+        COUNT(*) FILTER (
+          WHERE t.status = 'desativado'
+        ) OVER () AS total_desativados,
+        COUNT(*) FILTER (
+          WHERE t.status = 'em_planejamento'
+        ) OVER () AS total_em_planejamento,
+        -- "Sem turma" depende do COUNT do proprio curso, e o Postgres recusa
+        -- agregado dentro de FILTER. Dentro do argumento da janela ele aceita.
+        COALESCE(SUM(
+          CASE WHEN COUNT(tu.id) = 0 THEN 1 ELSE 0 END
+        ) OVER (), 0) AS total_sem_turma`;
+
+    const resultado = await this.db.query(
+      `
+      ${this.selectCurso(agregados)}
+      ORDER BY t.nome ASC
+      ${limiteEDeslocamento(1)}
+      `,
+      valoresDeLimiteEDeslocamento(paginacao),
+    );
+
+    const primeira = resultado.rows[0];
+
+    return {
+      itens: resultado.rows.map((linha) => this.mapearCurso(linha)),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+      resumo: {
+        ativos: Number(primeira?.total_ativos ?? 0),
+        desativados: Number(primeira?.total_desativados ?? 0),
+        emPlanejamento: Number(primeira?.total_em_planejamento ?? 0),
+        semTurma: Number(primeira?.total_sem_turma ?? 0),
+      },
+    };
   }
 
   async buscarCursoPorId(id: string): Promise<CursoResumo | null> {
@@ -243,8 +335,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  async listarInstrutores(): Promise<InstrutorListagem[]> {
-    const query = `
+  private selectInstrutor(colunasExtras = ""): string {
+    return `
       SELECT
         i.id,
         u.nome,
@@ -252,17 +344,17 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         i.telefone,
         u.status,
         to_char(i.data_cadastro, 'YYYY-MM-DD') AS data_criacao,
-        COUNT(tu.id) AS turmas_vinculadas
+        COUNT(tu.id) AS turmas_vinculadas${colunasExtras}
       FROM instrutores i
       JOIN usuarios u ON u.id = i.usuario_id
       LEFT JOIN turma_instrutores ti ON ti.instrutor_id = i.id
       LEFT JOIN turmas tu ON tu.id = ti.turma_id
       GROUP BY i.id, u.nome, u.email, i.telefone, u.status, i.data_cadastro
-      ORDER BY u.nome ASC
     `;
-    const resultado = await this.db.query(query);
+  }
 
-    return resultado.rows.map((linha) => ({
+  private mapearInstrutorListagem(linha: any): InstrutorListagem {
+    return {
       id: linha.id,
       nome: linha.nome,
       email: linha.email,
@@ -270,7 +362,53 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       status: linha.status,
       turmasVinculadas: Number(linha.turmas_vinculadas),
       dataCriacao: linha.data_criacao,
-    }));
+    };
+  }
+
+  // Sem paginacao de proposito: alimenta os seletores de instrutor das telas de
+  // curso e de turma. A tela de Instrutores usa listarInstrutoresPaginado.
+  async listarInstrutores(): Promise<InstrutorListagem[]> {
+    const resultado = await this.db.query(`
+      ${this.selectInstrutor()}
+      ORDER BY u.nome ASC
+    `);
+
+    return resultado.rows.map((linha) => this.mapearInstrutorListagem(linha));
+  }
+
+  async listarInstrutoresPaginado(
+    paginacao: Paginacao,
+  ): Promise<PaginaDeInstrutores> {
+    const agregados = `,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (WHERE u.status = 'ativo') OVER () AS total_ativos,
+        COUNT(*) FILTER (
+          WHERE u.status = 'pendente_ativacao'
+        ) OVER () AS total_pendentes,
+        COALESCE(SUM(COUNT(tu.id)) OVER (), 0) AS total_turmas_vinculadas`;
+
+    const resultado = await this.db.query(
+      `
+      ${this.selectInstrutor(agregados)}
+      ORDER BY u.nome ASC
+      ${limiteEDeslocamento(1)}
+      `,
+      valoresDeLimiteEDeslocamento(paginacao),
+    );
+
+    const primeira = resultado.rows[0];
+
+    return {
+      itens: resultado.rows.map((linha) => this.mapearInstrutorListagem(linha)),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+      resumo: {
+        ativos: Number(primeira?.total_ativos ?? 0),
+        pendentes: Number(primeira?.total_pendentes ?? 0),
+        turmasVinculadas: Number(primeira?.total_turmas_vinculadas ?? 0),
+      },
+    };
   }
 
   async buscarInstrutorDetalhe(
@@ -592,27 +730,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return Number(resultado.rows[0]?.total ?? 0);
   }
 
-  async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
-    const query = `
-      SELECT
-        u.id,
-        u.nome,
-        u.email,
-        u.cpf,
-        CASE
-          WHEN p.nome = 'admin' THEN 'administrador'
-          ELSE p.nome
-        END AS role,
-        u.status,
-        u.data_criacao,
-        u.ultimo_login
-      FROM usuarios u
-      JOIN perfis p ON p.id = u.perfil_id
-      ORDER BY u.nome ASC
-    `;
-    const resultado = await this.db.query(query);
-
-    return resultado.rows.map((linha) => ({
+  private mapearUsuarioListagem(linha: any): UsuarioListagemCoordenador {
+    return {
       id: linha.id,
       nome: linha.nome,
       email: linha.email,
@@ -623,7 +742,65 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       ultimoAcesso: linha.ultimo_login
         ? linha.ultimo_login.toISOString()
         : null,
-    }));
+    };
+  }
+
+  async listarUsuarios(): Promise<UsuarioListagemCoordenador[]> {
+    const resultado = await this.db.query(`
+      SELECT
+        u.id, u.nome, u.email, u.cpf,
+        ${ROLE_DO_USUARIO} AS role,
+        u.status, u.data_criacao, u.ultimo_login
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      ORDER BY u.nome ASC
+    `);
+
+    return resultado.rows.map((linha) => this.mapearUsuarioListagem(linha));
+  }
+
+  async listarUsuariosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeUsuarios,
+  ): Promise<Pagina<UsuarioListagemCoordenador>> {
+    const busca = filtros.busca?.trim() || null;
+    // A tela so procura por CPF quando quem digitou incluiu algum numero.
+    const digitos = busca ? busca.replace(/\D/g, "") : "";
+
+    const resultado = await this.db.query(
+      `
+      SELECT
+        u.id, u.nome, u.email, u.cpf,
+        ${ROLE_DO_USUARIO} AS role,
+        u.status, u.data_criacao, u.ultimo_login,
+        ${TOTAL_DA_CONSULTA}
+      FROM usuarios u
+      JOIN perfis p ON p.id = u.perfil_id
+      WHERE ($1::text IS NULL OR (
+              u.nome ILIKE '%' || $1 || '%'
+              OR u.email ILIKE '%' || $1 || '%'
+              OR ($2::text <> '' AND regexp_replace(u.cpf, '\\D', '', 'g') LIKE '%' || $2 || '%')
+            ))
+        AND ($3::text IS NULL OR ${ROLE_DO_USUARIO} = $3)
+        AND ($4::text IS NULL OR u.status = $4)
+      ORDER BY ${ordenacaoDeUsuarios(filtros.ordenacao)}
+      ${limiteEDeslocamento(5)}
+      `,
+      [
+        busca,
+        digitos,
+        filtros.perfil || null,
+        filtros.status || null,
+        ...valoresDeLimiteEDeslocamento(paginacao),
+      ],
+    );
+
+    return {
+      itens: resultado.rows.map((linha) => this.mapearUsuarioListagem(linha)),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+    };
   }
 
   async atualizarUsuario(
@@ -660,8 +837,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
-    const query = `
+  private selectAluno(colunasExtras = ""): string {
+    return `
       SELECT
         a.id,
         u.nome,
@@ -673,7 +850,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         COALESCE(frequencia.percentual, 0) AS frequencia,
         u.status AS status_conta,
         matricula.status AS status_matricula,
-        to_char(a.data_cadastro, 'YYYY-MM-DD') AS data_criacao
+        to_char(a.data_cadastro, 'YYYY-MM-DD') AS data_criacao${colunasExtras}
       FROM alunos a
       JOIN usuarios u ON u.id = a.usuario_id
       LEFT JOIN LATERAL (
@@ -702,11 +879,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         FROM frequencias f
         WHERE f.matricula_id = matricula.id
       ) frequencia ON TRUE
-      ORDER BY u.nome ASC
     `;
-    const resultado = await this.db.query(query);
+  }
 
-    return resultado.rows.map((linha) => ({
+  private mapearAlunoListagem(linha: any): AlunoListagemCoordenador {
+    return {
       id: linha.id,
       nome: linha.nome,
       email: linha.email,
@@ -718,7 +895,67 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       statusMatricula: linha.status_matricula ?? null,
       statusTurma: linha.status_turma ?? null,
       dataCriacao: linha.data_criacao,
-    }));
+    };
+  }
+
+  // Sem paginacao de proposito: alimenta o seletor de "adicionar aluno na
+  // turma". A tela de Alunos usa listarAlunosPaginado.
+  async listarAlunos(): Promise<AlunoListagemCoordenador[]> {
+    const resultado = await this.db.query(`
+      ${this.selectAluno()}
+      ORDER BY u.nome ASC
+    `);
+
+    return resultado.rows.map((linha) => this.mapearAlunoListagem(linha));
+  }
+
+  async listarAlunosPaginado(
+    paginacao: Paginacao,
+  ): Promise<PaginaDeAlunos> {
+    // Os cartoes do topo contam a base inteira, e nao a pagina aberta. As
+    // janelas rodam depois do WHERE e antes do LIMIT, entao contam tudo que o
+    // filtro alcanca com uma unica ida ao banco.
+    //
+    // "Em risco" repete a regra da tela: matricula viva, turma ainda aberta e
+    // frequencia no limite de reprovacao.
+    const agregados = `,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (WHERE u.status = 'ativo') OVER () AS total_ativos,
+        COUNT(*) FILTER (
+          WHERE u.status = 'pendente_ativacao'
+        ) OVER () AS total_pendentes,
+        COUNT(*) FILTER (
+          WHERE matricula.status IS NOT NULL
+            AND matricula.status <> 'cancelado'
+            AND COALESCE(matricula.status_turma, '') NOT IN ('encerrada', 'concluida')
+            AND COALESCE(frequencia.percentual, 0) <= $1::INTEGER
+        ) OVER () AS total_em_risco`;
+
+    const resultado = await this.db.query(
+      `
+      ${this.selectAluno(agregados)}
+      ORDER BY u.nome ASC
+      ${limiteEDeslocamento(2)}
+      `,
+      [
+        FREQUENCIA_MAXIMA_REPROVACAO,
+        ...valoresDeLimiteEDeslocamento(paginacao),
+      ],
+    );
+
+    const primeira = resultado.rows[0];
+
+    return {
+      itens: resultado.rows.map((linha) => this.mapearAlunoListagem(linha)),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+      resumo: {
+        ativos: Number(primeira?.total_ativos ?? 0),
+        pendentes: Number(primeira?.total_pendentes ?? 0),
+        emRisco: Number(primeira?.total_em_risco ?? 0),
+      },
+    };
   }
 
   async buscarAlunoDetalhe(
@@ -875,9 +1112,24 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
       await this.bloquearCpfExcluido(cliente, linha, bloqueadoPorId);
 
+      // As turmas dele precisam ser lidas ANTES do DELETE: a matricula sai em
+      // cascata junto com o usuario, e depois nao ha mais como saber de onde
+      // ele saiu.
+      const turmas = await cliente.query(
+        `SELECT DISTINCT turma_id
+         FROM matriculas
+         WHERE aluno_id = $1 AND turma_id IS NOT NULL`,
+        [id],
+      );
+
       await cliente.query("DELETE FROM usuarios WHERE id = $1", [
         linha.usuario_id,
       ]);
+
+      // Excluir o unico aluno da turma devolve ela para "planejada".
+      for (const turma of turmas.rows) {
+        await cliente.query(atualizarStatusDerivadoDaTurma(), [turma.turma_id]);
+      }
 
       await cliente.query("COMMIT");
 
@@ -1152,6 +1404,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         );
       }
 
+      // O primeiro aluno tira a turma de "planejada". Dentro da transacao: se
+      // a matricula nao commitar, o status nao pode ter mudado.
+      await cliente.query(atualizarStatusDerivadoDaTurma(), [input.turmaId]);
+
       await cliente.query("COMMIT");
       const linha = resultado.rows[0];
       return {
@@ -1179,14 +1435,34 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     turmaId: string,
     matriculaId: string,
   ): Promise<boolean> {
-    const resultado = await this.db.query(
-      `UPDATE matriculas
-       SET status = 'cancelado'
-       WHERE id = $1 AND turma_id = $2
-       RETURNING id`,
-      [matriculaId, turmaId],
-    );
-    return (resultado.rowCount ?? 0) > 0;
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const resultado = await cliente.query(
+        `UPDATE matriculas
+         SET status = 'cancelado'
+         WHERE id = $1 AND turma_id = $2
+         RETURNING id`,
+        [matriculaId, turmaId],
+      );
+
+      const removeu = (resultado.rowCount ?? 0) > 0;
+
+      // Tirar o ultimo aluno devolve a turma para "planejada".
+      if (removeu) {
+        await cliente.query(atualizarStatusDerivadoDaTurma(), [turmaId]);
+      }
+
+      await cliente.query("COMMIT");
+      return removeu;
+    } catch (erro) {
+      await cliente.query("ROLLBACK");
+      throw erro;
+    } finally {
+      cliente.release();
+    }
   }
 
   async buscarMatriculaPorId(
@@ -1230,9 +1506,11 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       : null;
   }
 
+  // Sem `paginacao`, devolve tudo — e o que o relatorio e a exportacao usam.
   async listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
-  ): Promise<FrequenciaCoordenador[]> {
+    paginacao?: Paginacao,
+  ): Promise<Pagina<FrequenciaCoordenador>> {
     const resultado = await this.db.query(
       `
       WITH resumo AS (
@@ -1242,7 +1520,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           m.status AS status_matricula,
           ${presencasEfetivas("f")} AS presencas,
           ${faltasNaoJustificadas("f")} AS faltas,
-          COUNT(f.id) AS registros,
+          ${chamadasLancadas("f")} AS registros,
           ${frequenciaPorMatricula("f")} AS frequencia
         FROM matriculas m
         JOIN alunos a ON a.id = m.aluno_id
@@ -1285,29 +1563,41 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           -- ativou a conta) caiam direto em 'risco' e enchiam o painel da
           -- coordenacao de alerta antes da primeira aula.
           WHEN registros = 0 THEN 'sem_registro'
-          WHEN frequencia >= ${FREQUENCIA_MINIMA_APROVACAO} THEN 'regular'
-          WHEN frequencia >= ${FREQUENCIA_ATENCAO} THEN 'atencao'
-          ELSE 'risco'
-        END AS situacao
+          -- Classifica por FALTA, nao por faixa de frequencia: a frequencia se
+          -- acumula ao longo do periodo, entao no meio do curso quem nunca
+          -- faltou ainda esta abaixo de 80% e caia em 'risco' junto com quem
+          -- de fato estava perdendo a vaga.
+          WHEN faltas > ${FALTAS_TOLERADAS} THEN 'risco'
+          WHEN faltas = ${FALTAS_TOLERADAS} THEN 'atencao'
+          ELSE 'regular'
+        END AS situacao,
+        ${TOTAL_DA_CONSULTA}
       FROM resumo
       ORDER BY aluno ASC, turma ASC
+      ${paginacao ? limiteEDeslocamento(5) : ""}
       `,
       [
         filtros.curso ?? null,
         filtros.turma ?? null,
         filtros.aluno ?? null,
         filtros.periodo ?? null,
+        ...(paginacao ? valoresDeLimiteEDeslocamento(paginacao) : []),
       ],
     );
 
-    return resultado.rows.map((linha) => ({
-      aluno: linha.aluno,
-      turma: linha.turma,
-      presencas: Number(linha.presencas),
-      faltas: Number(linha.faltas),
-      frequencia: Number(linha.frequencia),
-      situacao: linha.situacao,
-    }));
+    return {
+      itens: resultado.rows.map((linha) => ({
+        aluno: linha.aluno,
+        turma: linha.turma,
+        presencas: Number(linha.presencas),
+        faltas: Number(linha.faltas),
+        frequencia: Number(linha.frequencia),
+        situacao: linha.situacao,
+      })),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao?.pagina ?? 1,
+      porPagina: paginacao?.porPagina ?? resultado.rows.length,
+    };
   }
 
   async listarRelatorios(): Promise<RelatorioCoordenador[]> {
@@ -1426,6 +1716,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
   private async relatorioFrequenciaTurma(): Promise<RelatorioCoordenador> {
     const resultado = await this.db.query(`
+      WITH freq_turma AS (${frequenciaAgregadaPorTurma()})
       SELECT
         tu.id AS turma_id,
         tu.nome AS turma,
@@ -1436,25 +1727,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         -- aplicada sobre a contagem de faltas da turma inteira, ela somava as
         -- faltas de todos antes de descontar, e qualquer turma com dez faltas
         -- no total marcava 0% enquanto a listagem de Turmas mostrava 90%.
-        COALESCE((
-          SELECT ROUND(AVG(por_aluno.frequencia))
-            FROM (
-              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
-                FROM matriculas mf
-                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
-               WHERE mf.turma_id = tu.id
-                 AND mf.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
-               GROUP BY mf.id
-            ) AS por_aluno
-        ), 0) AS frequencia,
-        ${presencasEfetivas("f")} AS presencas,
-        COUNT(f.id) AS registros
+        COALESCE(ft.media, 0) AS frequencia,
+        ft.presencas_ativas AS presencas,
+        ft.registros_ativos AS registros
       FROM turmas tu
       JOIN treinamentos tr ON tr.id = tu.treinamento_id
-      LEFT JOIN matriculas m
-        ON m.turma_id = tu.id AND m.status IN ('em_andamento', 'aprovado', 'reprovado_falta')
-      LEFT JOIN frequencias f ON f.matricula_id = m.id
-      GROUP BY tu.id, tu.nome, tr.nome, tu.data_inicio
+      LEFT JOIN freq_turma ft ON ft.turma_id = tu.id
       ORDER BY tu.data_inicio ASC, tu.nome ASC
     `);
 
@@ -1830,7 +2108,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     };
   }
 
-  async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+  // Consulta base dos certificados, sem ordem nem recorte. As duas listagens
+  // partem daqui para nao terem duas versoes da regra de elegibilidade.
+  private async selectCertificados(): Promise<string> {
     const { maximoFaltas, apenasEncerrada } =
       await this.obterConfigCertificado();
 
@@ -1844,7 +2124,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       ? `WHEN tu.status <> 'concluida' AND tu.status <> 'encerrada' THEN 'Turma ainda nao finalizada.'`
       : "";
 
-    const resultado = await this.db.query(`
+    return `
       SELECT
         m.id AS referencia_id,
         c.id AS certificado_id,
@@ -1907,10 +2187,13 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         tr.carga_horaria,
         tu.status,
         u.status
-      ORDER BY u.nome ASC
-    `);
+    `;
+  }
 
-    return resultado.rows.map((linha) => ({
+  private mapearCertificadoListagem(
+    linha: any,
+  ): CertificadoListagemCoordenador {
+    return {
       referenciaId: linha.referencia_id,
       certificadoId: linha.certificado_id ?? null,
       tipo: "aluno",
@@ -1927,7 +2210,97 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       dataFim: linha.data_fim ?? null,
       cargaHoraria:
         linha.carga_horaria === null ? null : Number(linha.carga_horaria),
-    }));
+    };
+  }
+
+  // Sem paginacao de proposito: o painel e a tela de detalhe da turma contam
+  // certificados sobre a lista inteira. A tela de Certificados usa
+  // listarCertificadosPaginado.
+  async listarCertificados(): Promise<CertificadoListagemCoordenador[]> {
+    const resultado = await this.db.query(`
+      ${await this.selectCertificados()}
+      ORDER BY nome ASC
+    `);
+
+    return resultado.rows.map((linha) =>
+      this.mapearCertificadoListagem(linha),
+    );
+  }
+
+  async listarCertificadosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeCertificados,
+  ): Promise<PaginaDeCertificados> {
+    // O status que a tela mostra nao existe numa coluna: sai do status do
+    // certificado e, quando nao ha certificado, da elegibilidade. Ele e
+    // calculado uma vez numa camada de fora, para servir ao filtro, aos
+    // cartoes e a linha da tabela sem reescrever a regra tres vezes.
+    const resultado = await this.db.query(
+      `
+      WITH base AS (
+        ${await this.selectCertificados()}
+      ),
+      classificado AS (
+        SELECT
+          base.*,
+          CASE
+            WHEN base.status = 'emitido' THEN 'emitido'
+            WHEN base.status = 'pendente' THEN 'pendente'
+            WHEN base.status = 'cancelado' THEN 'cancelado'
+            WHEN base.elegivel THEN 'elegivel'
+            ELSE 'nao_elegivel'
+          END AS status_exibicao
+        FROM base
+      ),
+      filtrado AS (
+        SELECT * FROM classificado
+        WHERE ($1::text IS NULL OR curso = $1)
+          AND ($2::text IS NULL OR turma = $2)
+          AND ($3::text IS NULL OR status_exibicao = $3)
+      )
+      SELECT
+        filtrado.*,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (
+          WHERE status_exibicao = 'elegivel'
+        ) OVER () AS total_elegiveis,
+        COUNT(*) FILTER (
+          WHERE status_exibicao = 'pendente'
+        ) OVER () AS total_pendentes,
+        COUNT(*) FILTER (
+          WHERE status_exibicao = 'emitido'
+        ) OVER () AS total_emitidos,
+        COUNT(*) FILTER (
+          WHERE status_exibicao = 'nao_elegivel'
+        ) OVER () AS total_inelegiveis
+      FROM filtrado
+      ORDER BY nome ASC
+      ${limiteEDeslocamento(4)}
+      `,
+      [
+        filtros.curso || null,
+        filtros.turma || null,
+        filtros.status || null,
+        ...valoresDeLimiteEDeslocamento(paginacao),
+      ],
+    );
+
+    const primeira = resultado.rows[0];
+
+    return {
+      itens: resultado.rows.map((linha) =>
+        this.mapearCertificadoListagem(linha),
+      ),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+      resumo: {
+        elegiveis: Number(primeira?.total_elegiveis ?? 0),
+        pendentes: Number(primeira?.total_pendentes ?? 0),
+        emitidos: Number(primeira?.total_emitidos ?? 0),
+        inelegiveis: Number(primeira?.total_inelegiveis ?? 0),
+      },
+    };
   }
 
   /**
@@ -2302,6 +2675,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         [alunoId, referencia.treinamento_id, referencia.turma_id],
       );
 
+      // Cadastrar o aluno ja dentro de uma turma tambem tira a turma de
+      // "planejada" — e o outro caminho de matricula, alem de vincularAluno.
+      await cliente.query(atualizarStatusDerivadoDaTurma(), [
+        referencia.turma_id,
+      ]);
+
       await cliente.query("COMMIT");
       return {
         usuarioId,
@@ -2382,8 +2761,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  async listarTurmas(): Promise<TurmaListagem[]> {
-    const query = `
+  private selectTurma(colunasExtras = "", filtro = ""): string {
+    return `
+      WITH freq_turma AS (${frequenciaAgregadaPorTurma()})
       SELECT
         t.id,
         t.nome,
@@ -2396,38 +2776,80 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
-        COALESCE((
-          SELECT ROUND(AVG(por_aluno.frequencia))
-            FROM (
-              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
-                FROM matriculas mf
-                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
-               WHERE mf.turma_id = t.id
-                 AND mf.status <> 'cancelado'
-               GROUP BY mf.id
-            ) AS por_aluno
-        ), 0) AS frequencia_media,
-        (
-          SELECT COUNT(*)
-            FROM frequencias fr
-            JOIN matriculas mf ON mf.id = fr.matricula_id
-           WHERE mf.turma_id = t.id
-        ) AS registros_frequencia
+        COALESCE(ft.media, 0) AS frequencia_media,
+        COALESCE(ft.registros, 0) AS registros_frequencia${colunasExtras}
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
+      LEFT JOIN freq_turma ft ON ft.turma_id = t.id
       LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
-      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
-      ORDER BY t.data_inicio DESC
+      ${filtro}
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim, ft.media, ft.registros
     `;
-    const resultado = await this.db.query(query);
+  }
+
+  // Sem paginacao de proposito: alimenta os seletores de turma do cadastro de
+  // aluno, dos filtros de certificado e de relatorio, e do painel. A tela de
+  // Turmas usa listarTurmasPaginado.
+  async listarTurmas(): Promise<TurmaListagem[]> {
+    const resultado = await this.db.query(`
+      ${this.selectTurma()}
+      ORDER BY t.data_inicio DESC
+    `);
     return resultado.rows.map((linha) => this.mapearTurma(linha));
+  }
+
+  async listarTurmasPaginado(
+    paginacao: Paginacao,
+  ): Promise<PaginaDeTurmas> {
+    // "Alunos matriculados" soma o COUNT de cada turma, e a media de
+    // frequencia so considera turma em andamento que ja teve chamada — turma
+    // sem chamada entrava como 0% e derrubava o indicador.
+    const agregados = `,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (
+          WHERE t.status = 'em_andamento'
+        ) OVER () AS total_em_andamento,
+        COUNT(*) FILTER (
+          WHERE t.status = 'encerrada'
+        ) OVER () AS total_encerradas,
+        COALESCE(SUM(COUNT(DISTINCT m.id)) FILTER (
+          WHERE t.status IN ('em_andamento', 'planejada')
+        ) OVER (), 0) AS total_matriculados,
+        COALESCE(ROUND(AVG(COALESCE(ft.media, 0)) FILTER (
+          WHERE t.status = 'em_andamento' AND COALESCE(ft.registros, 0) > 0
+        ) OVER ()), 0) AS media_frequencia`;
+
+    const resultado = await this.db.query(
+      `
+      ${this.selectTurma(agregados)}
+      ORDER BY t.data_inicio DESC
+      ${limiteEDeslocamento(1)}
+      `,
+      valoresDeLimiteEDeslocamento(paginacao),
+    );
+
+    const primeira = resultado.rows[0];
+
+    return {
+      itens: resultado.rows.map((linha) => this.mapearTurma(linha)),
+      total: totalDasLinhas(resultado.rows),
+      pagina: paginacao.pagina,
+      porPagina: paginacao.porPagina,
+      resumo: {
+        emAndamento: Number(primeira?.total_em_andamento ?? 0),
+        encerradas: Number(primeira?.total_encerradas ?? 0),
+        matriculados: Number(primeira?.total_matriculados ?? 0),
+        mediaFrequencia: Number(primeira?.media_frequencia ?? 0),
+      },
+    };
   }
 
   async listarTurmasPorCurso(cursoId: string): Promise<TurmaListagem[]> {
     const query = `
+      WITH freq_turma AS (${frequenciaAgregadaPorTurma()})
       SELECT
         t.id,
         t.nome,
@@ -2440,31 +2862,17 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         to_char(t.data_inicio, 'YYYY-MM-DD') AS data_inicio,
         to_char(t.data_fim, 'YYYY-MM-DD') AS data_termino,
         COUNT(DISTINCT m.id) AS alunos,
-        COALESCE((
-          SELECT ROUND(AVG(por_aluno.frequencia))
-            FROM (
-              SELECT ${frequenciaPorMatricula("fr")} AS frequencia
-                FROM matriculas mf
-                LEFT JOIN frequencias fr ON fr.matricula_id = mf.id
-               WHERE mf.turma_id = t.id
-                 AND mf.status <> 'cancelado'
-               GROUP BY mf.id
-            ) AS por_aluno
-        ), 0) AS frequencia_media,
-        (
-          SELECT COUNT(*)
-            FROM frequencias fr
-            JOIN matriculas mf ON mf.id = fr.matricula_id
-           WHERE mf.turma_id = t.id
-        ) AS registros_frequencia
+        COALESCE(ft.media, 0) AS frequencia_media,
+        COALESCE(ft.registros, 0) AS registros_frequencia
       FROM turmas t
       JOIN treinamentos tr ON tr.id = t.treinamento_id
+      LEFT JOIN freq_turma ft ON ft.turma_id = t.id
       LEFT JOIN turma_instrutores ti ON ti.turma_id = t.id
       LEFT JOIN instrutores i ON i.id = ti.instrutor_id
       LEFT JOIN usuarios ui ON ui.id = i.usuario_id
       LEFT JOIN matriculas m ON m.turma_id = t.id
       WHERE t.treinamento_id = $1
-      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim
+      GROUP BY t.id, t.nome, tr.nome, t.periodo_letivo, t.capacidade, t.status, t.data_inicio, t.data_fim, ft.media, ft.registros
       ORDER BY t.data_inicio DESC
     `;
     const resultado = await this.db.query(query, [cursoId]);

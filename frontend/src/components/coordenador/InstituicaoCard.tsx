@@ -11,7 +11,10 @@ import {
   settingsLabelClass,
   settingsSubmitButtonClass,
 } from "@/components/coordenador/SettingsSectionCard";
-import { Notificacao } from "@/components/shared/Notificacao";
+import {
+  Notificacao,
+  PRAZO_PARA_LIMPAR_AVISO,
+} from "@/components/shared/Notificacao";
 import {
   type InstituicaoFormData,
   instituicaoSchema,
@@ -60,7 +63,7 @@ export const InstituicaoCard = ({
       }
       setSuccessMessage(resultado.mensagem);
       await onSuccess?.();
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), PRAZO_PARA_LIMPAR_AVISO);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Erro ao atualizar dados",
@@ -121,9 +124,7 @@ export const InstituicaoCard = ({
                   id="institution-email"
                   type="email"
                   autoComplete="email"
-                  onChange={(event) =>
-                    field.onChange(event.target.value.toLowerCase())
-                  }
+                  onChange={(event) => field.onChange(event.target.value)}
                   placeholder="contato@instituicao.edu.br"
                   disabled={isSubmitting}
                   className={getSettingsFieldClass(Boolean(errors.email))}

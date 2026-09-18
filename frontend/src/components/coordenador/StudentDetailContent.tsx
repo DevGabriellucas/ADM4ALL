@@ -152,7 +152,7 @@ export const StudentDetailContent = ({
       <header className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
         <Link
           href="/coordenador/alunos"
-          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
         >
           Voltar para alunos
         </Link>
@@ -192,7 +192,7 @@ export const StudentDetailContent = ({
                 setIsEnrolling((current) => !current);
               }}
               aria-expanded={isEnrolling}
-              className="h-11 rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68]"
+              className="h-11 rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900"
             >
               {isEnrolling ? "Fechar vínculo" : "Vincular à turma"}
             </button>
@@ -419,7 +419,7 @@ export const StudentDetailContent = ({
                                 editableStatus,
                               )
                             }
-                            className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] disabled:cursor-not-allowed disabled:text-slate-400"
+                            className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 disabled:cursor-not-allowed disabled:text-slate-400"
                           >
                             {savingStatusId === enrollment.id
                               ? "Salvando..."

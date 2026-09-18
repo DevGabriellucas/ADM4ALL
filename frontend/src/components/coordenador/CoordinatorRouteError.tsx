@@ -36,7 +36,7 @@ export const CoordinatorRouteError = ({
       <button
         type="button"
         onClick={reset}
-        className="mt-5 rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+        className="mt-5 rounded-lg bg-brand-dark px-4 py-2 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
       >
         Tentar novamente
       </button>

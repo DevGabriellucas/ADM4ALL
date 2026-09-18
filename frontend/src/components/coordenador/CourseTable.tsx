@@ -91,7 +91,7 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
                     <div className="flex min-w-max flex-wrap gap-x-3 gap-y-2">
                       <Link
                         href={`/coordenador/cursos/${course.id}`}
-                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+                        className="cursor-pointer font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
                       >
                         Visualizar
                       </Link>

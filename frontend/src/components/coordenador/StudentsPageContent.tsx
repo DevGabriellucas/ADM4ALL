@@ -5,42 +5,30 @@ import { CoordinatorPageHeader } from "@/components/coordenador/CoordinatorPageH
 import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { NewStudentForm } from "@/components/coordenador/NewStudentForm";
 import { StudentTable } from "@/components/coordenador/StudentTable";
-import {
-  FREQUENCIA_LIMITE_RISCO,
-  MATRICULA_STATUS,
-} from "@/constants/matriculaStatus";
-import type { ClassGroup, Course, Student } from "@/types/coordinator";
+import { Paginacao } from "@/components/shared/Paginacao";
+import type { ClassGroup, Course, PaginaDeAlunos } from "@/types/coordinator";
 
 interface StudentsPageContentProps {
-  students: Student[];
+  pagina: PaginaDeAlunos;
   courses: Course[];
   classes: ClassGroup[];
 }
 
 export const StudentsPageContent = ({
-  students,
+  pagina,
   courses,
   classes,
 }: StudentsPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const activeStudents = students.filter(
-    (student) => student.statusConta === "ativo",
-  ).length;
-  const pendingStudents = students.filter(
-    (student) => student.statusConta === "pendente_ativacao",
-  ).length;
-  // Turma encerrada nao entra: o aluno ja fechou como Aprovado ou Reprovado e
-  // nao ha mais o que a coordenacao faca. O card conta quem ainda da tempo de
-  // salvar, e o limite e o mesmo da reprovacao por falta.
-  const studentsAtRisk = students.filter(
-    (student) =>
-      student.statusMatricula !== null &&
-      student.statusMatricula !== MATRICULA_STATUS.CANCELADO &&
-      student.statusTurma !== "encerrada" &&
-      student.statusTurma !== "concluida" &&
-      student.frequencia <= FREQUENCIA_LIMITE_RISCO,
-  ).length;
+  // A tabela mostra a pagina; os cartoes contam a base inteira e vem do
+  // servidor, que aplica as mesmas regras de antes — inclusive a de risco, que
+  // ignora turma encerrada porque o aluno ja fechou como Aprovado ou Reprovado
+  // e nao ha mais o que a coordenacao faca.
+  const students = pagina.itens;
+  const activeStudents = pagina.resumo.ativos;
+  const pendingStudents = pagina.resumo.pendentes;
+  const studentsAtRisk = pagina.resumo.emRisco;
 
   return (
     <>
@@ -52,7 +40,7 @@ export const StudentsPageContent = ({
             type="button"
             onClick={() => setIsFormOpen((currentValue) => !currentValue)}
             aria-expanded={isFormOpen}
-            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+            className="h-11 w-full rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Novo Aluno
           </button>
@@ -72,7 +60,7 @@ export const StudentsPageContent = ({
       >
         <CoordinatorStatCard
           title="Total de alunos"
-          value={students.length}
+          value={pagina.total}
           subtitle="Alunos cadastrados"
           variant="neutral"
         />
@@ -97,6 +85,14 @@ export const StudentsPageContent = ({
       </section>
 
       <StudentTable students={students} />
+
+      <Paginacao
+        pagina={pagina.pagina}
+        porPagina={pagina.porPagina}
+        total={pagina.total}
+        href="/coordenador/alunos"
+        rotulo="aluno"
+      />
     </>
   );
 };

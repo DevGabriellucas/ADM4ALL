@@ -65,12 +65,24 @@ export const EditClassForm = ({
       return;
     }
 
+    // Com o campo em texto, quem digita "trinta" mandaria NaN para a API e
+    // levaria de volta um erro de banco em vez de uma frase legivel.
+    const capacidade = Number(formData.capacidade.trim());
+
+    if (!Number.isInteger(capacidade) || capacidade < 1) {
+      setIsSubmitting(false);
+      setErrorMessage(
+        "Informe a capacidade como um número inteiro maior que zero.",
+      );
+      return;
+    }
+
     const resultado = await atualizarTurmaAction(classGroup.id, {
       nome: formData.nome,
       curso: formData.curso,
       instrutores: formData.instrutoresSelecionados,
       periodoLetivo: formData.periodoLetivo,
-      capacidade: Number(formData.capacidade),
+      capacidade,
       status: formData.status as ClassGroup["status"],
     });
 
@@ -185,10 +197,14 @@ export const EditClassForm = ({
 
             <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
               Capacidade
+              {/* Campo de texto, sem as setinhas do type="number", que davam
+                  para a coordenacao um contador que ela nao usava. O valor
+                  continua indo como numero para a API, e o banco tem
+                  CHECK (capacidade > 0) — por isso a validacao no submit. */}
               <input
                 required
-                min="1"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={formData.capacidade}
                 onChange={(event) =>
                   setFormData({ ...formData, capacidade: event.target.value })
@@ -230,10 +246,12 @@ export const EditClassForm = ({
                 }
                 className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
               >
+                {/* "Encerrada" saiu da lista: virou sinonimo de "Concluída" e
+                    as duas na mesma tela so faziam a coordenacao escolher
+                    entre nomes diferentes para o mesmo fim de turma. */}
                 <option value="planejada">Planejada</option>
                 <option value="em_andamento">Em andamento</option>
                 <option value="concluida">Concluída</option>
-                <option value="encerrada">Encerrada</option>
                 <option value="cancelada">Cancelada</option>
               </select>
             </label>

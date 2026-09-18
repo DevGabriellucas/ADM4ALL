@@ -1,10 +1,87 @@
 // Repositorio usado pela area do coordenador/admin.
 // Dashboard e listagens sao majoritariamente agregacao de leitura sobre
 // tabelas ja existentes (treinamentos, turmas, instrutores, alunos, etc.).
+import type { Pagina, Paginacao } from "../paginacao";
 import type {
   CampoPendenteAtivacao,
   OrigemAtivacao,
 } from "./ActivationRepository";
+
+// Os cartoes do topo da tela de Alunos contam a base inteira, e nao a pagina
+// aberta, entao o total de cada um viaja junto com a pagina.
+export interface ResumoDeAlunos {
+  ativos: number;
+  pendentes: number;
+  emRisco: number;
+}
+
+export interface PaginaDeAlunos extends Pagina<AlunoListagemCoordenador> {
+  resumo: ResumoDeAlunos;
+}
+
+// Os filtros da tela de Usuarios rodavam no navegador sobre a lista inteira.
+// Com pagina, eles precisam ir ao banco: filtrar so a pagina aberta esconderia
+// quem esta nas outras.
+export interface FiltrosDeUsuarios {
+  /** Casa com nome, e-mail ou CPF. */
+  busca?: string | null;
+  perfil?: string | null;
+  status?: string | null;
+  ordenacao?: string | null;
+}
+
+export interface FiltrosDeCertificados {
+  curso?: string | null;
+  turma?: string | null;
+  /** elegivel | pendente | emitido | cancelado | nao_elegivel */
+  status?: string | null;
+}
+
+// Os cartoes de Certificados contam sobre o resultado FILTRADO, e nao sobre a
+// base inteira, entao acompanham a pagina.
+export interface ResumoDeCertificados {
+  elegiveis: number;
+  pendentes: number;
+  emitidos: number;
+  inelegiveis: number;
+}
+
+export interface PaginaDeCertificados
+  extends Pagina<CertificadoListagemCoordenador> {
+  resumo: ResumoDeCertificados;
+}
+
+export interface ResumoDeCursos {
+  ativos: number;
+  desativados: number;
+  emPlanejamento: number;
+  semTurma: number;
+}
+
+export interface PaginaDeCursos extends Pagina<CursoResumo> {
+  resumo: ResumoDeCursos;
+}
+
+export interface ResumoDeTurmas {
+  emAndamento: number;
+  encerradas: number;
+  matriculados: number;
+  mediaFrequencia: number;
+}
+
+export interface PaginaDeTurmas extends Pagina<TurmaListagem> {
+  resumo: ResumoDeTurmas;
+}
+
+export interface ResumoDeInstrutores {
+  ativos: number;
+  pendentes: number;
+  turmasVinculadas: number;
+}
+
+export interface PaginaDeInstrutores extends Pagina<InstrutorListagem> {
+  resumo: ResumoDeInstrutores;
+}
 
 export interface DashboardResumo {
   totalCursos: number;
@@ -491,7 +568,22 @@ export interface AlunoExcluido {
 export interface CoordenadorRepository {
   buscarDashboard(): Promise<DashboardResumo>;
 
+  /** Lista inteira, para combos e seletores. */
   listarCursos(): Promise<CursoResumo[]>;
+  listarCursosPaginado(paginacao: Paginacao): Promise<PaginaDeCursos>;
+  listarAlunosPaginado(paginacao: Paginacao): Promise<PaginaDeAlunos>;
+  listarTurmasPaginado(paginacao: Paginacao): Promise<PaginaDeTurmas>;
+  listarUsuariosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeUsuarios,
+  ): Promise<Pagina<UsuarioListagemCoordenador>>;
+  listarInstrutoresPaginado(
+    paginacao: Paginacao,
+  ): Promise<Pagina<InstrutorListagem>>;
+  listarCertificadosPaginado(
+    paginacao: Paginacao,
+    filtros: FiltrosDeCertificados,
+  ): Promise<PaginaDeCertificados>;
   criarCurso(input: CriarCursoInput): Promise<CursoResumo>;
   buscarCursoPorId(id: string): Promise<CursoResumo | null>;
   atualizarCurso(id: string, input: AtualizarCursoInput): Promise<CursoResumo | null>;
@@ -572,9 +664,11 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarStatusMatriculaInput,
   ): Promise<MatriculaStatusAtualizado | null>;
+  /** Sem `paginacao`, devolve a lista inteira (relatorio e exportacao). */
   listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
-  ): Promise<FrequenciaCoordenador[]>;
+    paginacao?: Paginacao,
+  ): Promise<Pagina<FrequenciaCoordenador>>;
   listarRelatorios(): Promise<RelatorioCoordenador[]>;
   criarRelatorioGerado(
     input: CriarRelatorioGeradoInput,

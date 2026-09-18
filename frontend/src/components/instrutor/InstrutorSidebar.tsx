@@ -79,8 +79,10 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
               key={item.href}
               href={item.href}
               aria-current={ativo ? "page" : undefined}
-              className={`min-w-max rounded-md px-3 py-2 text-sm tracking-[0.15em] transition-colors hover:bg-white/20 ${
-                ativo ? "bg-white/25 font-semibold" : "font-medium"
+              className={`min-w-max rounded-md px-3 py-2 text-sm tracking-[0.15em] transition-colors ${
+                ativo
+                  ? "font-bold text-black bg-brand-light/80 hover:bg-brand-light"
+                  : "font-semibold text-black hover:bg-brand-light/50"
               }`}
             >
               {item.label}
@@ -91,11 +93,11 @@ export const InstrutorSidebar = ({ instrutor }: InstrutorSidebarProps) => {
         <button
           type="button"
           onClick={() => setConfirmandoSaida(true)}
-          className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md px-3 py-2 text-left font-semibold text-red-700 text-sm tracking-[0.15em] transition-colors hover:bg-red-100/70 xl:mt-2"
+          className="flex min-w-max cursor-pointer items-center gap-x-2 rounded-md bg-red-600 px-3 py-2 text-left font-semibold text-sm text-white tracking-[0.15em] transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 xl:mt-2"
         >
           <svg
             viewBox="0 0 24 24"
-            className="size-5 shrink-0 text-red-700"
+            className="size-5 shrink-0"
             fill="none"
             stroke="currentColor"
             strokeLinecap="round"

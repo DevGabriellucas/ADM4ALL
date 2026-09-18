@@ -132,7 +132,7 @@ export const InstructorDetailContent = ({
       <header className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
         <Link
           href="/coordenador/instrutores"
-          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
         >
           Voltar para instrutores
         </Link>
@@ -354,7 +354,7 @@ export const InstructorDetailContent = ({
                     <td className="border-slate-100 border-b px-3 py-3">
                       <Link
                         href={`/coordenador/turmas/${turma.id}`}
-                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+                        className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
                       >
                         Visualizar
                       </Link>

@@ -166,7 +166,7 @@ export const ManageClassStudentsModal = ({
                   type="button"
                   disabled={!selectedStudentId || isAdding}
                   onClick={handleAdd}
-                  className="h-11 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-11 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAdding ? "Adicionando..." : "Adicionar"}
                 </button>

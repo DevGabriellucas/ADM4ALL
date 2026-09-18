@@ -31,10 +31,13 @@ const situacaoClasses: Record<HistoricoPresenca["situacao"], string> = {
   pendente: "bg-slate-100 text-slate-600",
 };
 
+// Aula cancelada e vermelha, no mesmo peso com que "Realizada" e verde. Em
+// cinza ela lia como "ainda nao aconteceu" e o aluno continuava esperando uma
+// aula que nao vai ter.
 const calendarioClasses: Record<AulaCalendario["status"], string> = {
   planejada: "bg-blue-50 text-blue-700",
   realizada: "bg-emerald-50 text-emerald-700",
-  cancelada: "bg-slate-100 text-slate-600",
+  cancelada: "bg-red-50 text-red-700",
 };
 
 const calendarioLabel: Record<AulaCalendario["status"], string> = {

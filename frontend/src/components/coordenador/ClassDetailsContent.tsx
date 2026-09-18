@@ -103,7 +103,7 @@ export const ClassDetailsContent = ({
       <header className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
         <Link
           href="/coordenador/turmas"
-          className="font-semibold text-brand-dark text-xs transition-colors hover:text-[#23275F]"
+          className="font-semibold text-brand-dark text-xs transition-colors hover:text-navy-900"
         >
           Voltar para turmas
         </Link>
@@ -143,21 +143,21 @@ export const ClassDetailsContent = ({
           <button
             type="button"
             onClick={() => setEditingClass(classGroup)}
-            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
           >
             Editar turma
           </button>
           <button
             type="button"
             onClick={() => setManagingStudents(classGroup)}
-            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
           >
             Adicionar aluno
           </button>
           <button
             type="button"
             onClick={() => setAddingInstructor(classGroup)}
-            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+            className="h-10 cursor-pointer rounded-lg bg-brand-dark px-4 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
           >
             Adicionar instrutor
           </button>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import {
   atualizarStatusUsuarioAction,
   excluirUsuarioAction,
@@ -11,6 +12,7 @@ import { EditUserModal } from "@/components/coordenador/EditUserModal";
 import { NewUserModal } from "@/components/coordenador/NewUserModal";
 import { UserTable } from "@/components/coordenador/UserTable";
 import { Notificacao } from "@/components/shared/Notificacao";
+import { Paginacao } from "@/components/shared/Paginacao";
 import type {
   BaseUser,
   ClassGroup,
@@ -18,9 +20,18 @@ import type {
   UserRole,
   UserStatus,
 } from "@/types/coordinator";
+import type { Pagina } from "@/types/paginacao";
+
+export type FiltrosDeUsuarios = Record<string, string | undefined> & {
+  busca?: string | undefined;
+  perfil?: string | undefined;
+  status?: string | undefined;
+  ordenacao?: string | undefined;
+};
 
 interface UsersPageContentProps {
-  users: BaseUser[];
+  pagina: Pagina<BaseUser>;
+  filtros: FiltrosDeUsuarios;
   courses: Course[];
   classes: ClassGroup[];
   currentUserId?: string | null;
@@ -63,17 +74,63 @@ const hasActiveFilter = (
   sortBy !== "nome_asc";
 
 export const UsersPageContent = ({
-  users,
+  pagina,
+  filtros,
   courses,
   classes,
   currentUserId = null,
 }: UsersPageContentProps) => {
+  const router = useRouter();
+  const users = pagina.itens;
+
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<BaseUser | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
-  const [statusFilter, setStatusFilter] = useState<UserStatus | "">("");
-  const [sortBy, setSortBy] = useState<SortOption>("nome_asc");
+
+  // O campo de busca guarda o que esta sendo digitado para a digitacao nao
+  // engasgar; a URL so e atualizada depois de uma pausa. Os seletores nao
+  // precisam disso e vao direto.
+  const [searchTerm, setSearchTerm] = useState(filtros.busca ?? "");
+  const roleFilter = (filtros.perfil ?? "") as UserRole | "";
+  const statusFilter = (filtros.status ?? "") as UserStatus | "";
+  const sortBy = (filtros.ordenacao ?? "nome_asc") as SortOption;
+
+  const aplicarFiltros = useCallback(
+    (novos: FiltrosDeUsuarios) => {
+      const query = new URLSearchParams();
+      const combinado: FiltrosDeUsuarios = {
+        busca: searchTerm,
+        perfil: roleFilter,
+        status: statusFilter,
+        ordenacao: sortBy,
+        ...novos,
+      };
+
+      for (const [chave, valor] of Object.entries(combinado)) {
+        // "nome_asc" e o padrao: fora da URL, "Limpar filtros" volta ao
+        // endereco base.
+        if (valor && valor !== "nome_asc") query.set(chave, valor);
+      }
+
+      // Sempre volta para a primeira pagina: o resultado mudou, e a pagina 7
+      // do filtro anterior provavelmente nem existe no novo.
+      const texto = query.toString();
+      router.push(
+        texto ? `/coordenador/usuarios?${texto}` : "/coordenador/usuarios",
+      );
+    },
+    [router, searchTerm, roleFilter, statusFilter, sortBy],
+  );
+
+  useEffect(() => {
+    const atual = filtros.busca ?? "";
+    if (searchTerm === atual) return;
+
+    const timeout = window.setTimeout(
+      () => aplicarFiltros({ busca: searchTerm }),
+      400,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [searchTerm, filtros.busca, aplicarFiltros]);
 
   const [confirmState, setConfirmState] = useState<{
     user: BaseUser;
@@ -142,78 +199,16 @@ export const UsersPageContent = ({
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setRoleFilter("");
-    setStatusFilter("");
-    setSortBy("nome_asc");
+    aplicarFiltros({
+      busca: "",
+      perfil: "",
+      status: "",
+      ordenacao: "nome_asc",
+    });
   };
 
-  const filteredUsers = useMemo(() => {
-    const result = users.filter((user) => {
-      const trimmedSearch = searchTerm.trim();
-
-      if (trimmedSearch) {
-        const normalizedSearch = trimmedSearch.toLowerCase();
-        const searchDigits = searchTerm.replace(/\D/g, "");
-
-        const matchesName = user.nome.toLowerCase().includes(normalizedSearch);
-        const matchesEmail = user.email
-          .toLowerCase()
-          .includes(normalizedSearch);
-        const matchesCpf =
-          searchDigits.length > 0 &&
-          user.cpf.replace(/\D/g, "").includes(searchDigits);
-
-        if (!matchesName && !matchesEmail && !matchesCpf) {
-          return false;
-        }
-      }
-
-      if (roleFilter && user.role !== roleFilter) {
-        return false;
-      }
-
-      if (statusFilter && user.status !== statusFilter) {
-        return false;
-      }
-
-      return true;
-    });
-
-    const sorted = [...result];
-
-    switch (sortBy) {
-      case "nome_asc":
-        sorted.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-        break;
-      case "nome_desc":
-        sorted.sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
-        break;
-      case "acesso_recente":
-        sorted.sort((a, b) => {
-          if (!a.ultimoAcesso && !b.ultimoAcesso) return 0;
-          if (!a.ultimoAcesso) return 1;
-          if (!b.ultimoAcesso) return -1;
-          return (
-            new Date(b.ultimoAcesso).getTime() -
-            new Date(a.ultimoAcesso).getTime()
-          );
-        });
-        break;
-      case "acesso_antigo":
-        sorted.sort((a, b) => {
-          if (!a.ultimoAcesso && !b.ultimoAcesso) return 0;
-          if (!a.ultimoAcesso) return 1;
-          if (!b.ultimoAcesso) return -1;
-          return (
-            new Date(a.ultimoAcesso).getTime() -
-            new Date(b.ultimoAcesso).getTime()
-          );
-        });
-        break;
-    }
-
-    return sorted;
-  }, [users, searchTerm, roleFilter, statusFilter, sortBy]);
+  // A filtragem e a ordenacao agora acontecem no banco: filtrar aqui pegaria
+  // apenas a pagina aberta e esconderia quem esta nas outras.
 
   const desativando = confirmState?.targetStatus === "inativo";
 
@@ -233,7 +228,7 @@ export const UsersPageContent = ({
           <button
             type="button"
             onClick={() => setIsNewUserModalOpen(true)}
-            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-[#292E68] focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
+            className="h-11 w-full cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2 sm:w-auto"
           >
             + Novo usuário
           </button>
@@ -281,7 +276,7 @@ export const UsersPageContent = ({
           <select
             id="role-filter"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as UserRole | "")}
+            onChange={(e) => aplicarFiltros({ perfil: e.target.value })}
             className="h-9 w-full cursor-pointer rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-dark focus:outline-none"
           >
             {ROLE_FILTER_OPTIONS.map((opt) => (
@@ -302,7 +297,7 @@ export const UsersPageContent = ({
           <select
             id="status-filter"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as UserStatus | "")}
+            onChange={(e) => aplicarFiltros({ status: e.target.value })}
             className="h-9 w-full cursor-pointer rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-dark focus:outline-none"
           >
             {STATUS_FILTER_OPTIONS.map((opt) => (
@@ -323,7 +318,7 @@ export const UsersPageContent = ({
           <select
             id="sort-by"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            onChange={(e) => aplicarFiltros({ ordenacao: e.target.value })}
             className="h-9 w-full cursor-pointer rounded-lg border border-slate-300 px-3 text-sm focus:border-brand-dark focus:outline-none"
           >
             {SORT_OPTIONS.map((opt) => (
@@ -347,19 +342,27 @@ export const UsersPageContent = ({
         </button>
       </section>
 
-      <p className="mb-3 text-slate-500 text-xs">
-        Exibindo {filteredUsers.length} de {users.length} usuários
-      </p>
+      {users.length > 0 ? (
+        <>
+          <UserTable
+            users={users}
+            showActions
+            onEdit={setSelectedUser}
+            onStatusChange={handleStatusChange}
+            onDelete={setUserPendingDeletion}
+            currentUserId={currentUserId}
+          />
 
-      {filteredUsers.length > 0 ? (
-        <UserTable
-          users={filteredUsers}
-          showActions
-          onEdit={setSelectedUser}
-          onStatusChange={handleStatusChange}
-          onDelete={setUserPendingDeletion}
-          currentUserId={currentUserId}
-        />
+          <Paginacao
+            pagina={pagina.pagina}
+            porPagina={pagina.porPagina}
+            total={pagina.total}
+            href="/coordenador/usuarios"
+            parametros={filtros}
+            rotulo="usuário"
+            rotuloPlural="usuários"
+          />
+        </>
       ) : (
         <section className="rounded-lg border border-[#D5DDEC] bg-white p-5 shadow-sm">
           <div className="py-12 text-center">

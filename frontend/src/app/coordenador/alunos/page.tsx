@@ -3,12 +3,23 @@ import { BackButton } from "@/components/shared/BackButton";
 import {
   getClasses,
   getCourses,
-  getStudents,
+  getStudentsPage,
 } from "@/services/coordinatorService";
+import { paginaDaUrl } from "@/types/paginacao";
 
-export default async function CoordinatorStudentsPage() {
-  const [students, courses, classes] = await Promise.all([
-    getStudents(),
+interface CoordinatorStudentsPageProps {
+  searchParams: Promise<{ pagina?: string }>;
+}
+
+export default async function CoordinatorStudentsPage({
+  searchParams,
+}: CoordinatorStudentsPageProps) {
+  const { pagina } = await searchParams;
+
+  // Cursos e turmas continuam vindo inteiros: alimentam os seletores do
+  // formulario de novo aluno, que precisa de todas as opcoes.
+  const [alunos, courses, classes] = await Promise.all([
+    getStudentsPage(paginaDaUrl(pagina)),
     getCourses(),
     getClasses(),
   ]);
@@ -17,7 +28,7 @@ export default async function CoordinatorStudentsPage() {
     <>
       <BackButton className="mb-4" />
       <StudentsPageContent
-        students={students}
+        pagina={alunos}
         courses={courses}
         classes={classes}
       />

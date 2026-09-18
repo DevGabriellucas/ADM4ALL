@@ -194,10 +194,6 @@ export interface InstrutorRepository {
     turmaId: string,
     aulaId: string,
   ): Promise<SituacaoAula | null>;
-  preencherPresencasPendentes(
-    turmaId: string,
-    aulaId: string,
-  ): Promise<number>;
   buscarPresencasPorAula(
     turmaId: string,
     aulaId: string,

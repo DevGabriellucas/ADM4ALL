@@ -27,6 +27,7 @@ export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
     semMatricula: resposta.semMatricula ?? false,
     curso: resposta.cursoDeExtensao.nomeCurso,
     faltas: resposta.cursoDeExtensao.qtdFaltas,
+    chamadasLancadas: resposta.cursoDeExtensao.qtdChamadasLancadas ?? 0,
     aulasPlanejadas: resposta.cursoDeExtensao.qtdTotalAulas,
     aulasConcluidas: resposta.cursoDeExtensao.qtdAulasConcluidas,
     progresso: resposta.cursoDeExtensao.progresso,

@@ -132,7 +132,7 @@ export const NewInstructorForm = ({
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  email: event.target.value.toLowerCase(),
+                  email: event.target.value,
                 })
               }
               placeholder="instrutor@email.com"

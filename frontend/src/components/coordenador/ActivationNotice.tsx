@@ -15,7 +15,7 @@ export const ActivationNotice = ({
   enviaEmail = true,
 }: ActivationNoticeProps) => {
   return (
-    <Notificacao tipo="aviso" className="mt-4">
+    <Notificacao posicao="inline" tipo="aviso" className="mt-4">
       <p className="font-semibold">Acesso pendente de ativação</p>
       <p className="mt-1">
         {enviaEmail ? (

@@ -14,11 +14,12 @@ import {
 import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
-import { DESCONTO_FREQUENCIA_POR_FALTA } from "../../domain/regras-academicas";
 import { BadRequestError } from "../errors/BadRequestError";
 import {
+  chamadasLancadas,
   faltasNaoJustificadas,
   frequenciaPorMatricula,
+  presencasEfetivas,
 } from "./sql/frequencia";
 
 export class PostgresAlunoRepository implements AlunoRepository {
@@ -142,8 +143,18 @@ export class PostgresAlunoRepository implements AlunoRepository {
       faltas_aluno AS (
         -- Falta justificada e aceita nao conta e nao desconta progresso.
         SELECT
-          COUNT(*) FILTER (WHERE f.presente = FALSE AND f.justificada = FALSE)::INTEGER AS qtd,
-          COUNT(*) FILTER (WHERE f.presente = TRUE)::INTEGER AS presencas
+          ${faltasNaoJustificadas("f")}::INTEGER AS qtd,
+          ${presencasEfetivas("f")}::INTEGER AS presencas,
+          -- Quantas chamadas existem para esta matricula. Sem este numero a
+          -- tela nao tem como distinguir "0% porque faltou a tudo" de "0%
+          -- porque a primeira chamada ainda nao foi lancada".
+          ${chamadasLancadas("f")}::INTEGER AS chamadas,
+          -- A MESMA conta das outras telas, vinda do helper: comeca em zero,
+          -- presenca e justificada somam, falta subtrai. Aqui ja foi a
+          -- proporcao de presencas sobre as chamadas, uma quarta formula
+          -- divergente — o aluno que faltasse na primeira aula via 0% e
+          -- "Reprovado por falta" enquanto o instrutor via 90%.
+          ${frequenciaPorMatricula("f")}::INTEGER AS frequencia
         FROM frequencias f
         JOIN matricula_selecionada m ON m.id = f.matricula_id
       ),
@@ -151,11 +162,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
         SELECT
           fa.qtd AS qtd_faltas,
           fa.presencas AS qtd_presencas,
-          -- A MESMA conta das outras telas: 100 pontos menos 10 por falta nao
-          -- justificada. Aqui era a proporcao de presencas sobre as chamadas,
-          -- uma quarta formula divergente — o aluno que faltasse na primeira
-          -- aula via 0% e "Reprovado por falta" enquanto o instrutor via 90%.
-          GREATEST(0, 100 - fa.qtd * $2::INTEGER) AS frequencia,
+          fa.chamadas AS qtd_chamadas_lancadas,
+          fa.frequencia,
           au.total AS qtd_total_aulas,
           au.realizadas AS qtd_aulas_concluidas,
           CASE
@@ -174,6 +182,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
         (m.id IS NULL) AS sem_matricula,
         COALESCE(tr.nome, '') AS nome_curso,
         p.qtd_faltas,
+        p.qtd_chamadas_lancadas,
         p.qtd_total_aulas,
         p.qtd_aulas_concluidas,
         p.progresso,
@@ -252,10 +261,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
       LIMIT 1
     `;
 
-    const resultado = await this.db.query(query, [
-      alunoId,
-      DESCONTO_FREQUENCIA_POR_FALTA,
-    ]);
+    const resultado = await this.db.query(query, [alunoId]);
     const linha = resultado.rows[0];
 
     if (!linha) {
@@ -270,6 +276,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
       cursoDeExtensao: {
         nomeCurso: linha.nome_curso,
         qtdFaltas: Number(linha.qtd_faltas),
+        qtdChamadasLancadas: Number(linha.qtd_chamadas_lancadas ?? 0),
         qtdTotalAulas: Number(linha.qtd_total_aulas),
         qtdAulasConcluidas: Number(linha.qtd_aulas_concluidas),
         progresso: Number(linha.progresso),

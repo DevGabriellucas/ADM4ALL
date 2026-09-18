@@ -135,7 +135,7 @@ export const NewCoordinatorForm = ({
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  email: event.target.value.toLowerCase(),
+                  email: event.target.value,
                 })
               }
               placeholder="coordenador@email.com"
