@@ -18,6 +18,18 @@ export async function baixarCertificadoAlunoAction(): Promise<AuthenticatedFileR
   );
 }
 
+/**
+ * Direito de acesso do titular (LGPD, Art. 18, II e V): o aluno baixa tudo que
+ * o sistema guarda sobre ele. O backend decide de quem sao os dados pelo token,
+ * entao nao ha id nenhum para passar aqui.
+ */
+export async function baixarMeusDadosAlunoAction(): Promise<AuthenticatedFileResponse> {
+  return await authenticatedFileRequest(
+    "/alunos/me/dados",
+    "Nao foi possivel baixar seus dados. Tente novamente.",
+  );
+}
+
 export async function baixarMaterialAlunoAction(
   materialId: string,
 ): Promise<AuthenticatedFileResponse> {

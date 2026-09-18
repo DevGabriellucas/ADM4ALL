@@ -113,6 +113,7 @@ erDiagram
         varchar nome UK
         text descricao
         integer carga_horaria
+        varchar periodo_letivo
         boolean ativo
     }
 
@@ -242,6 +243,12 @@ erDiagram
 - `em_andamento`
 - `concluida`
 - `cancelada`
+
+Status do curso (**nao e coluna**: sai das turmas a cada consulta):
+
+- `em_planejamento` — sem turma, ou nenhuma turma com aluno matriculado
+- `ativo` — ao menos uma turma nao cancelada com aluno matriculado
+- `desativado` — todas as turmas do curso canceladas
 
 `matriculas.status`:
 

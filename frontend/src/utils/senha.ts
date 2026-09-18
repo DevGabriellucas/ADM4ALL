@@ -1,12 +1,15 @@
 /**
  * Regras de senha do sistema, em um lugar so.
  *
- * O mesmo conjunto alimenta tres coisas: a validacao dos formularios (zod), a
- * barrinha de forca que o aluno ve enquanto digita e a lista de requisitos
- * abaixo dela. O backend repete estas regras em AlunoUseCase.criptografarSenha
- * e em ActivationUseCase.confirmar — quem mexer aqui precisa mexer la tambem.
+ * O mesmo conjunto alimenta duas coisas: a validacao dos formularios (zod) e a
+ * barrinha de forca que aparece enquanto se digita. O backend repete estas
+ * regras em `validarSenhaForte` — quem mexer aqui precisa mexer la tambem.
+ *
+ * Alimentava uma terceira ate 18/09, a lista de requisitos que abria embaixo do
+ * campo. Ela saiu de todas as telas: quem diz o que falta na senha e a mensagem
+ * de erro do proprio campo, via `primeiroErroSenha`.
  */
-export interface RequisitoSenha {
+interface RequisitoSenha {
   id: string;
   texto: string;
   /** Mensagem usada pelo formulario quando o requisito falha. */
@@ -16,7 +19,7 @@ export interface RequisitoSenha {
 
 export const TAMANHO_MINIMO_SENHA = 8;
 
-export const REQUISITOS_SENHA: RequisitoSenha[] = [
+const REQUISITOS_SENHA: RequisitoSenha[] = [
   {
     id: "tamanho",
     texto: `Mínimo de ${TAMANHO_MINIMO_SENHA} caracteres`,
@@ -53,12 +56,8 @@ export type NivelSenha = "vazia" | "fraca" | "media" | "forte";
 
 export interface ForcaSenha {
   nivel: NivelSenha;
-  /** Rotulo mostrado ao lado da barra. */
+  /** Rotulo anunciado por leitor de tela ao lado da barra. */
   rotulo: string;
-  /** Quantos dos requisitos a senha ja cumpre. */
-  atendidos: number;
-  total: number;
-  idsAtendidos: string[];
 }
 
 const ROTULOS: Record<NivelSenha, string> = {
@@ -84,13 +83,7 @@ export const avaliarSenha = (senha: string): ForcaSenha => {
     nivel = "media";
   }
 
-  return {
-    nivel,
-    rotulo: ROTULOS[nivel],
-    atendidos: idsAtendidos.length,
-    total: REQUISITOS_SENHA.length,
-    idsAtendidos,
-  };
+  return { nivel, rotulo: ROTULOS[nivel] };
 };
 
 /** Primeira regra que a senha nao cumpre, para o erro do formulario. */

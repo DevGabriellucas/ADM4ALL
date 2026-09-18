@@ -6,7 +6,8 @@ import { useState } from "react";
 import { criarTurmaAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import { Notificacao } from "@/components/shared/Notificacao";
-import type { ClassStatus, Course, Instructor } from "@/types/coordinator";
+import type { Course, Instructor } from "@/types/coordinator";
+import { somenteDigitos } from "@/utils/numeros";
 
 interface ClassFormData {
   curso: string;
@@ -15,13 +16,11 @@ interface ClassFormData {
   periodoLetivo: string;
   horarios: string;
   capacidade: string;
-  status: ClassStatus;
 }
 
 interface ClassDefaultValues {
   periodoLetivo?: string;
   capacidade?: string;
-  status?: ClassStatus;
 }
 
 interface NewClassFormProps {
@@ -46,7 +45,6 @@ const construirDadosIniciais = (
   periodoLetivo: defaults?.periodoLetivo ?? "",
   horarios: "",
   capacidade: defaults?.capacidade ?? "",
-  status: defaults?.status ?? "planejada",
 });
 
 export const NewClassForm = ({
@@ -100,14 +98,25 @@ export const NewClassForm = ({
       return;
     }
 
+    // Campo de texto: sem isto, capacidade em branco viraria 0 e o banco
+    // devolveria a violacao do CHECK em vez de uma frase legivel.
+    const capacidade = Number(formData.capacidade.trim());
+
+    if (!Number.isInteger(capacidade) || capacidade < 1) {
+      setIsSubmitting(false);
+      setErrorMessage(
+        "Informe a capacidade como um número inteiro maior que zero.",
+      );
+      return;
+    }
+
     const resultado = await criarTurmaAction({
       curso: formData.curso,
       nome: formData.nome,
       instrutores: formData.instrutoresSelecionados,
       periodoLetivo: formData.periodoLetivo,
       horarios: formData.horarios,
-      capacidade: Number(formData.capacidade),
-      status: formData.status,
+      capacidade,
       cursoId: defaultCourseId,
     });
 
@@ -229,15 +238,18 @@ export const NewClassForm = ({
 
           <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
             Capacidade
+            {/* Campo de texto, sem as setinhas do type="number": a roda do mouse
+                mudava a capacidade da turma sem querer. */}
             <input
               required
-              min="1"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
               value={formData.capacidade}
               onChange={(event) =>
                 setFormData({
                   ...formData,
-                  capacidade: event.target.value,
+                  capacidade: somenteDigitos(event.target.value),
                 })
               }
               placeholder="Ex.: 30"
@@ -275,26 +287,15 @@ export const NewClassForm = ({
               className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
             />
           </label>
-
-          <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-            Status
-            <select
-              value={formData.status}
-              onChange={(event) =>
-                setFormData({
-                  ...formData,
-                  status: event.target.value as ClassStatus,
-                })
-              }
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
-            >
-              <option value="planejada">Planejada</option>
-              <option value="em_andamento">Em andamento</option>
-              <option value="concluida">Concluída</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
-          </label>
         </div>
+
+        {/* Sem campo de status: a turma nasce "Planejada" e o sistema move ela
+            sozinho para "Em andamento" quando entra o primeiro aluno e para
+            "Concluída" quando todas as aulas sao realizadas. */}
+        <p className="mt-4 text-slate-500 text-xs">
+          A turma começa como <strong>Planejada</strong>. O status muda sozinho
+          conforme os alunos são matriculados e as aulas acontecem.
+        </p>
 
         <CoordinatorFormActions
           submitLabel={isSubmitting ? "Salvando..." : "Salvar turma"}

@@ -1,11 +1,10 @@
 import bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
-import fs from "fs/promises";
-import path from "path";
 import { Aluno, AlunoProps } from "../../domain/entities/Aluno";
 import {
   AlunoDashboard,
   AlunoRepository,
+  DadosPessoaisDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
   MaterialVisivelAluno,
@@ -15,14 +14,16 @@ import { Cpf } from "../../domain/value-objects/Cpf";
 import { Email } from "../../domain/value-objects/Email";
 import { Telefone } from "../../domain/value-objects/Telefone";
 import { getRequiredEnv } from "../../infrastructure/config/env";
-import { getCertificadosStorageDir } from "../../infrastructure/config/storage";
 import { EmailService } from "../../infrastructure/email/EmailService";
-import { gerarEmailRecuperacaoSenha } from "../../infrastructure/email/emailTemplates";
+import {
+  gerarEmailAtivacaoConta,
+  gerarEmailRecuperacaoSenha,
+} from "../../infrastructure/email/emailTemplates";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
 import { gerarCertificadoPdf } from "../../infrastructure/pdf/CertificatePdfService";
 import { validarSenhaForte } from "../utils/validarSenha";
-import { ActivationUseCase } from "./ActivationUseCase";
+import { ATIVACAO_DIAS, ActivationUseCase } from "./ActivationUseCase";
 
 export interface CadastrarAlunoInput {
   nome: string;
@@ -139,10 +140,12 @@ export class AlunoUseCase {
       await this.emailService.enviar(
         aluno.email,
         "Ative sua conta - ADM Para Todos",
-        `<p>Ola, ${aluno.nome}!</p>
-         <p>Confirme seu e-mail para ativar sua conta.</p>
-         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
+        gerarEmailAtivacaoConta({
+          nome: aluno.nome,
+          link: linkAtivacao,
+          diasParaExpirar: ATIVACAO_DIAS,
+          motivo: "cadastro-publico",
+        }),
       );
     } catch (error) {
       emailEnviado = false;
@@ -299,35 +302,19 @@ export class AlunoUseCase {
       ? `certificado-${cursoSeguro}-${codigoSeguro}.pdf`
       : `certificado-aluno-${codigoSeguro}.pdf`;
 
-    const certificadosDir = getCertificadosStorageDir();
-
-    const ehLegado =
-      cert.urlArquivo?.startsWith("/uploads/certificados/") === true;
-
-    if (cert.urlArquivo && !ehLegado) {
-      const caminhoRelativo = cert.urlArquivo.replace(
-        /^\/storage\/certificados\//,
-        "",
-      );
-      const caminhoAbsoluto = path.resolve(certificadosDir, caminhoRelativo);
-
-      if (caminhoAbsoluto.startsWith(certificadosDir + path.sep)) {
-        try {
-          await fs.access(caminhoAbsoluto);
-          const buffer = await fs.readFile(caminhoAbsoluto);
-          return { buffer, nomeArquivo };
-        } catch {
-          // Regerar a partir do banco mantem o aluno atendido, mas o arquivo
-          // nao devia ter sumido. Sai como erro, e nao aviso, porque a causa
-          // provavel em producao e o volume de storage nao estar montado — e
-          // nesse caso todo download cai aqui em silencio.
-          console.error(
-            `Certificado ${cert.codigo ?? cert.certificadoId}: arquivo ausente em ${caminhoAbsoluto}. Regerando pelo banco. Se isto se repetir, confira se o volume de certificados esta montado.`,
-          );
-        }
-      }
-    }
-
+    // O PDF sai SEMPRE do banco, nunca do arquivo salvo.
+    //
+    // Ate 18/09 este metodo devolvia o PDF gravado em disco quando ele
+    // existia, e so caia na geracao se o arquivo tivesse sumido. Como o PDF e
+    // gravado uma unica vez, na emissao, ele congelava: curso renomeado,
+    // cronograma corrigido e qualquer mudanca no proprio certificado nao
+    // chegavam ao aluno. Foi assim que um certificado do curso "RH" continuou
+    // baixando com o texto antigo, o que dizia "area de administracao".
+    //
+    // O painel da coordenacao ja fazia assim (rota
+    // /coordenador/certificados/:tipo/:referenciaId/pdf), e as duas telas
+    // discordavam sobre o mesmo certificado. Gerar custa ~23ms, menos do que
+    // ler os 1,7 MB do arquivo, entao o cache nao pagava nem em desempenho.
     const detalhe: CertificadoAlunoDetalhe = {
       tipo: "aluno",
       certificadoId: cert.certificadoId,
@@ -355,23 +342,10 @@ export class AlunoUseCase {
 
     const pdf = await gerarCertificadoPdf(detalhe);
 
-    try {
-      await fs.mkdir(certificadosDir, { recursive: true });
-      const arquivoNome = `cert-${codigoSeguro}.pdf`;
-      const arquivoCaminho = path.join(certificadosDir, arquivoNome);
-      await fs.writeFile(arquivoCaminho, pdf);
-      const urlArquivo = `/storage/certificados/${arquivoNome}`;
-      await this.alunoRepository.atualizarUrlArquivoCertificado(
-        cert.certificadoId,
-        urlArquivo,
-      );
-    } catch (erroSalvar) {
-      console.error(
-        "Falha ao persistir PDF do certificado no fallback:",
-        erroSalvar,
-      );
-    }
-
+    // Sem gravar em disco: o arquivo so era escrito aqui para ser lido no
+    // download seguinte, e esse caminho de leitura saiu. Reescrever 1,7 MB a
+    // cada download seria trabalho que ninguem le depois. A copia gravada na
+    // emissao (CoordenadorUseCase) continua existindo como registro.
     return { buffer: pdf, nomeArquivo };
   }
 
@@ -512,14 +486,31 @@ export class AlunoUseCase {
     }
   }
 
+  /**
+   * Os dados que o sistema guarda sobre o aluno, para ele mesmo baixar.
+   *
+   * Art. 18, II e V da LGPD. O `alunoId` vem do token, nunca da URL: sem isso a
+   * rota viraria um jeito de baixar a ficha de qualquer aluno trocando um id.
+   */
+  async obterDadosPessoais(alunoId: string): Promise<DadosPessoaisDoAluno> {
+    const dados =
+      await this.alunoRepository.buscarDadosPessoaisDoAluno(alunoId);
+
+    if (!dados) {
+      throw new BadRequestError("Aluno nao encontrado.");
+    }
+
+    return dados;
+  }
+
   async redefinirSenha(tokenBruto: string, novaSenha: string): Promise<void> {
     if (!tokenBruto || tokenBruto.trim() === "") {
       throw new BadRequestError("O token de redefinicao e obrigatorio.");
     }
 
-    if (!novaSenha || novaSenha.length < 8) {
-      throw new BadRequestError("A senha deve ter no mínimo 8 caracteres.");
-    }
+    // As mesmas regras do cadastro. A tela ja as cobra na barrinha de forca,
+    // mas ate 18/09 a API so exigia 8 caracteres e aceitava "12345678".
+    validarSenhaForte(novaSenha);
 
     const tokenHash = createHash("sha256")
       .update(tokenBruto.trim())
@@ -530,6 +521,21 @@ export class AlunoUseCase {
 
     if (!recuperacao) {
       throw new BadRequestError("Link de redefinicao invalido ou expirado.");
+    }
+
+    // Recuperar a senha tem que trocar a senha. Digitar a atual passava batido
+    // e o aluno saia da tela com "Senha redefinida com sucesso" sem ter
+    // mudado nada — e o link de recuperacao, que e de uso unico, ja tinha
+    // sido queimado. A conferencia mora no servidor porque a tela nao conhece
+    // (nem pode conhecer) a senha em uso.
+    const senhaHashAtual = recuperacao.senhaHashAtual;
+    const repetiuSenhaAtual =
+      senhaHashAtual !== null && (await bcrypt.compare(novaSenha, senhaHashAtual));
+
+    if (repetiuSenhaAtual) {
+      throw new BadRequestError(
+        "A nova senha precisa ser diferente da senha atual.",
+      );
     }
 
     const novaSenhaCriptografada = await this.criptografarSenha(novaSenha);

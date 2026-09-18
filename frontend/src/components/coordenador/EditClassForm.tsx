@@ -6,12 +6,8 @@ import { useState } from "react";
 import { atualizarTurmaAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import { Notificacao } from "@/components/shared/Notificacao";
-import type {
-  ClassGroup,
-  ClassStatus,
-  Course,
-  Instructor,
-} from "@/types/coordinator";
+import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
+import { somenteDigitos } from "@/utils/numeros";
 
 interface EditClassFormProps {
   classGroup: ClassGroup;
@@ -35,7 +31,6 @@ export const EditClassForm = ({
     instrutoresSelecionados: classGroup.instrutores.split(", ").filter(Boolean),
     periodoLetivo: classGroup.periodoLetivo,
     capacidade: String(classGroup.capacidade > 0 ? classGroup.capacidade : 30),
-    status: classGroup.status,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +78,6 @@ export const EditClassForm = ({
       instrutores: formData.instrutoresSelecionados,
       periodoLetivo: formData.periodoLetivo,
       capacidade,
-      status: formData.status as ClassGroup["status"],
     });
 
     setIsSubmitting(false);
@@ -206,8 +200,12 @@ export const EditClassForm = ({
                 type="text"
                 inputMode="numeric"
                 value={formData.capacidade}
+                maxLength={4}
                 onChange={(event) =>
-                  setFormData({ ...formData, capacidade: event.target.value })
+                  setFormData({
+                    ...formData,
+                    capacidade: somenteDigitos(event.target.value),
+                  })
                 }
                 placeholder="Ex.: 30"
                 className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
@@ -233,29 +231,15 @@ export const EditClassForm = ({
                 Use o formato ano.semestre, por exemplo 2026.1 ou 2026.2.
               </span>
             </label>
-
-            <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-              Status
-              <select
-                value={formData.status}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    status: event.target.value as ClassStatus,
-                  })
-                }
-                className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
-              >
-                {/* "Encerrada" saiu da lista: virou sinonimo de "Concluída" e
-                    as duas na mesma tela so faziam a coordenacao escolher
-                    entre nomes diferentes para o mesmo fim de turma. */}
-                <option value="planejada">Planejada</option>
-                <option value="em_andamento">Em andamento</option>
-                <option value="concluida">Concluída</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
-            </label>
           </div>
+
+          {/* O status saiu do formulario: ele e calculado pelos alunos e pelas
+              aulas, e cancelar/reativar virou botao na lista de turmas — era
+              aqui que a escolha a mao desfazia a regra sem querer. */}
+          <p className="mt-4 text-slate-500 text-xs">
+            O status da turma é calculado pelo sistema. Para cancelar ou
+            reativar, use o botão na lista de turmas.
+          </p>
 
           <CoordinatorFormActions
             submitLabel={isSubmitting ? "Salvando..." : "Salvar alterações"}

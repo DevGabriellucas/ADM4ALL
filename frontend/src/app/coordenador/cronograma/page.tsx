@@ -3,6 +3,7 @@ import { ClassWorkspaceHeader } from "@/components/coordenador/ClassWorkspaceHea
 import { CronogramaList } from "@/components/instrutor/CronogramaList";
 import { BackButton } from "@/components/shared/BackButton";
 import { carregarWorkspaceDaTurma } from "@/services/coordinatorTurmaWorkspace";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 interface CoordinatorCronogramaPageProps {
   searchParams: Promise<{ turma?: string }>;
@@ -24,7 +25,7 @@ export default async function CoordinatorCronogramaPage({
         descricao="Crie, edite e encerre aulas: horário obrigatório e aula realizada só depois do término."
         turmas={turmas}
         turmaSelecionada={turmaSelecionada}
-        dataAula={painel?.aulaAtual?.data ?? null}
+        dataAula={dataDaAulaEmFoco(painel)}
       />
 
       {painel ? (

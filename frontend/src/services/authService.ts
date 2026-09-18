@@ -106,7 +106,13 @@ export const login = async (data: LoginPayload): Promise<LoginResponse> => {
   });
 
   if (!response.ok) {
-    throw new Error(await readApiError(response, "Credenciais invalidas."));
+    throw new Error(
+      await readApiError(
+        response,
+        // Reserva: o texto normal vem do backend (AuthUseCase).
+        "E-mail, CPF ou senha incorretos. Confira os dados e tente de novo.",
+      ),
+    );
   }
 
   return (await response.json()) as LoginResponse;

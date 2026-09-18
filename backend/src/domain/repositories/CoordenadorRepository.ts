@@ -53,6 +53,7 @@ export interface PaginaDeCertificados
 
 export interface ResumoDeCursos {
   ativos: number;
+  encerrados: number;
   desativados: number;
   emPlanejamento: number;
   semTurma: number;
@@ -99,6 +100,14 @@ export interface CursoResumo {
   nome: string;
   descricao: string | null;
   cargaHoraria: number;
+  /** Formato AAAA.P (ex.: 2026.1). Nulo em curso cadastrado antes do campo. */
+  periodoLetivo: string | null;
+  /**
+   * Derivado das turmas do curso na consulta, nao gravado: em planejamento
+   * enquanto nao ha turma com aluno, ativo quando ha, encerrado quando todas
+   * as turmas que valem chegaram ao fim do cronograma, e desativado quando
+   * todas as turmas do curso estao canceladas.
+   */
   status: string;
   quantidadeTurmas: number;
 }
@@ -107,14 +116,14 @@ export interface CriarCursoInput {
   nome: string;
   descricao: string;
   cargaHoraria: number;
-  status: string;
+  periodoLetivo: string;
 }
 
 export interface AtualizarCursoInput {
   nome: string;
   descricao: string;
   cargaHoraria: number;
-  status: string;
+  periodoLetivo: string;
 }
 
 export interface InstrutorListagem {
@@ -186,6 +195,12 @@ export interface AlunoListagemCoordenador {
     | null;
   statusTurma: StatusTurma | null;
   dataCriacao: string;
+  /**
+   * A matricula e a turma que a linha esta mostrando. A tela de Alunos usa as
+   * duas para desvincular o aluno direto da lista, sem abrir a ficha.
+   */
+  matriculaId: string | null;
+  turmaId: string | null;
 }
 
 export interface UsuarioListagemCoordenador {
@@ -265,6 +280,7 @@ export interface TurmaParaMatricula {
   treinamentoId: string;
   status: string;
   capacidade: number | null;
+  periodoLetivo: string;
 }
 
 export interface MatriculaEncontrada {
@@ -273,23 +289,17 @@ export interface MatriculaEncontrada {
   status: string;
 }
 
-export type StatusMatriculaEditavel =
-  | "em_andamento"
-  | "aprovado"
-  | "reprovado_falta";
-
-export interface AtualizarStatusMatriculaInput {
-  status: StatusMatriculaEditavel;
-}
-
-export interface MatriculaStatusAtualizado {
+/**
+ * A matricula que ja ocupa o periodo letivo do aluno, com o nome da turma e do
+ * curso para a coordenacao saber de onde precisa desvincular.
+ */
+export interface MatriculaNoPeriodo {
   id: string;
-  status:
-    | "em_andamento"
-    | "aprovado"
-    | "reprovado_falta"
-    | "cancelado";
-  dataConclusao: string | null;
+  turmaId: string;
+  turmaNome: string;
+  cursoNome: string;
+  periodoLetivo: string;
+  status: string;
 }
 
 export interface FiltrosFrequenciaCoordenador {
@@ -302,6 +312,11 @@ export interface FiltrosFrequenciaCoordenador {
 export interface FrequenciaCoordenador {
   aluno: string;
   turma: string;
+  /**
+   * Status da turma do aluno. O painel usa para nao cobrar acao sobre turma
+   * que ja terminou: falta em turma encerrada e historico, nao pendencia.
+   */
+  statusTurma: string;
   presencas: number;
   faltas: number;
   frequencia: number;
@@ -504,6 +519,10 @@ export interface TurmaListagem {
   registrosFrequencia: number;
 }
 
+// Nenhum dos dois leva `status`: a turma nasce "planejada" e dali em diante o
+// status e recalculado (ver `atualizarStatusDerivadoDaTurma`). O cancelamento,
+// que continua sendo decisao da coordenacao, tem caminho proprio
+// (`definirCancelamentoDaTurma`).
 export interface CriarTurmaInput {
   treinamentoId: string;
   instrutorIds: string[];
@@ -514,7 +533,6 @@ export interface CriarTurmaInput {
   dataFim: string;
   horario: string;
   limiteAlunos: number;
-  status: string;
 }
 
 export interface AtualizarTurmaInput {
@@ -525,7 +543,6 @@ export interface AtualizarTurmaInput {
   dataInicio: string;
   dataFim: string;
   capacidade: number;
-  status: string;
 }
 
 export interface AlunoMatriculaResumo {
@@ -618,7 +635,7 @@ export interface CoordenadorRepository {
   buscarUsuarioPorId(
     id: string,
   ): Promise<UsuarioListagemCoordenador | null>;
-  excluirUsuario(id: string, excluidoPorId: string | null): Promise<boolean>;
+  excluirUsuario(id: string): Promise<boolean>;
   contarAdministradoresAtivos(): Promise<number>;
   listarAlunos(): Promise<AlunoListagemCoordenador[]>;
   buscarAlunoDetalhe(id: string): Promise<AlunoDetalheCoordenador | null>;
@@ -626,10 +643,7 @@ export interface CoordenadorRepository {
     id: string,
     input: AtualizarAlunoCoordenadorInput,
   ): Promise<AlunoDetalheCoordenador | null>;
-  excluirAluno(
-    id: string,
-    bloqueadoPorId: string | null,
-  ): Promise<AlunoExcluido | null>;
+  excluirAluno(id: string): Promise<AlunoExcluido | null>;
   liberarCpfBloqueado(cpf: string): Promise<void>;
   /**
    * Espelha o bloqueio da conta na lista de CPFs. Bloquear so o login deixava
@@ -655,15 +669,13 @@ export interface CoordenadorRepository {
     alunoId: string,
     treinamentoId: string,
   ): Promise<MatriculaEncontrada | null>;
+  buscarMatriculaNoPeriodo(
+    alunoId: string,
+    periodoLetivo: string,
+    turmaIdIgnorada: string,
+  ): Promise<MatriculaNoPeriodo | null>;
   vincularAluno(input: VincularAlunoInput): Promise<MatriculaCriada>;
   removerMatricula(turmaId: string, matriculaId: string): Promise<boolean>;
-  buscarMatriculaPorId(
-    id: string,
-  ): Promise<{ id: string; status: string } | null>;
-  atualizarStatusMatricula(
-    id: string,
-    input: AtualizarStatusMatriculaInput,
-  ): Promise<MatriculaStatusAtualizado | null>;
   /** Sem `paginacao`, devolve a lista inteira (relatorio e exportacao). */
   listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
@@ -700,6 +712,10 @@ export interface CoordenadorRepository {
   buscarTurmaDetalhe(id: string): Promise<TurmaDetalhe | null>;
   criarTurma(input: CriarTurmaInput): Promise<TurmaListagem>;
   atualizarTurma(id: string, input: AtualizarTurmaInput): Promise<TurmaListagem | null>;
+  definirCancelamentoDaTurma(
+    id: string,
+    cancelada: boolean,
+  ): Promise<TurmaListagem | null>;
   excluirTurma(id: string): Promise<boolean>;
   buscarTreinamentoPorNome(nome: string): Promise<IdentificadorPorNome | null>;
 
@@ -713,6 +729,5 @@ export interface CoordenadorRepository {
     periodoLetivo: string,
     usuarioId: string,
   ): Promise<PeriodoLetivoResponse>;
-  excluirPeriodoLetivoManual(): Promise<void>;
 
 }

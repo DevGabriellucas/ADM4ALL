@@ -30,7 +30,10 @@ export const InstructorEditForm = ({
   const [formData, setFormData] = useState<InstructorEditFormData>({
     nome: instructor.nome,
     email: instructor.email,
-    telefone: instructor.telefone ?? "",
+    // O telefone e guardado so com digitos (83981286597). Sem formatar na
+    // abertura, o campo exibia os 11 digitos crus ate alguem digitar nele —
+    // formatarTelefone so rodava no onChange.
+    telefone: formatarTelefone(instructor.telefone ?? ""),
     areaAtuacao: instructor.areaAtuacao ?? "",
     formacao: instructor.formacao ?? "",
   });

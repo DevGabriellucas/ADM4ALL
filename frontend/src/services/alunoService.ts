@@ -5,7 +5,6 @@ import {
 import type {
   AlunoDashboard,
   AlunoDashboardResponse,
-  MateriaisAlunoResponse,
   MateriaisVisiveisAlunoResponse,
   MaterialVisivelAluno,
 } from "@/types/aluno";
@@ -42,16 +41,6 @@ export const getAlunoDashboard = async (): Promise<AlunoDashboard> => {
     calendarioTurma: resposta.calendarioTurma ?? [],
     comunicados: resposta.comunicados ?? [],
   };
-};
-
-export const getMateriaisAluno = async (): Promise<MateriaisAlunoResponse> => {
-  return await authenticatedRequest<MateriaisAlunoResponse>(
-    "/alunos/me/materiais",
-    {
-      cache: "no-store",
-      fallbackError: "Falha ao carregar os materiais.",
-    },
-  );
 };
 
 export const getMateriaisVisiveisAluno = async (): Promise<

@@ -21,15 +21,23 @@ export interface AlunoDashboardResponse {
   certificadoDisponivel: boolean;
   certificadoUrl: string | null;
   frequencia: number;
-  proximaAula: {
-    titulo: string;
-    data: string;
-    horaInicio: string | null;
-    horaFim: string | null;
-  } | null;
+  proximaAula: AulaEmFoco | null;
   historicoPresencas: HistoricoPresenca[];
   calendarioTurma: AulaCalendario[];
   comunicados: ComunicadoAluno[];
+}
+
+/**
+ * A aula que o painel do aluno destaca: a proxima planejada ou, quando o
+ * cronograma ja acabou, a ultima que aconteceu. `momento` diz qual das duas e,
+ * para o cartao nao chamar de "proxima" uma aula que ja passou.
+ */
+export interface AulaEmFoco {
+  titulo: string;
+  data: string;
+  horaInicio: string | null;
+  horaFim: string | null;
+  momento: "proxima" | "ultima";
 }
 
 export interface HistoricoPresenca {
@@ -75,12 +83,7 @@ export interface AlunoDashboard {
   certificadoDisponivel: boolean;
   certificadoUrl: string | null;
   frequencia: number;
-  proximaAula: {
-    titulo: string;
-    data: string;
-    horaInicio: string | null;
-    horaFim: string | null;
-  } | null;
+  proximaAula: AulaEmFoco | null;
   historicoPresencas: HistoricoPresenca[];
   calendarioTurma: AulaCalendario[];
   comunicados: ComunicadoAluno[];
@@ -109,10 +112,6 @@ export interface MaterialVisivelAluno {
   urlArquivo: string | null;
   tamanhoBytes: number | null;
   dataPublicacao: string;
-}
-
-export interface MateriaisAlunoResponse {
-  materiais: MaterialAluno[];
 }
 
 export interface MateriaisVisiveisAlunoResponse {

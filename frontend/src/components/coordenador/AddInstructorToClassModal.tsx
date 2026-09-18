@@ -60,7 +60,6 @@ export const AddInstructorToClassModal = ({
       instrutores: todosInstrutores,
       periodoLetivo: classGroup.periodoLetivo,
       capacidade: classGroup.capacidade > 0 ? classGroup.capacidade : 30,
-      status: classGroup.status,
     });
 
     setIsSubmitting(false);

@@ -57,7 +57,14 @@ export async function POST(request: NextRequest) {
 
   if (!apiResponse.ok) {
     return NextResponse.json(
-      { erro: await readApiError(apiResponse, "Credenciais invalidas.") },
+      {
+        erro: await readApiError(
+          apiResponse,
+          // So aparece se a API responder sem corpo de erro; o texto normal vem
+          // do backend (AuthUseCase). Os dois precisam dizer a mesma coisa.
+          "E-mail, CPF ou senha incorretos. Confira os dados e tente de novo.",
+        ),
+      },
       { status: apiResponse.status },
     );
   }

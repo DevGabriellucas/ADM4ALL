@@ -9,6 +9,7 @@ import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStat
 import { EditCourseForm } from "@/components/coordenador/EditCourseForm";
 import { NewClassForm } from "@/components/coordenador/NewClassForm";
 import { Notificacao } from "@/components/shared/Notificacao";
+import { getCursoStatusInfo } from "@/constants/cursoStatus";
 import type { ClassGroup, Course, Instructor } from "@/types/coordinator";
 
 interface CourseDetailsContentProps {
@@ -16,18 +17,6 @@ interface CourseDetailsContentProps {
   classes: ClassGroup[];
   instructors: Instructor[];
 }
-
-const getCourseStatusInfo = (status: Course["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-
-  if (status === "em_planejamento") {
-    return { label: "Em planejamento", tone: "blue" as const };
-  }
-
-  return { label: "Desativado", tone: "slate" as const };
-};
 
 const getClassStatusInfo = (status: ClassGroup["status"]) => {
   const map: Record<
@@ -38,7 +27,7 @@ const getClassStatusInfo = (status: ClassGroup["status"]) => {
     em_andamento: { label: "Em andamento", tone: "blue" },
     concluida: { label: "Concluída", tone: "green" },
     encerrada: { label: "Encerrada", tone: "red" },
-    cancelada: { label: "Cancelada", tone: "slate" },
+    cancelada: { label: "Cancelada", tone: "red" },
   };
 
   return map[status];
@@ -60,7 +49,7 @@ export const CourseDetailsContent = ({
   const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false);
   const router = useRouter();
 
-  const status = getCourseStatusInfo(course.status);
+  const status = getCursoStatusInfo(course.status);
 
   const activeClasses = classes.filter(
     (c) => c.status === "em_andamento",
@@ -181,13 +170,22 @@ export const CourseDetailsContent = ({
           </div>
         </div>
 
-        <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
             <dt className="font-medium text-slate-500 text-xs uppercase tracking-wider">
               Carga horária
             </dt>
             <dd className="mt-1 font-semibold text-lg text-slate-900">
               {course.cargaHoraria}h
+            </dd>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <dt className="font-medium text-slate-500 text-xs uppercase tracking-wider">
+              Período letivo
+            </dt>
+            <dd className="mt-1 font-semibold text-lg text-slate-900">
+              {course.periodoLetivo || "-"}
             </dd>
           </div>
 
@@ -216,6 +214,19 @@ export const CourseDetailsContent = ({
             <dd className="mt-1">
               <CoordinatorStatusBadge label={status.label} tone={status.tone} />
             </dd>
+            {/* O status sai das turmas, entao a coordenacao precisa saber por
+                que ele esta assim: sem isso, "Desativado" parece um botao que
+                alguem apertou. */}
+            <dd className="mt-2 text-slate-500 text-xs leading-5">
+              {course.status === "ativo" &&
+                "O curso tem turma com aluno matriculado."}
+              {course.status === "em_planejamento" &&
+                "O curso ainda não tem turma com aluno matriculado."}
+              {course.status === "encerrado" &&
+                "As turmas do curso chegaram ao fim do cronograma."}
+              {course.status === "desativado" &&
+                "Todas as turmas do curso foram canceladas."}
+            </dd>
           </div>
         </dl>
       </section>
@@ -236,24 +247,16 @@ export const CourseDetailsContent = ({
               Turmas que pertencem a este curso.
             </p>
           </div>
-          {course.status === "desativado" ? (
-            <button
-              type="button"
-              disabled
-              title="Nao e possivel criar turma para um curso desativado."
-              className="h-11 cursor-not-allowed rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white opacity-50"
-            >
-              + Nova turma
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsNewClassModalOpen(true)}
-              className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
-            >
-              + Nova turma
-            </button>
-          )}
+          {/* Curso desativado continua aceitando turma nova: "desativado" aqui
+              quer dizer que todas as turmas foram canceladas, e abrir outra e
+              justamente como o curso volta a ficar ativo. */}
+          <button
+            type="button"
+            onClick={() => setIsNewClassModalOpen(true)}
+            className="h-11 cursor-pointer rounded-lg bg-brand-dark px-5 font-semibold text-sm text-white transition-colors hover:bg-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+          >
+            + Nova turma
+          </button>
         </div>
 
         {classes.length === 0 ? (
@@ -261,15 +264,13 @@ export const CourseDetailsContent = ({
             <p className="text-slate-500 text-sm">
               Nenhuma turma vinculada a este curso.
             </p>
-            {course.status !== "desativado" && (
-              <button
-                type="button"
-                onClick={() => setIsNewClassModalOpen(true)}
-                className="mt-3 cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
-              >
-                Criar turma para este curso
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsNewClassModalOpen(true)}
+              className="mt-3 cursor-pointer font-semibold text-brand-dark text-sm transition-colors hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-brand-dark focus-visible:outline-offset-2"
+            >
+              Criar turma para este curso
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">

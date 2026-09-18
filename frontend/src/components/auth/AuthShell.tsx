@@ -7,6 +7,15 @@ interface AuthShellProps {
   eyebrow: string;
   tituloPainel: string;
   descricaoPainel: string;
+  /**
+   * Frases curtas sobre o projeto, uma por linha, abaixo da descricao.
+   *
+   * So a tela de entrada usa: e a unica que costuma ser aberta por quem ainda
+   * nao conhece o projeto — o link e divulgado para estudantes do UNIPE e para
+   * a comunidade, e o painel precisava responder "que curso e este" antes de
+   * pedir e-mail e senha.
+   */
+  destaques?: string[];
   tituloCartao: string;
   descricaoCartao?: string;
   voltarPara?: { href: string; texto: string };
@@ -27,6 +36,7 @@ export const AuthShell = ({
   eyebrow,
   tituloPainel,
   descricaoPainel,
+  destaques,
   tituloCartao,
   descricaoCartao,
   voltarPara,
@@ -66,6 +76,23 @@ export const AuthShell = ({
         <p className="mt-4 max-w-md text-[0.9375rem] text-slate-300 leading-relaxed">
           {descricaoPainel}
         </p>
+
+        {destaques && destaques.length > 0 && (
+          <ul className="mt-6 flex max-w-md flex-col gap-y-2.5">
+            {destaques.map((destaque) => (
+              <li
+                key={destaque}
+                className="flex items-start gap-x-2.5 text-[0.875rem] text-slate-200 leading-relaxed"
+              >
+                <span
+                  aria-hidden
+                  className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-azure-500"
+                />
+                {destaque}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* A marca do projeto e o centro do painel: e a imagem que responde "que

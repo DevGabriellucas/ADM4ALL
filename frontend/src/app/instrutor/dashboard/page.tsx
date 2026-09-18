@@ -3,15 +3,16 @@ import { MetricCard } from "@/components/instrutor/MetricCard";
 import { getInstrutorDashboard } from "@/services/instrutorService";
 import {
   AULAS_POR_PERIODO,
-  avancarPeriodoLetivo,
   blocosConcluidos,
+  dataDaAulaEmFoco,
+  turnoDoCronograma,
 } from "@/utils/cronograma";
 import { formatData } from "@/utils/format";
 import { dataDeHoje } from "@/utils/fusoInstituicao";
 
 export default async function InstrutorDashboardPage() {
   const dashboard = await getInstrutorDashboard();
-  const { instrutor, turma, proximaAula, metricas } = dashboard;
+  const { instrutor, turma, metricas } = dashboard;
   const cronograma = Array.isArray(dashboard.cronograma)
     ? dashboard.cronograma
     : [];
@@ -27,11 +28,17 @@ export default async function InstrutorDashboardPage() {
     cronograma.find(
       (aula) => aula.data === hoje && aula.status !== "cancelada",
     ) ?? null;
-  // O backend ja entrega a agenda em ordem: aulaAtual e a aula que esta por vir
-  // e proximaAula e a SEGUINTE a ela. O card "Proxima aula" quer a que esta por
-  // vir; lendo proximaAula, ele anunciava "Sem aula agendada" sempre que
-  // faltava exatamente uma aula na turma.
-  const proximaAulaAgenda = dashboard.aulaAtual ?? proximaAula;
+  // A proxima aula do cronograma que ainda nao foi dada.
+  //
+  // Lia `aulaAtual`, que so olha o horario de termino e nao o status: a aula
+  // marcada como realizada hoje de manha aparecia como "proxima" ate o fim do
+  // dia, e a turma que ja cumpriu tudo anunciava a ultima aula como se ela
+  // ainda fosse acontecer. `aulaAtual` continua valendo para a chamada, que
+  // precisa abrir na aula de hoje mesmo depois de realizada.
+  const proximaAulaAgenda =
+    cronograma.find(
+      (aula) => aula.status === "planejada" && aula.data >= hoje,
+    ) ?? null;
   const alunosSemPresenca = alunos.filter(
     (aluno) => aluno.statusPresenca === null,
   ).length;
@@ -54,27 +61,34 @@ export default async function InstrutorDashboardPage() {
   ];
 
   const proximaAulaTexto = proximaAulaAgenda
-    ? `${formatData(proximaAulaAgenda.data)} - Aula ${proximaAulaAgenda.numero}`
+    ? `Aula ${proximaAulaAgenda.numero} - ${proximaAulaAgenda.titulo}`
     : "Sem aula agendada";
 
-  // A cada 10 aulas realizadas a turma fecha um periodo letivo. O aviso mostra
-  // qual periodo comeca agora; quem troca o valor oficial da turma continua
-  // sendo a coordenacao, em Configuracoes.
+  // A cada 10 aulas realizadas a turma fecha um periodo letivo. O aviso diz de
+  // qual periodo sao as aulas cumpridas e qual vem depois; quem troca o valor
+  // oficial da turma continua sendo a coordenacao, em Configuracoes.
+  // Sem horario no cronograma nao da para afirmar o turno: o card diz isso em
+  // vez de repetir o valor de cadastro, que costuma ser so o padrao.
+  const turnoDaTurma =
+    turnoDoCronograma(cronograma) ?? "turno a definir no cronograma";
+
   const blocos = blocosConcluidos(cronograma);
-  const periodoSeguinte = turma
-    ? avancarPeriodoLetivo(turma.periodoLetivo, blocos)
-    : null;
+  const periodoCumprido = blocos > 0;
 
   return (
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={dashboard.aulaAtual?.data ?? null}
+      dataAula={dataDaAulaEmFoco(dashboard)}
     >
-      {periodoSeguinte && (
+      {/* So o que a turma cumpriu, no periodo dela. O aviso ja anunciou o
+          periodo seguinte ("Período letivo 2027.1") e, lido de relance,
+          parecia dizer que a turma tinha mudado de periodo — quem troca esse
+          valor e a coordenacao, em Configuracoes. */}
+      {periodoCumprido && turma && (
         <output className="block rounded-lg border border-brand-light bg-[#F1F4FC] px-5 py-4 text-center font-medium text-brand-dark text-sm">
-          A turma concluiu {blocos * AULAS_POR_PERIODO} aulas. Período letivo{" "}
-          {periodoSeguinte}.
+          A turma cumpriu {blocos * AULAS_POR_PERIODO} aulas do período{" "}
+          {turma.periodoLetivo}.
         </output>
       )}
 
@@ -103,9 +117,7 @@ export default async function InstrutorDashboardPage() {
             icon="Aula"
             title="Próxima aula"
             value={proximaAulaAgenda ? formatData(proximaAulaAgenda.data) : "-"}
-            subtitle={
-              proximaAulaAgenda ? proximaAulaTexto : "Sem aula agendada"
-            }
+            subtitle={proximaAulaTexto}
             variant="ambar"
           />
         </div>
@@ -121,12 +133,27 @@ export default async function InstrutorDashboardPage() {
               </p>
               <p className="mt-1 text-slate-500 text-xs">
                 {formatData(aulaHoje.data)}
+                {aulaHoje.horaInicio
+                  ? ` • ${aulaHoje.horaInicio}${aulaHoje.horaFim ? ` às ${aulaHoje.horaFim}` : ""}`
+                  : ""}
+              </p>
+              <p className="mt-1 text-slate-500 text-xs">
+                {aulaHoje.status === "realizada"
+                  ? "Aula já marcada como realizada."
+                  : "Lance a chamada em Presença quando a aula terminar."}
               </p>
             </div>
           ) : (
-            <p className="mt-2 text-slate-600 text-sm">
-              Nenhuma aula marcada para hoje.
-            </p>
+            /* Sem aula hoje o cartao ficava so com a negativa. Dizer qual e a
+               proxima responde a pergunta seguinte sem trocar de tela. */
+            <div className="mt-2 text-slate-600 text-sm">
+              <p>Nenhuma aula marcada para hoje.</p>
+              <p className="mt-1 text-slate-500 text-xs">
+                {proximaAulaAgenda
+                  ? `Próxima: ${formatData(proximaAulaAgenda.data)} - Aula ${proximaAulaAgenda.numero}.`
+                  : "Não há aula planejada no cronograma da turma."}
+              </p>
+            </div>
           )}
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm">
@@ -170,9 +197,13 @@ export default async function InstrutorDashboardPage() {
 
       <section className="rounded-lg bg-white p-5 shadow-sm">
         <h2 className="font-semibold text-slate-900 text-sm">Turma atual</h2>
+        {/* Nome e turno, so. O turno sai do horario das aulas do cronograma, e
+            nao da coluna `turno` da turma: aquela e escolhida uma vez no
+            cadastro e continua com o padrao mesmo quando as aulas foram
+            marcadas para outro periodo do dia. */}
         <p className="mt-2 text-slate-600 text-sm">
           {turma
-            ? `${turma.nome} - ${turma.turno} - ${cronograma.length} aulas cadastradas`
+            ? `${turma.nome} - ${turnoDaTurma}`
             : "Nenhuma turma vinculada a este instrutor."}
         </p>
       </section>

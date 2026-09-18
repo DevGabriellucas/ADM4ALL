@@ -1,4 +1,5 @@
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { getContaStatusInfo } from "@/constants/contaStatus";
 import type { BaseUser, UserRole } from "@/types/coordinator";
 
 interface UserTableProps {
@@ -15,19 +16,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   coordenador: "Coordenador",
   instrutor: "Instrutor",
   aluno: "Aluno",
-};
-
-const getUserStatusInfo = (status: BaseUser["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-  if (status === "pendente_ativacao") {
-    return { label: "Pendente de ativação", tone: "amber" as const };
-  }
-  if (status === "bloqueado") {
-    return { label: "Bloqueado", tone: "red" as const };
-  }
-  return { label: "Inativo", tone: "slate" as const };
 };
 
 const formatLastAccess = (lastAccess: string | null) => {
@@ -95,7 +83,7 @@ export const UserTable = ({
 
           <tbody>
             {users.map((user) => {
-              const status = getUserStatusInfo(user.status);
+              const status = getContaStatusInfo(user.status);
 
               return (
                 <tr key={user.id}>

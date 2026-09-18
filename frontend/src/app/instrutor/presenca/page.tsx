@@ -4,6 +4,7 @@ import {
   getInstrutorDashboard,
   resolverChamadaAberta,
 } from "@/services/instrutorService";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 export default async function InstrutorPresencaPage() {
   const dashboard = await getInstrutorDashboard();
@@ -17,7 +18,7 @@ export default async function InstrutorPresencaPage() {
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={dashboard.aulaAtual?.data ?? null}
+      dataAula={dataDaAulaEmFoco(dashboard)}
     >
       {turma ? (
         <PresencaPanel

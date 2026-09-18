@@ -44,6 +44,11 @@ services:
       PORT: 8000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me_32_chars}
+      # Segredo do HMAC que protege os CPFs em cpfs_bloqueados. Trocar este
+      # valor invalida os bloqueios ja gravados: os hashes antigos deixam de
+      # bater e nao ha como recalcula-los, porque o CPF de origem nao existe
+      # mais em lugar nenhum. Ver backend/src/infrastructure/security/hashCpf.ts.
+      CPF_HASH_SECRET: ${CPF_HASH_SECRET:-dev_cpf_hash_secret_change_me_32c}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       EMAIL_HOST: ${EMAIL_HOST:-}

@@ -81,7 +81,9 @@ export const StudentEnrollForm = ({
         Vincular à turma
       </h2>
       <p className="mt-1 text-slate-500 text-xs">
-        Selecione uma turma planejada ou em andamento.
+        Selecione uma turma planejada ou em andamento. O aluno participa de uma
+        turma por período letivo: se ele já estiver em outra, desvincule-o dela
+        primeiro.
       </p>
 
       {successMessage && (

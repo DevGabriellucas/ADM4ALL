@@ -50,13 +50,13 @@ export default function Cadastro() {
   const [erroTreinamentos, setErroTreinamentos] = useState<string | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
-  const [senhaFocada, setSenhaFocada] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    trigger,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<CadastroFormData>({
@@ -79,6 +79,7 @@ export default function Cadastro() {
   const isAlunoUnipe = watch("isAlunoUnipe");
   const treinamentoSelecionado = watch("treinamento");
   const senhaDigitada = watch("senha") ?? "";
+  const confirmacaoDigitada = watch("confirmarSenha") ?? "";
 
   const treinamentoAtual = useMemo(
     () =>
@@ -120,6 +121,24 @@ export default function Cadastro() {
   const telefoneField = register("telefone");
   const rgmField = register("rgm");
   const senhaField = register("senha");
+  const confirmarSenhaField = register("confirmarSenha");
+
+  // Os dois campos de senha conferem a cada tecla, como os de e-mail e CPF logo
+  // acima. Sem isso a mensagem so aparecia depois de enviar o formulario, e era
+  // justamente ela que passou a explicar a regra da senha — a lista de
+  // requisitos que abria embaixo do campo saiu em 18/09.
+  //
+  // Mexer na senha revalida a confirmacao junto: "As senhas nao coincidem" e um
+  // erro do par, entao corrigir a senha precisa apagar o aviso que estava na
+  // confirmacao. So depois que a confirmacao tem algo digitado, senao o
+  // formulario acusa um campo em que ninguem chegou a mexer.
+  const aoDigitarSenha = (valor: string) => {
+    setValue("senha", valor, { shouldDirty: true, shouldValidate: true });
+
+    if (confirmacaoDigitada !== "") {
+      void trigger("confirmarSenha");
+    }
+  };
 
   const cadastroSubmit = async (data: CadastroFormData) => {
     setFeedback(null);
@@ -268,11 +287,7 @@ export default function Cadastro() {
                 className={passwordInputClass}
                 placeholder="Crie sua senha do sistema"
                 {...senhaField}
-                onFocus={() => setSenhaFocada(true)}
-                onBlur={(evento) => {
-                  setSenhaFocada(false);
-                  return senhaField.onBlur(evento);
-                }}
+                onChange={(evento) => aoDigitarSenha(evento.target.value)}
               />
               <BotaoVerSenha
                 posicao="centro"
@@ -280,10 +295,7 @@ export default function Cadastro() {
                 onClick={() => setMostrarSenha((atual) => !atual)}
               />
             </div>
-            <MedidorForcaSenha
-              senha={senhaDigitada}
-              mostrarRequisitos={senhaFocada}
-            />
+            <MedidorForcaSenha senha={senhaDigitada} />
             {errorText(errors.senha?.message)}
           </label>
 
@@ -295,7 +307,13 @@ export default function Cadastro() {
                 autoComplete="new-password"
                 className={passwordInputClass}
                 placeholder="Repita sua senha"
-                {...register("confirmarSenha")}
+                {...confirmarSenhaField}
+                onChange={(evento) =>
+                  setValue("confirmarSenha", evento.target.value, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
               />
               <BotaoVerSenha
                 posicao="centro"
@@ -304,6 +322,9 @@ export default function Cadastro() {
                 onClick={() => setMostrarConfirmarSenha((atual) => !atual)}
               />
             </div>
+            {/* A mesma barrinha da senha acima: quem repete a senha enxerga o
+                mesmo nivel subindo, em vez de um campo sem retorno nenhum. */}
+            <MedidorForcaSenha senha={confirmacaoDigitada} />
             {errorText(errors.confirmarSenha?.message)}
           </label>
 

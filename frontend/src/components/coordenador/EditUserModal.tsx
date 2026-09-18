@@ -7,6 +7,7 @@ import { atualizarUsuarioAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import { Notificacao } from "@/components/shared/Notificacao";
+import { getContaStatusInfo } from "@/constants/contaStatus";
 import type { BaseUser, UserRole } from "@/types/coordinator";
 import { formatarCpf } from "@/utils/cpf";
 
@@ -27,19 +28,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   coordenador: "Coordenador",
   instrutor: "Instrutor",
   aluno: "Aluno",
-};
-
-const getUserStatusInfo = (status: BaseUser["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-  if (status === "pendente_ativacao") {
-    return { label: "Pendente de ativação", tone: "amber" as const };
-  }
-  if (status === "bloqueado") {
-    return { label: "Bloqueado", tone: "red" as const };
-  }
-  return { label: "Inativo", tone: "slate" as const };
 };
 
 export const EditUserModal = ({
@@ -73,7 +61,7 @@ export const EditUserModal = ({
     return null;
   }
 
-  const status = getUserStatusInfo(user.status);
+  const status = getContaStatusInfo(user.status);
 
   const handleClose = () => {
     setSuccessMessage(null);

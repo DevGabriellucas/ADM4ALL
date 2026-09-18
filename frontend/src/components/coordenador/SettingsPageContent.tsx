@@ -15,12 +15,6 @@ interface SettingsPageContentProps {
   configuracoesInicial: ConfiguracoesData;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  planejada: "Planejada",
-  em_andamento: "Em andamento",
-  encerrada: "Encerrada",
-};
-
 export const SettingsPageContent = ({
   configuracoesInicial,
 }: SettingsPageContentProps) => {
@@ -67,15 +61,6 @@ export const SettingsPageContent = ({
           value={configuracoes.preferencias.capacidadePadrao}
           subtitle="Alunos por nova turma"
           variant="neutral"
-        />
-        <CoordinatorStatCard
-          title="Status padrão"
-          value={
-            STATUS_LABELS[configuracoes.preferencias.statusPadrao] ??
-            configuracoes.preferencias.statusPadrao
-          }
-          subtitle="Ao criar turma"
-          variant="green"
         />
       </section>
 

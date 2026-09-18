@@ -24,7 +24,6 @@ describe("AlunoUseCase", () => {
     process.env.FRONTEND_URL = "https://app.test";
 
     mockAlunoRepository = {
-      buscarPorEmailOuCpf: jest.fn(),
       buscarPorCpf: jest.fn(),
       cpfBloqueado: jest.fn().mockResolvedValue(false),
       buscarPorEmail: jest.fn(),
@@ -150,14 +149,67 @@ describe("AlunoUseCase", () => {
   });
 
   describe("redefinirSenha", () => {
-    it("deve lançar erro se o token for invalido", async () => {
-        (crypto.createHash as jest.Mock).mockReturnValue({
-            update: jest.fn().mockReturnThis(),
-            digest: jest.fn().mockReturnValue("hash"),
-        });
-        mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash.mockResolvedValue(null);
+    const SENHA_FORTE = "NovaSenha#2026";
 
-        await expect(alunoUseCase.redefinirSenha("token", "novaSenha123")).rejects.toThrow(BadRequestError);
+    const mockarHashDoToken = () => {
+      (crypto.createHash as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        digest: jest.fn().mockReturnValue("hash"),
+      });
+    };
+
+    it("deve lançar erro se o token for invalido", async () => {
+      mockarHashDoToken();
+      mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash.mockResolvedValue(null);
+
+      await expect(
+        alunoUseCase.redefinirSenha("token", SENHA_FORTE),
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it("deve recusar a senha que o usuario ja usa", async () => {
+      mockarHashDoToken();
+      mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash.mockResolvedValue({
+        recuperacaoId: "recuperacao-1",
+        usuarioId: "usuario-1",
+        senhaHashAtual: "hash-da-senha-atual",
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        alunoUseCase.redefinirSenha("token", SENHA_FORTE),
+      ).rejects.toThrow("A nova senha precisa ser diferente da senha atual.");
+      expect(mockAlunoRepository.redefinirSenhaUsuario).not.toHaveBeenCalled();
+    });
+
+    it("deve trocar a senha quando ela e diferente da atual", async () => {
+      mockarHashDoToken();
+      mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash.mockResolvedValue({
+        recuperacaoId: "recuperacao-1",
+        usuarioId: "usuario-1",
+        senhaHashAtual: "hash-da-senha-atual",
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      (bcrypt.hash as jest.Mock).mockResolvedValue("hash-da-senha-nova");
+
+      await alunoUseCase.redefinirSenha("token", SENHA_FORTE);
+
+      expect(mockAlunoRepository.redefinirSenhaUsuario).toHaveBeenCalledWith(
+        "usuario-1",
+        "hash-da-senha-nova",
+        "recuperacao-1",
+      );
+    });
+
+    it("deve cobrar as regras de senha forte antes de olhar o token", async () => {
+      mockarHashDoToken();
+
+      await expect(alunoUseCase.redefinirSenha("token", "12345678")).rejects.toThrow(
+        BadRequestError,
+      );
+      expect(
+        mockAlunoRepository.buscarRecuperacaoValidaPorTokenHash,
+      ).not.toHaveBeenCalled();
     });
   });
 

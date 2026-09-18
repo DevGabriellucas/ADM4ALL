@@ -37,7 +37,11 @@ import {
   frequenciaPorMatricula,
   presencasEfetivas,
 } from "./sql/frequencia";
-import { atualizarStatusDerivadoDaTurma } from "./sql/turma";
+import { hashCpf, segredoDoHashCpf } from "../security/hashCpf";
+import {
+  atualizarStatusDerivadoDaTurma,
+  periodoDoCronograma,
+} from "./sql/turma";
 import {
   AlunoDetalheCoordenador,
   AlunoExcluido,
@@ -54,7 +58,6 @@ import {
   AtualizarCursoInput,
   AtualizarInstrutorCoordenadorInput,
   AtualizarTurmaInput,
-  AtualizarStatusMatriculaInput,
   AtualizarUsuarioInput,
   AulaResumo,
   CertificadoAlunoDetalhe,
@@ -78,7 +81,7 @@ import {
   InstrutorParaReenvioAtivacao,
   MatriculaCriada,
   MatriculaEncontrada,
-  MatriculaStatusAtualizado,
+  MatriculaNoPeriodo,
   PerfilCoordenador,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
@@ -121,9 +124,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           AS certificados_pendentes,
         (SELECT COUNT(*) FROM usuarios WHERE status = 'pendente_ativacao') AS usuarios_pendentes,
         (
-          -- Media das frequencias individuais (100 menos 10 por falta nao
-          -- justificada), e nao a proporcao de presencas sobre as chamadas.
-          -- Cada aluno pesa o mesmo, com a conta que ele ve no proprio painel.
+          -- Media das frequencias individuais, e nao a proporcao de presencas
+          -- da turma inteira: cada aluno pesa o mesmo, com a conta que ele ve
+          -- no proprio painel.
           SELECT COALESCE(ROUND(AVG(por_aluno.frequencia)), 0)
           FROM (
             SELECT ${frequenciaPorMatricula("f")} AS frequencia
@@ -155,21 +158,72 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     };
   }
 
-  // A coluna de total entra no SELECT, e nao no fim da consulta, porque o
-  // GROUP BY fica no meio. COUNT(*) OVER() roda depois do agrupamento, entao
-  // conta cursos, nao linhas do join com turmas.
-  private selectCurso(colunasExtras = ""): string {
+  // O curso nao guarda mais o proprio status: ele sai das turmas a cada
+  // consulta, e a coluna `treinamentos.status` ficou so como historico. Curso
+  // sem turma, ou com turma mas sem nenhum aluno matriculado, esta em
+  // planejamento; basta um aluno numa turma nao cancelada para ficar ativo;
+  // quando todas as turmas que valem chegam ao fim do cronograma ele fica
+  // encerrado; e quando todas foram canceladas, desativado.
+  //
+  // O agrupamento por turma vive numa subconsulta, e nao num LEFT JOIN direto,
+  // porque o curso precisa contar turmas e alunos ao mesmo tempo: no join
+  // aberto cada matricula duplicaria a linha da turma e a contagem de turmas
+  // sairia inflada.
+  private static readonly TURMAS_DO_CURSO = `
+    LEFT JOIN (
+      SELECT
+        tu.treinamento_id,
+        COUNT(*) AS quantidade_turmas,
+        COUNT(*) FILTER (WHERE tu.status = 'cancelada') AS turmas_canceladas,
+        COUNT(*) FILTER (WHERE tu.status <> 'cancelada') AS turmas_que_valem,
+        -- 'concluida' entra junto por causa das turmas anteriores a 18/09,
+        -- quando o fim do cronograma gravava aquele valor.
+        COUNT(*) FILTER (
+          WHERE tu.status IN ('encerrada', 'concluida')
+        ) AS turmas_encerradas,
+        COUNT(*) FILTER (
+          WHERE tu.status <> 'cancelada' AND matriculados.total > 0
+        ) AS turmas_com_aluno
+      FROM turmas tu
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS total
+        FROM matriculas m
+        WHERE m.turma_id = tu.id AND m.status <> 'cancelado'
+      ) AS matriculados ON TRUE
+      GROUP BY tu.treinamento_id
+    ) AS turmas_do_curso ON turmas_do_curso.treinamento_id = t.id
+  `;
+
+  // A ordem importa: cancelamento vem antes do encerramento porque uma turma
+  // cancelada nao "terminou", e o curso so encerra quando as turmas que ainda
+  // valem chegaram todas ao fim do cronograma.
+  private static readonly STATUS_DO_CURSO = `
+    CASE
+      WHEN COALESCE(turmas_do_curso.quantidade_turmas, 0) > 0
+           AND turmas_do_curso.quantidade_turmas
+               = turmas_do_curso.turmas_canceladas
+        THEN 'desativado'
+      WHEN COALESCE(turmas_do_curso.turmas_que_valem, 0) > 0
+           AND turmas_do_curso.turmas_que_valem
+               = turmas_do_curso.turmas_encerradas
+        THEN 'encerrado'
+      WHEN COALESCE(turmas_do_curso.turmas_com_aluno, 0) > 0 THEN 'ativo'
+      ELSE 'em_planejamento'
+    END
+  `;
+
+  private selectCurso(): string {
     return `
       SELECT
         t.id,
         t.nome,
         t.descricao,
         t.carga_horaria,
-        t.status,
-        COUNT(tu.id) AS quantidade_turmas${colunasExtras}
+        t.periodo_letivo,
+        ${PostgresCoordenadorRepository.STATUS_DO_CURSO} AS status,
+        COALESCE(turmas_do_curso.quantidade_turmas, 0) AS quantidade_turmas
       FROM treinamentos t
-      LEFT JOIN turmas tu ON tu.treinamento_id = t.id
-      GROUP BY t.id, t.nome, t.descricao, t.carga_horaria, t.status
+      ${PostgresCoordenadorRepository.TURMAS_DO_CURSO}
     `;
   }
 
@@ -187,28 +241,34 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   async listarCursosPaginado(
     paginacao: Paginacao,
   ): Promise<PaginaDeCursos> {
-    // Os cartoes do topo contam a base inteira. As janelas rodam depois do
-    // GROUP BY e antes do LIMIT, entao "sem turma" pode olhar o proprio
-    // COUNT(tu.id) do curso.
-    const agregados = `,
-        ${TOTAL_DA_CONSULTA},
-        COUNT(*) FILTER (WHERE t.status = 'ativo') OVER () AS total_ativos,
-        COUNT(*) FILTER (
-          WHERE t.status = 'desativado'
-        ) OVER () AS total_desativados,
-        COUNT(*) FILTER (
-          WHERE t.status = 'em_planejamento'
-        ) OVER () AS total_em_planejamento,
-        -- "Sem turma" depende do COUNT do proprio curso, e o Postgres recusa
-        -- agregado dentro de FILTER. Dentro do argumento da janela ele aceita.
-        COALESCE(SUM(
-          CASE WHEN COUNT(tu.id) = 0 THEN 1 ELSE 0 END
-        ) OVER (), 0) AS total_sem_turma`;
-
+    // Os cartoes do topo contam a base inteira, e o status de cada curso e uma
+    // expressao, nao uma coluna. As contagens ficam numa consulta externa para
+    // poder filtrar pelo `status` ja calculado, em vez de repetir o CASE
+    // inteiro dentro de cada FILTER. As janelas rodam antes do LIMIT, entao
+    // contam a base toda, e nao a pagina.
     const resultado = await this.db.query(
       `
-      ${this.selectCurso(agregados)}
-      ORDER BY t.nome ASC
+      WITH cursos AS (
+        ${this.selectCurso()}
+      )
+      SELECT
+        c.*,
+        ${TOTAL_DA_CONSULTA},
+        COUNT(*) FILTER (WHERE c.status = 'ativo') OVER () AS total_ativos,
+        COUNT(*) FILTER (
+          WHERE c.status = 'encerrado'
+        ) OVER () AS total_encerrados,
+        COUNT(*) FILTER (
+          WHERE c.status = 'desativado'
+        ) OVER () AS total_desativados,
+        COUNT(*) FILTER (
+          WHERE c.status = 'em_planejamento'
+        ) OVER () AS total_em_planejamento,
+        COUNT(*) FILTER (
+          WHERE c.quantidade_turmas = 0
+        ) OVER () AS total_sem_turma
+      FROM cursos c
+      ORDER BY c.nome ASC
       ${limiteEDeslocamento(1)}
       `,
       valoresDeLimiteEDeslocamento(paginacao),
@@ -223,6 +283,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       porPagina: paginacao.porPagina,
       resumo: {
         ativos: Number(primeira?.total_ativos ?? 0),
+        encerrados: Number(primeira?.total_encerrados ?? 0),
         desativados: Number(primeira?.total_desativados ?? 0),
         emPlanejamento: Number(primeira?.total_em_planejamento ?? 0),
         semTurma: Number(primeira?.total_sem_turma ?? 0),
@@ -231,28 +292,23 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   async buscarCursoPorId(id: string): Promise<CursoResumo | null> {
-    const query = `
-      SELECT
-        t.id,
-        t.nome,
-        t.descricao,
-        t.carga_horaria,
-        t.status,
-        COUNT(tu.id) AS quantidade_turmas
-      FROM treinamentos t
-      LEFT JOIN turmas tu ON tu.treinamento_id = t.id
+    const resultado = await this.db.query(
+      `
+      ${this.selectCurso()}
       WHERE t.id = $1
-      GROUP BY t.id, t.nome, t.descricao, t.carga_horaria, t.status
-    `;
-    const resultado = await this.db.query(query, [id]);
+      `,
+      [id],
+    );
     return resultado.rows[0] ? this.mapearCurso(resultado.rows[0]) : null;
   }
 
+  // `status` e `ativo` ficam no default da tabela: o curso nasce sem turma,
+  // entao o status que a tela mostra e "em planejamento", calculado na leitura.
   async criarCurso(input: CriarCursoInput): Promise<CursoResumo> {
     const query = `
-      INSERT INTO treinamentos (nome, descricao, carga_horaria, status, ativo)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, nome, descricao, carga_horaria, status
+      INSERT INTO treinamentos (nome, descricao, carga_horaria, periodo_letivo)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, nome, descricao, carga_horaria, periodo_letivo
     `;
 
     try {
@@ -260,10 +316,13 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.nome,
         input.descricao,
         input.cargaHoraria,
-        input.status,
-        input.status === "ativo",
+        input.periodoLetivo,
       ]);
-      return this.mapearCurso({ ...resultado.rows[0], quantidade_turmas: 0 });
+      return this.mapearCurso({
+        ...resultado.rows[0],
+        status: "em_planejamento",
+        quantidade_turmas: 0,
+      });
     } catch (error: any) {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe um curso cadastrado com este nome.");
@@ -275,9 +334,9 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   async atualizarCurso(id: string, input: AtualizarCursoInput): Promise<CursoResumo | null> {
     const query = `
       UPDATE treinamentos
-      SET nome = $1, descricao = $2, carga_horaria = $3, status = $4, ativo = $5
-      WHERE id = $6
-      RETURNING id, nome, descricao, carga_horaria, status
+      SET nome = $1, descricao = $2, carga_horaria = $3, periodo_letivo = $4
+      WHERE id = $5
+      RETURNING id
     `;
 
     try {
@@ -285,22 +344,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.nome,
         input.descricao,
         input.cargaHoraria,
-        input.status,
-        input.status === "ativo",
+        input.periodoLetivo,
         id,
       ]);
 
       if (resultado.rows.length === 0) return null;
 
-      const countResult = await this.db.query(
-        "SELECT COUNT(id) AS quantidade_turmas FROM turmas WHERE treinamento_id = $1",
-        [id],
-      );
-
-      return this.mapearCurso({
-        ...resultado.rows[0],
-        quantidade_turmas: Number(countResult.rows[0].quantidade_turmas),
-      });
+      // Reler e mais barato que refazer a conta aqui: o status e a quantidade
+      // de turmas saem prontos da mesma consulta que a tela usa.
+      return await this.buscarCursoPorId(id);
     } catch (error: any) {
       if (error?.code === CODIGO_VIOLACAO_UNICIDADE) {
         throw new Error("Ja existe um curso cadastrado com este nome.");
@@ -671,34 +723,26 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     return await this.buscarUsuarioListagemPorId(id);
   }
 
-  // Usado antes de desativar um administrador, para nao deixar o sistema sem
-  // nenhum: a interface nao tem como reverter uma conta admin desativada.
-  // Excluir um aluno pela tela de Usuarios tem que dar no mesmo que excluir
-  // pela tela de Alunos: o CPF vai para a lista de bloqueio antes do DELETE.
-  // Sem isso existiriam duas portas com comportamento diferente.
-  async excluirUsuario(id: string, excluidoPorId: string | null): Promise<boolean> {
+  // Excluir um aluno pela tela de Usuarios da no mesmo que excluir pela tela de
+  // Alunos: apaga e pronto. Ate 18/09 as duas portas mandavam o CPF para a
+  // lista de bloqueio — ver `excluirAluno` para o porque de isso ter saido.
+  async excluirUsuario(id: string): Promise<boolean> {
     const cliente = await this.db.connect();
 
     try {
       await cliente.query("BEGIN");
 
+      // Confere que existe e trava a linha ate o COMMIT. O SELECT trazia CPF,
+      // nome, e-mail e perfil porque o bloqueio de CPF precisava deles; sem o
+      // bloqueio, nenhuma coluna e lida.
       const dados = await cliente.query(
-        `SELECT u.cpf, u.nome, u.email, p.nome AS perfil
-         FROM usuarios u
-         JOIN perfis p ON p.id = u.perfil_id
-         WHERE u.id = $1
-         FOR UPDATE OF u`,
+        "SELECT 1 FROM usuarios WHERE id = $1 FOR UPDATE",
         [id],
       );
-      const linha = dados.rows[0];
 
-      if (!linha) {
+      if (dados.rowCount === 0) {
         await cliente.query("ROLLBACK");
         return false;
-      }
-
-      if (linha.perfil === "aluno") {
-        await this.bloquearCpfExcluido(cliente, linha, excluidoPorId);
       }
 
       await cliente.query("DELETE FROM usuarios WHERE id = $1", [id]);
@@ -844,6 +888,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         u.nome,
         u.email,
         a.telefone,
+        matricula.id AS matricula_id,
+        matricula.turma_id,
         matricula.turma,
         matricula.status_turma,
         matricula.curso,
@@ -857,6 +903,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         SELECT
           m.id,
           m.status,
+          m.turma_id,
           t.nome AS turma,
           t.status AS status_turma,
           tr.nome AS curso
@@ -864,10 +911,17 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         JOIN treinamentos tr ON tr.id = m.treinamento_id
         LEFT JOIN turmas t ON t.id = m.turma_id
         WHERE m.aluno_id = a.id
+          -- Matricula desvinculada nao e a turma do aluno. Enquanto ela
+          -- entrava aqui, quem a coordenacao acabara de desvincular continuava
+          -- listado na turma de onde saiu.
+          AND m.status <> 'cancelado'
         ORDER BY
           CASE WHEN m.status = 'em_andamento' THEN 0 ELSE 1 END,
           m.data_matricula DESC,
-          m.id DESC
+          -- m.id ASC, a mesma ultima chave do painel do aluno e do download
+          -- do certificado. Com DESC aqui, o aluno que tinha duas matriculas
+          -- aparecia numa turma na lista e em outra no proprio painel.
+          m.id
         LIMIT 1
       ) matricula ON TRUE
       LEFT JOIN LATERAL (
@@ -888,6 +942,8 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       nome: linha.nome,
       email: linha.email,
       telefone: linha.telefone ?? null,
+      matriculaId: linha.matricula_id ?? null,
+      turmaId: linha.turma_id ?? null,
       turma: linha.turma ?? null,
       curso: linha.curso ?? null,
       frequencia: Number(linha.frequencia),
@@ -1084,12 +1140,16 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   }
 
   // Exclusao real do aluno. Matriculas, frequencias e certificados saem em
-  // cascata, mas o CPF nao e colocado em lista de bloqueio para permitir novo
-  // cadastro no futuro.
-  async excluirAluno(
-    id: string,
-    bloqueadoPorId: string | null,
-  ): Promise<AlunoExcluido | null> {
+  // cascata, e o CPF NAO vai para a lista de bloqueio: a pessoa pode se
+  // cadastrar de novo.
+  //
+  // Ate 18/09 excluir bloqueava o CPF junto. A coordenacao separou as duas
+  // coisas: excluir e tirar do sistema, bloquear e impedir de voltar, e quem
+  // decide bloquear e o botao "Bloquear" (sincronizarBloqueioCpfDoAluno). Com
+  // as duas coladas, nao havia como apagar um cadastro feito por engano sem
+  // deixar a pessoa barrada para sempre — e a lista de bloqueio guardava CPF de
+  // gente que ninguem quis bloquear.
+  async excluirAluno(id: string): Promise<AlunoExcluido | null> {
     const cliente = await this.db.connect();
 
     try {
@@ -1109,8 +1169,6 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         await cliente.query("ROLLBACK");
         return null;
       }
-
-      await this.bloquearCpfExcluido(cliente, linha, bloqueadoPorId);
 
       // As turmas dele precisam ser lidas ANTES do DELETE: a matricula sai em
       // cascata junto com o usuario, e depois nao ha mais como saber de onde
@@ -1147,42 +1205,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  // Bloqueia o CPF de um aluno que esta sendo excluido. Roda ANTES do DELETE,
-  // porque a linha do usuario e a unica copia do CPF: apagada, nao ha mais o
-  // que bloquear.
-  //
-  // As duas portas de exclusao passam por aqui de proposito. Enquanto a tela de
-  // Usuarios bloqueava e a de Alunos nao, o bloqueio dependia de qual tela a
-  // coordenacao tinha usado, e quem fosse excluido pela tela de Alunos podia se
-  // recadastrar com o mesmo CPF minutos depois.
-  private async bloquearCpfExcluido(
-    cliente: PoolClient,
-    aluno: { cpf: string; nome: string; email: string },
-    bloqueadoPorId: string | null,
-  ): Promise<void> {
-    await cliente.query(
-      `INSERT INTO cpfs_bloqueados (cpf, nome, email, motivo, bloqueado_por_id)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (cpf) DO UPDATE
-       SET nome = EXCLUDED.nome,
-           email = EXCLUDED.email,
-           motivo = EXCLUDED.motivo,
-           bloqueado_por_id = EXCLUDED.bloqueado_por_id,
-           data_bloqueio = now()`,
-      [
-        aluno.cpf,
-        aluno.nome,
-        aluno.email,
-        "Aluno excluido pela coordenacao",
-        bloqueadoPorId,
-      ],
-    );
-  }
-
   // Caminho de volta de quem foi excluido por engano: a coordenacao cadastra o
   // mesmo CPF de novo e o bloqueio cai junto.
   async liberarCpfBloqueado(cpf: string): Promise<void> {
-    await this.db.query("DELETE FROM cpfs_bloqueados WHERE cpf = $1", [cpf]);
+    await this.db.query("DELETE FROM cpfs_bloqueados WHERE cpf_hash = $1", [
+      hashCpf(cpf),
+    ]);
   }
 
   // Bloquear a conta sem bloquear o CPF nao resolvia nada: bastava se
@@ -1192,33 +1220,39 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     bloquear: boolean,
     bloqueadoPorId: string | null,
   ): Promise<void> {
+    // O hash sai do proprio SELECT, pelo pgcrypto: o CPF continua sendo lido de
+    // `usuarios`, mas so o hash chega em `cpfs_bloqueados`. O `hmac(...)` daqui
+    // e o `hashCpf()` do TypeScript produzem o mesmo valor.
     if (bloquear) {
       await this.db.query(
-        `INSERT INTO cpfs_bloqueados (cpf, nome, email, motivo, bloqueado_por_id)
-         SELECT u.cpf, u.nome, u.email, $2, $3
+        `INSERT INTO cpfs_bloqueados (cpf_hash, motivo, bloqueado_por_id)
+         SELECT encode(hmac(u.cpf, $4, 'sha256'), 'hex'), $2, $3
          FROM alunos a
          JOIN usuarios u ON u.id = a.usuario_id
          WHERE a.id = $1
-         ON CONFLICT (cpf) DO UPDATE
-         SET nome = EXCLUDED.nome,
-             email = EXCLUDED.email,
-             motivo = EXCLUDED.motivo,
+         ON CONFLICT (cpf_hash) DO UPDATE
+         SET motivo = EXCLUDED.motivo,
              bloqueado_por_id = EXCLUDED.bloqueado_por_id,
              data_bloqueio = now()`,
-        [alunoId, "Aluno bloqueado pela coordenacao", bloqueadoPorId],
+        [
+          alunoId,
+          "Aluno bloqueado pela coordenacao",
+          bloqueadoPorId,
+          segredoDoHashCpf(),
+        ],
       );
       return;
     }
 
     await this.db.query(
       `DELETE FROM cpfs_bloqueados
-       WHERE cpf = (
-         SELECT u.cpf
+       WHERE cpf_hash = (
+         SELECT encode(hmac(u.cpf, $2, 'sha256'), 'hex')
          FROM alunos a
          JOIN usuarios u ON u.id = a.usuario_id
          WHERE a.id = $1
        )`,
-      [alunoId],
+      [alunoId, segredoDoHashCpf()],
     );
   }
 
@@ -1272,7 +1306,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
   async buscarTurmaPorId(id: string): Promise<TurmaParaMatricula | null> {
     const resultado = await this.db.query(
-      `SELECT id, treinamento_id, status, capacidade
+      `SELECT id, treinamento_id, status, capacidade, periodo_letivo
        FROM turmas
        WHERE id = $1`,
       [id],
@@ -1286,6 +1320,53 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           status: linha.status,
           capacidade:
             linha.capacidade === null ? null : Number(linha.capacidade),
+          periodoLetivo: linha.periodo_letivo,
+        }
+      : null;
+  }
+
+  /**
+   * A turma que o aluno ja ocupa no periodo letivo informado, ignorando a
+   * turma de destino.
+   *
+   * 'cancelado' fica de fora: e exatamente o status que `removerMatricula`
+   * grava, entao desvincular o aluno de uma turma o libera para outra. E o que
+   * faz a troca de turma pedida pela coordenacao funcionar sem apagar o
+   * historico da matricula antiga.
+   *
+   * Os outros tres status ocupam a vaga, inclusive 'aprovado' e
+   * 'reprovado_falta': o aluno participa de uma turma por periodo, e ter
+   * terminado nao devolve a vaga dentro do mesmo periodo.
+   */
+  async buscarMatriculaNoPeriodo(
+    alunoId: string,
+    periodoLetivo: string,
+    turmaIdIgnorada: string,
+  ): Promise<MatriculaNoPeriodo | null> {
+    const resultado = await this.db.query(
+      `SELECT m.id, m.status, tu.id AS turma_id, tu.nome AS turma_nome,
+              tu.periodo_letivo, tr.nome AS curso_nome
+       FROM matriculas m
+       JOIN turmas tu ON tu.id = m.turma_id
+       JOIN treinamentos tr ON tr.id = tu.treinamento_id
+       WHERE m.aluno_id = $1
+         AND tu.periodo_letivo = $2
+         AND tu.id <> $3
+         AND m.status <> 'cancelado'
+         AND tu.status <> 'cancelada'
+       LIMIT 1`,
+      [alunoId, periodoLetivo, turmaIdIgnorada],
+    );
+    const linha = resultado.rows[0];
+
+    return linha
+      ? {
+          id: linha.id,
+          turmaId: linha.turma_id,
+          turmaNome: linha.turma_nome,
+          cursoNome: linha.curso_nome,
+          periodoLetivo: linha.periodo_letivo,
+          status: linha.status,
         }
       : null;
   }
@@ -1365,10 +1446,15 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
           throw new Error("O aluno ja possui matricula nesta turma.");
         }
 
+        // `treinamento_id` volta junto: a matricula reaproveitada guardava o
+        // curso da vez anterior, e e dele que o certificado tira o nome do
+        // curso. Se a turma mudou de curso no intervalo, o aluno receberia um
+        // certificado do curso errado.
         resultado = await cliente.query(
           `UPDATE matriculas
            SET
              status = 'em_andamento',
+             treinamento_id = $2,
              progresso = 0,
              data_matricula = CURRENT_DATE,
              data_conclusao = NULL
@@ -1380,7 +1466,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
              treinamento_id,
              status,
              to_char(data_matricula, 'YYYY-MM-DD') AS data_matricula`,
-          [existente.rows[0].id],
+          [existente.rows[0].id, input.treinamentoId],
         );
       } else {
         resultado = await cliente.query(
@@ -1465,47 +1551,6 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  async buscarMatriculaPorId(
-    id: string,
-  ): Promise<{ id: string; status: string } | null> {
-    const resultado = await this.db.query(
-      "SELECT id, status FROM matriculas WHERE id = $1",
-      [id],
-    );
-    const linha = resultado.rows[0];
-    return linha ? { id: linha.id, status: linha.status } : null;
-  }
-
-  async atualizarStatusMatricula(
-    id: string,
-    input: AtualizarStatusMatriculaInput,
-  ): Promise<MatriculaStatusAtualizado | null> {
-    const resultado = await this.db.query(
-      `UPDATE matriculas
-       SET
-         status = $1::varchar,
-         data_conclusao = CASE
-           WHEN $1::varchar IN ('aprovado', 'reprovado_falta') THEN CURRENT_DATE
-           WHEN $1::varchar = 'em_andamento' THEN NULL
-         END
-       WHERE id = $2
-       RETURNING
-         id,
-         status,
-         to_char(data_conclusao, 'YYYY-MM-DD') AS data_conclusao`,
-      [input.status, id],
-    );
-    const linha = resultado.rows[0];
-
-    return linha
-      ? {
-          id: linha.id,
-          status: linha.status,
-          dataConclusao: linha.data_conclusao ?? null,
-        }
-      : null;
-  }
-
   // Sem `paginacao`, devolve tudo — e o que o relatorio e a exportacao usam.
   async listarFrequencias(
     filtros: FiltrosFrequenciaCoordenador,
@@ -1517,6 +1562,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         SELECT
           u.nome AS aluno,
           t.nome AS turma,
+          t.status AS status_turma,
           m.status AS status_matricula,
           ${presencasEfetivas("f")} AS presencas,
           ${faltasNaoJustificadas("f")} AS faltas,
@@ -1543,11 +1589,12 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
               END
             ) = $4
           )
-        GROUP BY m.id, u.nome, t.nome, m.status
+        GROUP BY m.id, u.nome, t.nome, t.status, m.status
       )
       SELECT
         aluno,
         turma,
+        status_turma,
         presencas,
         faltas,
         frequencia,
@@ -1589,6 +1636,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       itens: resultado.rows.map((linha) => ({
         aluno: linha.aluno,
         turma: linha.turma,
+        statusTurma: linha.status_turma,
         presencas: Number(linha.presencas),
         faltas: Number(linha.faltas),
         frequencia: Number(linha.frequencia),
@@ -2123,6 +2171,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     const turmaStatusMotivo = apenasEncerrada
       ? `WHEN tu.status <> 'concluida' AND tu.status <> 'encerrada' THEN 'Turma ainda nao finalizada.'`
       : "";
+    const periodo = periodoDoCronograma("tu");
 
     return `
       SELECT
@@ -2162,9 +2211,14 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         c.status,
         c.codigo,
         to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
-        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        -- Periodo pelo cronograma; a data da turma so entra se nao houver aula
+        -- lancada. Ver periodoDoCronograma em sql/turma.ts.
         to_char(
-          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          COALESCE(${periodo.inicio}, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_inicio,
+        to_char(
+          COALESCE(${periodo.fim}, tu.data_fim, m.data_conclusao, tu.data_inicio),
           'YYYY-MM-DD'
         ) AS data_fim,
         tr.carga_horaria
@@ -2181,6 +2235,10 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         c.id,
         u.nome,
         tr.nome,
+        -- tu.id entra por causa das subconsultas do periodo do cronograma: o
+        -- Postgres so dispensa a coluna agrupada quando a chave primaria da
+        -- PROPRIA tabela esta no GROUP BY, e aqui a agrupada e m.id.
+        tu.id,
         tu.nome,
         tu.data_inicio,
         tu.data_fim,
@@ -2318,16 +2376,32 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       return;
     }
 
+    // A trava vale dentro do PERIODO LETIVO, e nao enquanto a turma esta ativa.
+    //
+    // Ate 18/09 a condicao era `status IN ('planejada', 'em_andamento')`, e a
+    // turma encerrada soltava o instrutor na hora. So que uma turma encerra
+    // assim que o cronograma acaba, o que pode acontecer na primeira semana do
+    // periodo — e o mesmo instrutor caia em duas turmas de 2026.2 com aula no
+    // mesmo horario e salas diferentes.
+    //
+    // O periodo continua liberando: a turma encerrada de 2026.1 nao bloqueia
+    // ninguem em 2026.2, senao o instrutor viraria de uso unico.
+    //
+    // 'cancelada' fica de fora porque a turma cancelada nao acontece, entao
+    // nao ocupa a agenda de ninguem.
     const conflito = await client.query(
       `
-      SELECT u.nome AS instrutor, t.nome AS turma
+      SELECT u.nome AS instrutor, t.nome AS turma, t.periodo_letivo
       FROM turma_instrutores ti
       JOIN turmas t ON t.id = ti.turma_id
       JOIN instrutores i ON i.id = ti.instrutor_id
       JOIN usuarios u ON u.id = i.usuario_id
       WHERE ti.instrutor_id = ANY($1::uuid[])
         AND ti.turma_id <> $2
-        AND t.status IN ('planejada', 'em_andamento')
+        AND t.status <> 'cancelada'
+        AND t.periodo_letivo = (
+          SELECT periodo_letivo FROM turmas WHERE id = $2
+        )
       LIMIT 1
       `,
       [instrutorIds, turmaId],
@@ -2336,7 +2410,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
 
     if (linha) {
       throw new BadRequestError(
-        `${linha.instrutor} ja esta na turma "${linha.turma}". Um instrutor pode assumir apenas uma turma ativa por vez.`,
+        `${linha.instrutor} ja esta na turma "${linha.turma}" no periodo ${linha.periodo_letivo}. Um instrutor pode assumir apenas uma turma por periodo letivo.`,
       );
     }
   }
@@ -2361,6 +2435,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
   async buscarCertificadoAluno(
     matriculaId: string,
   ): Promise<CertificadoAlunoDetalhe | null> {
+    const periodoDetalhe = periodoDoCronograma("tu");
     const resultado = await this.db.query(
       `
       SELECT
@@ -2371,9 +2446,14 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         u.cpf AS cpf_aluno,
         tr.nome AS nome_curso,
         tr.carga_horaria,
-        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        -- Periodo pelo cronograma; a data da turma so entra se nao houver aula
+        -- lancada. Ver periodoDoCronograma em sql/turma.ts.
         to_char(
-          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          COALESCE(${periodoDetalhe.inicio}, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_inicio,
+        to_char(
+          COALESCE(${periodoDetalhe.fim}, tu.data_fim, m.data_conclusao, tu.data_inicio),
           'YYYY-MM-DD'
         ) AS data_fim,
         to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
@@ -2981,12 +3061,14 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     try {
       await client.query("BEGIN");
 
+      // `status` fica no default da tabela ('planejada'): turma nova nao tem
+      // aluno nem aula, que e exatamente o que a regra derivada diria.
       const query = `
         INSERT INTO turmas (
           treinamento_id, coordenador_id, codigo, nome,
-          periodo_letivo, data_inicio, data_fim, horario, status, capacidade
+          periodo_letivo, data_inicio, data_fim, horario, capacidade
         )
-        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8)
         RETURNING id
       `;
 
@@ -2998,7 +3080,6 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
         input.dataInicio,
         input.dataFim,
         input.horario,
-        input.status,
         input.limiteAlunos,
       ]);
 
@@ -3033,19 +3114,62 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
+  // Cancelar e a unica decisao de status que continua sendo da coordenacao, e
+   // por isso tem caminho proprio: o UPDATE derivado nunca escreve nem apaga
+  // 'cancelada'. Reativar devolve a turma para a regra — 'planejada' e so o
+  // ponto de partida, porque o derivado roda logo em seguida e ja promove a
+  // turma que tem aluno ou cronograma cumprido.
+  async definirCancelamentoDaTurma(
+    id: string,
+    cancelada: boolean,
+  ): Promise<TurmaListagem | null> {
+    const cliente = await this.db.connect();
+
+    try {
+      await cliente.query("BEGIN");
+
+      const resultado = await cliente.query(
+        "UPDATE turmas SET status = $1 WHERE id = $2 RETURNING id",
+        [cancelada ? "cancelada" : "planejada", id],
+      );
+
+      if (resultado.rows.length === 0) {
+        await cliente.query("ROLLBACK");
+        return null;
+      }
+
+      if (!cancelada) {
+        await cliente.query(atualizarStatusDerivadoDaTurma(), [id]);
+      }
+
+      await cliente.query("COMMIT");
+    } catch (error) {
+      await cliente.query("ROLLBACK");
+      throw error;
+    } finally {
+      cliente.release();
+    }
+
+    const turma = await this.buscarTurmaDetalhe(id);
+    return turma?.turma ?? null;
+  }
+
   async atualizarTurma(id: string, input: AtualizarTurmaInput): Promise<TurmaListagem | null> {
     const client = await this.db.connect();
 
     try {
       await client.query("BEGIN");
 
+      // O UPDATE nao toca em `status`: editar nome, curso ou capacidade nao e
+      // motivo para a turma mudar de situacao, e escrever o status aqui era o
+      // que deixava a coordenacao sobrescrever a regra pela tela.
       const resultado = await client.query(
         `UPDATE turmas
          SET nome = $1, treinamento_id = $2, capacidade = $3,
-             periodo_letivo = $4, data_inicio = $5, data_fim = $6, status = $7
-         WHERE id = $8
+             periodo_letivo = $4, data_inicio = $5, data_fim = $6
+         WHERE id = $7
          RETURNING id`,
-        [input.nome, input.treinamentoId, input.capacidade, input.periodoLetivo, input.dataInicio, input.dataFim, input.status, id],
+        [input.nome, input.treinamentoId, input.capacidade, input.periodoLetivo, input.dataInicio, input.dataFim, id],
       );
 
       if (resultado.rows.length === 0) {
@@ -3148,6 +3272,7 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
       nome: linha.nome,
       descricao: linha.descricao ?? null,
       cargaHoraria: Number(linha.carga_horaria),
+      periodoLetivo: linha.periodo_letivo ?? null,
       status: linha.status,
       quantidadeTurmas: Number(linha.quantidade_turmas),
     };
@@ -3339,14 +3464,4 @@ export class PostgresCoordenadorRepository implements CoordenadorRepository {
     }
   }
 
-  async excluirPeriodoLetivoManual(): Promise<void> {
-    try {
-      await this.db.query(
-        `DELETE FROM configuracoes_sistema WHERE chave = ANY($1::text[])`,
-        [PERIODO_LETIVO_CHAVES],
-      );
-    } catch {
-      // Tabela nao existe = ja esta em modo automatico.
-    }
-  }
 }

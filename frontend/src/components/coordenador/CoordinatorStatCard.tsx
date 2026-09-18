@@ -2,7 +2,7 @@ interface CoordinatorStatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  variant?: "neutral" | "blue" | "green" | "amber";
+  variant?: "neutral" | "blue" | "green" | "amber" | "red";
 }
 
 const VARIANT_STYLES = {
@@ -10,6 +10,8 @@ const VARIANT_STYLES = {
   blue: "border-[#8AA6E0] bg-[#DCE7FB]",
   green: "border-[#86C99B] bg-[#DDF3E4]",
   amber: "border-[#E0B583] bg-[#F8E7D2]",
+  // Mesma familia de tom das outras: borda saturada sobre fundo claro.
+  red: "border-[#DE9A9A] bg-[#FADEDE]",
 } as const;
 
 export const CoordinatorStatCard = ({

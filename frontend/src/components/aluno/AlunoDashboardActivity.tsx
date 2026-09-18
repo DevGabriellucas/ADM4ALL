@@ -1,15 +1,11 @@
 import type {
   AlunoDashboard,
   AulaCalendario,
-  ComunicadoAluno,
   HistoricoPresenca,
 } from "@/types/aluno";
 
 interface AlunoDashboardActivityProps {
-  aluno: Pick<
-    AlunoDashboard,
-    "historicoPresencas" | "calendarioTurma" | "comunicados"
-  >;
+  aluno: Pick<AlunoDashboard, "historicoPresencas" | "calendarioTurma">;
 }
 
 const formatarData = (data: string) => {
@@ -46,11 +42,10 @@ const calendarioLabel: Record<AulaCalendario["status"], string> = {
   cancelada: "Cancelada",
 };
 
-const comunicadoClasses: Record<ComunicadoAluno["tipo"], string> = {
-  informacao: "border-blue-200 bg-blue-50 text-blue-900",
-  atencao: "border-amber-200 bg-amber-50 text-amber-900",
-  importante: "border-red-200 bg-red-50 text-red-900",
-};
+// O cartao "Comunicados importantes" saiu da tela em 18/09: o que ele anunciava
+// (curso concluido, reprovacao por falta, certificado liberado) ja esta dito
+// nos cartoes de status, de frequencia e de certificado, e repetido ali virava
+// um bloco que quase sempre dizia "nao ha comunicados no momento".
 
 export const AlunoDashboardActivity = ({
   aluno,
@@ -59,29 +54,6 @@ export const AlunoDashboardActivity = ({
     aria-label="Informações acadêmicas detalhadas"
     className="grid grid-cols-1 gap-4 lg:grid-cols-2"
   >
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-      <h2 className="font-semibold text-lg text-slate-950">
-        Comunicados importantes
-      </h2>
-      {aluno.comunicados.length > 0 ? (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {aluno.comunicados.map((comunicado) => (
-            <div
-              key={`${comunicado.titulo}-${comunicado.tipo}`}
-              className={`rounded-lg border px-4 py-3 ${comunicadoClasses[comunicado.tipo]}`}
-            >
-              <p className="font-semibold text-sm">{comunicado.titulo}</p>
-              <p className="mt-1 text-sm leading-6">{comunicado.mensagem}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 text-slate-600 text-sm">
-          Não há comunicados importantes no momento.
-        </p>
-      )}
-    </article>
-
     <article className="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="font-semibold text-lg text-slate-950">
         Últimas presenças

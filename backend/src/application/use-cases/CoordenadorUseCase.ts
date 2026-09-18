@@ -22,7 +22,6 @@ import {
   PaginaDeCertificados,
   AlunoParaReenvioAtivacao,
   AtualizarInstrutorCoordenadorInput,
-  AtualizarStatusMatriculaInput,
   AtualizarAlunoCoordenadorInput,
   AtualizarUsuarioInput,
   CertificadoDetalhe,
@@ -39,12 +38,10 @@ import {
   InstrutorParaReenvioAtivacao,
   InstrutorListagem,
   MatriculaCriada,
-  MatriculaStatusAtualizado,
   PerfilCoordenador,
   PeriodoLetivoResponse,
   RelatorioCoordenador,
   RelatorioGerado,
-  StatusMatriculaEditavel,
   TipoCertificado,
   TurmaDetalhe,
   TurmaListagem,
@@ -68,13 +65,14 @@ import {
   MENSAGEM_PERIODO_INVALIDO,
   PERIODO_REGEX,
 } from "../../application/utils/calcularPeriodoLetivo";
-import { ActivationUseCase } from "./ActivationUseCase";
+import { gerarEmailAtivacaoConta } from "../../infrastructure/email/emailTemplates";
+import { ATIVACAO_DIAS, ActivationUseCase } from "./ActivationUseCase";
 
 export interface CriarCursoEntrada {
   nome: string;
   descricao: string;
   cargaHoraria: number;
-  status?: string;
+  periodoLetivo: string;
 }
 
 export interface ConvidarInstrutorEntrada {
@@ -117,7 +115,6 @@ export interface CriarTurmaEntrada {
   periodoLetivo: string;
   horario: string;
   limiteAlunos: number;
-  status?: string;
   coordenadorId?: string | null;
 }
 
@@ -135,14 +132,6 @@ export interface FiltrosFrequenciaEntrada {
   periodo?: string;
 }
 
-const CURSO_STATUS_VALIDOS = ["ativo", "em_planejamento", "desativado"];
-const TURMA_STATUS_VALIDOS = [
-  "planejada",
-  "em_andamento",
-  "concluida",
-  "encerrada",
-  "cancelada",
-];
 const SALT_ROUNDS = 10;
 
 function derivarDatasDoPeriodo(periodoLetivo: string): { dataInicio: string; dataFim: string } {
@@ -164,11 +153,6 @@ const STATUS_CONTA_VALIDOS = [
 ] as const;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const STATUS_MATRICULA_EDITAVEIS: readonly StatusMatriculaEditavel[] = [
-  "em_andamento",
-  "aprovado",
-  "reprovado_falta",
-];
 const TIPOS_RELATORIO: readonly CoordinatorReportType[] = [
   "frequencia_turma",
   "reprovados_falta",
@@ -178,11 +162,6 @@ const TIPOS_RELATORIO: readonly CoordinatorReportType[] = [
   "turmas_andamento",
 ];
 const DATA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-const isStatusMatriculaEditavel = (
-  status: string,
-): status is StatusMatriculaEditavel =>
-  STATUS_MATRICULA_EDITAVEIS.includes(status as StatusMatriculaEditavel);
 
 const isTipoCertificado = (tipo: string): tipo is TipoCertificado =>
   tipo === "aluno";
@@ -322,6 +301,7 @@ export class CoordenadorUseCase {
     return await this.coordenadorRepository.listarTurmasPorCurso(cursoId);
   }
 
+  // O status nao entra aqui: ele e derivado das turmas do curso na leitura.
   async criarCurso(input: CriarCursoEntrada): Promise<CursoResumo> {
     if (!input.nome || input.nome.trim() === "") {
       throw new BadRequestError("O nome do curso e obrigatorio.");
@@ -335,23 +315,32 @@ export class CoordenadorUseCase {
       throw new BadRequestError("A carga horaria deve ser maior que zero.");
     }
 
-    const status = input.status ?? "em_planejamento";
-    if (!CURSO_STATUS_VALIDOS.includes(status)) {
-      throw new BadRequestError(
-        `Status de curso invalido. Use: ${CURSO_STATUS_VALIDOS.join(", ")}.`,
-      );
-    }
+    const periodoLetivo = this.validarPeriodoLetivoDoCurso(input.periodoLetivo);
 
     try {
       return await this.coordenadorRepository.criarCurso({
         nome: input.nome.trim(),
         descricao: input.descricao.trim(),
         cargaHoraria: input.cargaHoraria,
-        status,
+        periodoLetivo,
       });
     } catch (error: any) {
       throw new BadRequestError(error.message);
     }
+  }
+
+  private validarPeriodoLetivoDoCurso(periodoLetivo?: string): string {
+    const periodo = (periodoLetivo ?? "").trim();
+
+    if (periodo === "") {
+      throw new BadRequestError("O periodo letivo do curso e obrigatorio.");
+    }
+
+    if (!PERIODO_REGEX.test(periodo)) {
+      throw new BadRequestError(MENSAGEM_PERIODO_INVALIDO);
+    }
+
+    return periodo;
   }
 
   async buscarCursoPorId(id: string): Promise<CursoResumo> {
@@ -384,12 +373,7 @@ export class CoordenadorUseCase {
       throw new BadRequestError("A carga horaria deve ser maior que zero.");
     }
 
-    const status = input.status ?? "em_planejamento";
-    if (!CURSO_STATUS_VALIDOS.includes(status)) {
-      throw new BadRequestError(
-        `Status de curso invalido. Use: ${CURSO_STATUS_VALIDOS.join(", ")}.`,
-      );
-    }
+    const periodoLetivo = this.validarPeriodoLetivoDoCurso(input.periodoLetivo);
 
     const existente = await this.coordenadorRepository.buscarCursoPorId(id);
     if (!existente) {
@@ -401,7 +385,7 @@ export class CoordenadorUseCase {
         nome: input.nome.trim(),
         descricao: input.descricao.trim(),
         cargaHoraria: input.cargaHoraria,
-        status,
+        periodoLetivo,
       });
 
       if (!curso) {
@@ -545,10 +529,12 @@ export class CoordenadorUseCase {
       await this.emailService.enviar(
         instrutor.email,
         "Novo link de ativacao - ADM Para Todos",
-        `<p>Ola, ${instrutor.nome}!</p>
-         <p>Foi solicitado um novo link para ativar sua conta de instrutor.</p>
-         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
+        gerarEmailAtivacaoConta({
+          nome: instrutor.nome,
+          link: linkAtivacao,
+          diasParaExpirar: ATIVACAO_DIAS,
+          motivo: "reenvio",
+        }),
       );
     } catch {
       await this.coordenadorRepository.invalidarAtivacoesPendentes(
@@ -671,10 +657,7 @@ export class CoordenadorUseCase {
       }
     }
 
-    const excluido = await this.coordenadorRepository.excluirUsuario(
-      id,
-      usuarioLogadoId ?? null,
-    );
+    const excluido = await this.coordenadorRepository.excluirUsuario(id);
 
     if (!excluido) {
       throw new NotFoundError("Usuario nao encontrado.");
@@ -706,16 +689,14 @@ export class CoordenadorUseCase {
   }
 
   // Excluir o aluno apaga o usuario e, em cascata, matricula, frequencia e
-  // certificado. A pessoa pode se cadastrar novamente no futuro.
-  async excluirAluno(id: string, excluidoPorId?: string): Promise<void> {
+  // certificado. A pessoa pode se cadastrar novamente no futuro: excluir NAO
+  // bloqueia o CPF, quem bloqueia e o botao "Bloquear" (atualizarAluno).
+  async excluirAluno(id: string): Promise<void> {
     if (!UUID_PATTERN.test(id)) {
       throw new BadRequestError("O ID do aluno e invalido.");
     }
 
-    const excluido = await this.coordenadorRepository.excluirAluno(
-      id,
-      excluidoPorId ?? null,
-    );
+    const excluido = await this.coordenadorRepository.excluirAluno(id);
 
     if (!excluido) {
       throw new NotFoundError("Aluno nao encontrado.");
@@ -892,10 +873,12 @@ export class CoordenadorUseCase {
       await this.emailService.enviar(
         aluno.email,
         "Novo link de ativacao - ADM Para Todos",
-        `<p>Ola, ${aluno.nome}!</p>
-         <p>Foi solicitado um novo link para ativar sua conta.</p>
-         <p><a href="${linkAtivacao}">Ativar minha conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
+        gerarEmailAtivacaoConta({
+          nome: aluno.nome,
+          link: linkAtivacao,
+          diasParaExpirar: ATIVACAO_DIAS,
+          motivo: "reenvio",
+        }),
       );
     } catch {
       await this.coordenadorRepository.invalidarAtivacoesPendentes(
@@ -954,6 +937,33 @@ export class CoordenadorUseCase {
       );
     }
 
+    // Uma turma por periodo letivo, em qualquer curso.
+    //
+    // A trava anterior so olhava o MESMO curso e so o status 'em_andamento'.
+    // Com isso o mesmo aluno entrava em duas turmas de 2026.2 — bastavam
+    // cursos diferentes, ou a primeira matricula ja ter virado 'aprovado'. O
+    // painel do aluno escolhe uma matricula so, entao ele passava a ver o
+    // andamento de uma turma que nao era a que estava cursando.
+    //
+    // Trocar de turma continua possivel: a coordenacao desvincula o aluno da
+    // turma atual (a matricula fica 'cancelado', preservando o historico) e o
+    // vincula na nova.
+    const matriculaNoPeriodo =
+      await this.coordenadorRepository.buscarMatriculaNoPeriodo(
+        alunoId,
+        turma.periodoLetivo,
+        turmaId,
+      );
+    if (matriculaNoPeriodo) {
+      throw new BadRequestError(
+        `O aluno ja esta na turma "${matriculaNoPeriodo.turmaNome}" ` +
+          `(${matriculaNoPeriodo.cursoNome}) no periodo ` +
+          `${matriculaNoPeriodo.periodoLetivo}. Um aluno participa de apenas ` +
+          `uma turma por periodo letivo: desvincule-o dessa turma antes de ` +
+          `matricular nesta.`,
+      );
+    }
+
     const matriculasAtivas =
       await this.coordenadorRepository.contarMatriculasAtivas(turmaId);
     if (
@@ -1000,39 +1010,17 @@ export class CoordenadorUseCase {
     }
   }
 
-  async atualizarStatusMatricula(
-    id: string,
-    status: string,
-  ): Promise<MatriculaStatusAtualizado> {
-    if (!UUID_PATTERN.test(id)) {
-      throw new BadRequestError("O ID da matricula e invalido.");
-    }
-    if (!isStatusMatriculaEditavel(status)) {
-      throw new BadRequestError(
-        "Status invalido. Use: em_andamento, aprovado ou reprovado_falta.",
-      );
-    }
-
-    const matricula =
-      await this.coordenadorRepository.buscarMatriculaPorId(id);
-    if (!matricula) {
-      throw new BadRequestError("Matricula nao encontrada.");
-    }
-    if (matricula.status === "cancelado") {
-      throw new BadRequestError(
-        "Nao e possivel alterar o status de uma matricula cancelada.",
-      );
-    }
-
-    const input: AtualizarStatusMatriculaInput = { status };
-    const atualizada =
-      await this.coordenadorRepository.atualizarStatusMatricula(id, input);
-    if (!atualizada) {
-      throw new BadRequestError("Matricula nao encontrada.");
-    }
-
-    return atualizada;
-  }
+  // Nao existe mais um "mudar o status da matricula na mao".
+  //
+  // O status e calculado: reavaliarSituacaoMatricula (no repositorio do
+  // instrutor) reescreve em_andamento/aprovado/reprovado_falta a cada chamada
+  // lancada e a cada mudanca no cronograma, pela frequencia e pela conclusao do
+  // curso. O valor digitado pela coordenacao sobrevivia ate a proxima chamada e
+  // entao sumia sem explicacao — e, pior, podia liberar certificado para quem a
+  // regra reprovava.
+  //
+  // Cancelar matricula continua sendo decisao da coordenacao, por
+  // `cancelarMatricula` (o "Desvincular da turma").
 
   async listarFrequencias(
     input: FiltrosFrequenciaEntrada = {},
@@ -1555,10 +1543,12 @@ export class CoordenadorUseCase {
       await this.emailService.enviar(
         convite.email,
         "Convite para acessar o ADM Para Todos",
-        `<p>Ola, ${convite.nome}!</p>
-         <p>Voce foi cadastrado como coordenador no ADM Para Todos.</p>
-         <p><a href="${linkAtivacao}">Clique aqui para definir sua senha e ativar sua conta</a></p>
-         <p>Este link expira em 3 dias.</p>`,
+        gerarEmailAtivacaoConta({
+          nome: convite.nome,
+          link: linkAtivacao,
+          diasParaExpirar: ATIVACAO_DIAS,
+          motivo: "convite-coordenador",
+        }),
       );
     } catch (error) {
       console.error("Falha ao enviar e-mail de convite:", error);
@@ -1590,7 +1580,6 @@ export class CoordenadorUseCase {
     instrutores: string[];
     periodoLetivo: string;
     capacidade: number;
-    status: string;
   }): Promise<TurmaListagem> {
     if (!id) {
       throw new BadRequestError("O ID da turma e obrigatorio.");
@@ -1614,10 +1603,6 @@ export class CoordenadorUseCase {
 
     if (!input.capacidade || input.capacidade <= 0) {
       throw new BadRequestError("A capacidade deve ser maior que zero.");
-    }
-
-    if (!TURMA_STATUS_VALIDOS.includes(input.status)) {
-      throw new BadRequestError("Status de turma invalido.");
     }
 
     const turmaExistente = await this.coordenadorRepository.buscarTurmaDetalhe(id);
@@ -1650,7 +1635,6 @@ export class CoordenadorUseCase {
         dataInicio: datas.dataInicio,
         dataFim: datas.dataFim,
         capacidade: input.capacidade,
-        status: input.status,
       });
 
       if (!turma) {
@@ -1661,6 +1645,35 @@ export class CoordenadorUseCase {
     } catch (error: any) {
       throw new BadRequestError(error.message);
     }
+  }
+
+  // Cancelar e reativar sao as unicas mudancas de status que a coordenacao faz
+  // a mao. O resto (planejada / em andamento / concluida) a turma resolve
+  // sozinha, a partir dos alunos e das aulas.
+  async definirCancelamentoDaTurma(
+    id: string,
+    cancelada: boolean,
+  ): Promise<TurmaListagem> {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestError("O ID da turma e invalido.");
+    }
+
+    if (typeof cancelada !== "boolean") {
+      throw new BadRequestError(
+        "Informe se a turma deve ser cancelada ou reativada.",
+      );
+    }
+
+    const turma = await this.coordenadorRepository.definirCancelamentoDaTurma(
+      id,
+      cancelada,
+    );
+
+    if (!turma) {
+      throw new NotFoundError("Turma nao encontrada.");
+    }
+
+    return turma;
   }
 
   async excluirTurma(id: string): Promise<void> {
@@ -1700,13 +1713,6 @@ export class CoordenadorUseCase {
       throw new BadRequestError("O limite de alunos deve ser maior que zero.");
     }
 
-    const statusFrontend = input.status ?? "planejada";
-    if (!TURMA_STATUS_VALIDOS.includes(statusFrontend)) {
-      throw new BadRequestError(
-        `Status de turma invalido. Use: ${TURMA_STATUS_VALIDOS.join(", ")}.`,
-      );
-    }
-
     const treinamento = await this.coordenadorRepository.buscarTreinamentoPorNome(
       input.curso.trim(),
     );
@@ -1740,7 +1746,6 @@ export class CoordenadorUseCase {
         dataFim: datas.dataFim,
         horario: input.horario.trim(),
         limiteAlunos: input.limiteAlunos,
-        status: statusFrontend,
       });
     } catch (error: any) {
       throw new BadRequestError(error.message);
@@ -1799,10 +1804,6 @@ export class CoordenadorUseCase {
       periodoLetivo,
       usuarioId,
     );
-  }
-
-  async voltarPeriodoAutomatico(): Promise<void> {
-    await this.coordenadorRepository.excluirPeriodoLetivoManual();
   }
 
   private async removerPdfAntigoCertificado(

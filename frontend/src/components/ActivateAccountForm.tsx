@@ -62,7 +62,6 @@ const PendingFieldsForm = ({
   onSuccess,
 }: PendingFieldsFormProps) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [senhaFocada, setSenhaFocada] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const fields = new Set(activation.camposPendentes);
@@ -74,6 +73,10 @@ const PendingFieldsForm = ({
     formState: { errors, isSubmitting },
   } = useForm<ActivateAccountFormData>({
     resolver: zodResolver(schema),
+    // Confere a cada tecla, e nao so no envio. Com a lista de requisitos fora
+    // da tela, a mensagem de erro do campo virou a unica coisa que explica o
+    // que falta na senha — esperar o envio deixaria quem digita sem retorno.
+    mode: "onChange",
   });
   const senhaField = register("senha");
 
@@ -145,11 +148,6 @@ const PendingFieldsForm = ({
                 autoComplete="new-password"
                 className="h-14 pr-14 pl-5 text-base"
                 {...senhaField}
-                onFocus={() => setSenhaFocada(true)}
-                onBlur={(evento) => {
-                  setSenhaFocada(false);
-                  return senhaField.onBlur(evento);
-                }}
                 error={errors.senha?.message}
               />
               <BotaoVerSenha
@@ -160,10 +158,10 @@ const PendingFieldsForm = ({
                 onClick={() => setMostrarSenha((atual) => !atual)}
               />
             </div>
-            <MedidorForcaSenha
-              senha={watch("senha") ?? ""}
-              mostrarRequisitos={senhaFocada}
-            />
+            {/* Sem a lista de requisitos: quem diz o que falta na senha e a
+                mensagem de erro do proprio campo, igual ao login, ao cadastro
+                e a redefinicao. */}
+            <MedidorForcaSenha senha={watch("senha") ?? ""} />
           </label>
           <label
             htmlFor="confirmarSenha"

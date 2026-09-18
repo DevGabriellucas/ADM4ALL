@@ -9,14 +9,15 @@ export const FREQUENCIA_MINIMA_APROVACAO = 80;
 
 /**
  * Quantas faltas o aluno ainda pode levar sem perder a aprovacao. Espelha
- * FALTAS_TOLERADAS do backend (`domain/regras-academicas.ts`).
+ * FALTAS_TOLERADAS do backend (`domain/regras-academicas.ts`), que desde 18/09
+ * calcula a folga entre 100% e o minimo da aprovacao: com 10 aulas e minimo de
+ * 80%, duas faltas.
  *
- * As telas classificam risco por ISTO, e nao por faixa de frequencia: a
- * frequencia comeca em zero e se acumula, entao no meio do periodo ate quem
- * nunca faltou esta abaixo de 80% — a faixa antiga marcava a turma inteira
- * como "abaixo de 75%" na primeira semana.
+ * As telas classificam risco por ISTO, e nao por faixa de frequencia: a falta
+ * ja e definitiva no dia em que acontece, entao serve de alerta desde a
+ * primeira semana.
  */
-export const FALTAS_TOLERADAS = 1;
+export const FALTAS_TOLERADAS = 2;
 
 export type MatriculaStatus =
   (typeof MATRICULA_STATUS)[keyof typeof MATRICULA_STATUS];

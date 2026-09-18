@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { anexosDoEmail } from "./emailTemplates";
 
 export class EmailService {
   private transporter: Transporter;
@@ -55,11 +56,16 @@ export class EmailService {
       );
     }
 
+    // A marca vai anexada e embutida por `cid`, e nao por URL: imagem
+    // hospedada depende do servidor estar publico e o Gmail ainda a bloqueia
+    // ate o leitor clicar em "exibir imagens". Anexada, ela aparece sempre —
+    // inclusive com o sistema rodando em localhost.
     await this.transporter.sendMail({
       from: this.remetente,
       to: destinatario,
       subject: assunto,
       html,
+      attachments: anexosDoEmail(),
     });
   }
 }

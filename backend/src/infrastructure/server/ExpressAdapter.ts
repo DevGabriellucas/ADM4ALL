@@ -398,9 +398,13 @@ export class ExpressAdapter {
     this.app.get(
       "/treinamentos/publicos",
       asyncHandler(async (_req: Request, res: Response) => {
+        // Sem filtro por status: o status do curso passou a ser derivado das
+        // turmas, entao "desativado" quer dizer apenas que as turmas de agora
+        // foram canceladas — o curso continua sendo oferecido, e o inscrito
+        // entra na proxima turma. Filtrar por isso esvaziaria o combo do
+        // cadastro publico e travaria a inscricao.
         const cursos = await this.coordenadorUseCase.listarCursos();
         const cursosAtivos = cursos
-          .filter((curso) => curso.status !== "encerrado")
           .map((curso) => ({
             id: curso.id,
             nome: curso.nome,
@@ -463,6 +467,33 @@ export class ExpressAdapter {
           usuario.alunoId,
         );
         res.json(dashboard);
+      }),
+    );
+
+    // Art. 18, II e V da LGPD: o aluno baixa tudo que o sistema guarda sobre
+    // ele. O id sai do token, nunca da URL.
+    this.app.get(
+      "/alunos/me/dados",
+      this.exigirPerfis(["aluno"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
+
+        if (!usuario.alunoId) {
+          throw new UnauthorizedError(
+            "O usuario autenticado nao possui perfil de aluno.",
+          );
+        }
+
+        const dados = await this.alunoUseCase.obterDadosPessoais(
+          usuario.alunoId,
+        );
+
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          'attachment; filename="meus-dados.json"',
+        );
+        res.send(JSON.stringify(dados, null, 2));
       }),
     );
 
@@ -616,20 +647,19 @@ export class ExpressAdapter {
     );
 
     // Exclusao real: apaga o usuario e, em cascata, matricula, frequencia e
-    // certificado. O CPF vai para cpfs_bloqueados antes do DELETE, senao a
-    // mesma pessoa se cadastraria de novo pelo formulario publico.
+    // certificado. O CPF NAO vai para cpfs_bloqueados — excluir tira do
+    // sistema, e quem impede de voltar e o botao "Bloquear".
     this.app.delete(
       "/alunos/:id",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
         if (!id || typeof id !== "string") {
           throw new BadRequestError("O ID do aluno fornecido e invalido.");
         }
 
-        await this.coordenadorUseCase.excluirAluno(id, usuario.sub);
+        await this.coordenadorUseCase.excluirAluno(id);
         res.json({ mensagem: "Aluno excluido com sucesso." });
       }),
     );
@@ -780,22 +810,11 @@ export class ExpressAdapter {
       }),
     );
 
-    this.app.post(
-      "/auth/ativar-conta",
-      asyncHandler(async (req: Request, res: Response) => {
-        const { token, novaSenha } = req.body ?? {};
-
-        if (!token) {
-          throw new BadRequestError("O token de ativacao e obrigatorio.");
-        }
-
-        await this.activationUseCase.confirmar(token, {
-          senha: novaSenha,
-          confirmarSenha: novaSenha,
-        });
-        res.status(200).json({ mensagem: "Conta ativada com sucesso." });
-      }),
-    );
+    // POST /auth/ativar-conta saiu em 18/09: era uma segunda porta de ativacao,
+    // sem chamada em lugar nenhum, que reaproveitava a mesma senha como
+    // confirmacao (senha === confirmarSenha por construcao) e nao pedia os
+    // campos que o ActivationUseCase exige. A ativacao de verdade e
+    // POST /auth/ativacoes/:token, a que a tela usa.
 
     this.app.get(
       "/coordenador/dashboard",
@@ -1165,13 +1184,13 @@ export class ExpressAdapter {
       "/cursos",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
-        const { nome, descricao, cargaHoraria, status } = req.body;
+        const { nome, descricao, cargaHoraria, periodoLetivo } = req.body;
 
         const curso = await this.coordenadorUseCase.criarCurso({
           nome,
           descricao,
           cargaHoraria: Number(cargaHoraria),
-          status,
+          periodoLetivo,
         });
 
         res.status(201).json(curso);
@@ -1214,13 +1233,13 @@ export class ExpressAdapter {
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
-        const { nome, descricao, cargaHoraria, status } = req.body;
+        const { nome, descricao, cargaHoraria, periodoLetivo } = req.body;
 
         const curso = await this.coordenadorUseCase.atualizarCurso(id, {
           nome,
           descricao,
           cargaHoraria: Number(cargaHoraria),
-          status,
+          periodoLetivo,
         });
 
         res.json(curso);
@@ -1494,17 +1513,10 @@ export class ExpressAdapter {
       }),
     );
 
-    this.app.patch(
-      "/coordenador/matriculas/:id",
-      this.exigirPerfis(["coordenador", "admin"]),
-      asyncHandler(async (req: Request, res: Response) => {
-        const { id } = req.params as { id: string };
-        const { status } = req.body ?? {};
-        const matricula =
-          await this.coordenadorUseCase.atualizarStatusMatricula(id, status);
-        res.json(matricula);
-      }),
-    );
+    // PATCH /coordenador/matriculas/:id saiu em 18/09: o status da matricula e
+    // derivado da frequencia e do cronograma (reavaliarSituacaoMatricula, no
+    // repositorio do instrutor) e era reescrito na chamada seguinte. A rota so
+    // servia ao seletor "Alterar status" da ficha do aluno, que tambem saiu.
 
     this.app.patch(
       "/coordenador/alunos/:id",
@@ -1535,17 +1547,12 @@ export class ExpressAdapter {
       "/turmas",
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
-        const {
-          curso,
-          nome,
-          instrutores,
-          periodoLetivo,
-          horarios,
-          limiteAlunos,
-          status,
-        } = req.body;
+        const { curso, nome, instrutores, periodoLetivo, horarios, limiteAlunos } =
+          req.body;
         const usuario = (req as Request & { usuario: TokenPayload }).usuario;
 
+        // `status` nao entra: turma nova nasce planejada e dali em diante o
+        // status e calculado pelos alunos e pelas aulas.
         const turma = await this.coordenadorUseCase.criarTurma({
           curso,
           nome,
@@ -1553,7 +1560,6 @@ export class ExpressAdapter {
           periodoLetivo,
           horario: horarios,
           limiteAlunos: Number(limiteAlunos),
-          status,
           coordenadorId: usuario.coordenadorId,
         });
 
@@ -1760,7 +1766,7 @@ export class ExpressAdapter {
       this.exigirPerfis(["coordenador", "admin"]),
       asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
-        const { nome, curso, instrutores, periodoLetivo, capacidade, status } = req.body;
+        const { nome, curso, instrutores, periodoLetivo, capacidade } = req.body;
 
         const turma = await this.coordenadorUseCase.atualizarTurma(id, {
           nome,
@@ -1768,8 +1774,25 @@ export class ExpressAdapter {
           instrutores: Array.isArray(instrutores) ? instrutores : [],
           periodoLetivo,
           capacidade: Number(capacidade),
-          status,
         });
+
+        res.json(turma);
+      }),
+    );
+
+    // Cancelar/reativar tem rota propria porque e a unica mudanca de status que
+    // parte da coordenacao; o PATCH de cima cuida so dos dados da turma.
+    this.app.patch(
+      "/turmas/:id/cancelamento",
+      this.exigirPerfis(["coordenador", "admin"]),
+      asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const { cancelada } = req.body ?? {};
+
+        const turma = await this.coordenadorUseCase.definirCancelamentoDaTurma(
+          id,
+          cancelada,
+        );
 
         res.json(turma);
       }),

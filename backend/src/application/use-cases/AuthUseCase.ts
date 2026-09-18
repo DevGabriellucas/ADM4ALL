@@ -6,7 +6,21 @@ import {
 } from "../../domain/repositories/AuthRepository";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { UnauthorizedError } from "../../infrastructure/errors/UnauthorizedError";
+import { ControleDeTentativasLogin } from "../security/ControleDeTentativasLogin";
 import { JwtService } from "../security/JwtService";
+
+/**
+ * As duas mensagens que o login pode devolver quando recusa a entrada.
+ *
+ * Ficam aqui, em constante, porque o mesmo texto e usado em mais de um ponto do
+ * fluxo e precisa ser identico: a de credenciais cobre "conta nao existe" e
+ * "senha errada" justamente para nao distinguir os dois casos.
+ */
+const CREDENCIAIS_INCORRETAS =
+  "E-mail, CPF ou senha incorretos. Confira os dados e tente de novo.";
+
+const CONTA_NAO_ATIVA =
+  "Sua conta não está ativa. Entre em contato com a coordenação do curso.";
 
 export interface LoginResultado {
   mensagem: string;
@@ -30,6 +44,7 @@ export class AuthUseCase {
   constructor(
     private authRepository: AuthRepository,
     private jwtService: JwtService,
+    private tentativas = new ControleDeTentativasLogin(),
   ) {}
 
   /**
@@ -53,9 +68,7 @@ export class AuthUseCase {
     }
 
     if (sessao.status !== "ativo") {
-      throw new UnauthorizedError(
-        "Sua conta nao esta ativa. Entre em contato com a coordenacao do curso.",
-      );
+      throw new UnauthorizedError(CONTA_NAO_ATIVA);
     }
 
     return sessao;
@@ -66,20 +79,45 @@ export class AuthUseCase {
       throw new BadRequestError("Identificador e senha sao obrigatorios.");
     }
 
+    // A trava vem ANTES de consultar o banco: o objetivo e justamente parar a
+    // varredura antes de ela custar uma consulta por tentativa.
+    const minutosBloqueado = this.tentativas.minutosBloqueado(identificador);
+
+    if (minutosBloqueado !== null) {
+      throw new UnauthorizedError(
+        `Muitas tentativas de entrada. Aguarde ${minutosBloqueado} ` +
+          `minuto(s) e tente de novo.`,
+      );
+    }
+
     const usuario = await this.authRepository.buscarUsuarioPorIdentificador(
       identificador.trim(),
     );
 
+    // Conta inexistente e senha errada saem com a MESMA mensagem, de proposito:
+    // mensagens diferentes transformariam o login num consultor de quem tem
+    // cadastro. Ela cita o CPF porque o campo da tela e "E-mail ou CPF", e quem
+    // entra por CPF nao entenderia um erro que so fala de e-mail.
+    //
+    // "Credenciais invalidas" era o texto ate 18/09 e nao dizia a quem lia o que
+    // fazer em seguida.
     if (!usuario) {
-      throw new UnauthorizedError("Credenciais inválidas.");
+      this.tentativas.registrarErro(identificador);
+      throw new UnauthorizedError(CREDENCIAIS_INCORRETAS);
     }
 
     const senhaCorreta =
       Boolean(usuario.senhaHash) &&
       (await bcrypt.compare(senha, usuario.senhaHash));
     if (!senhaCorreta) {
-      throw new UnauthorizedError("Credenciais inválidas.");
+      this.tentativas.registrarErro(identificador);
+      throw new UnauthorizedError(CREDENCIAIS_INCORRETAS);
     }
+
+    // Senha certa zera a contagem mesmo que a conta esteja inativa logo abaixo:
+    // quem sabe a senha nao e forca bruta, e deixar a contagem de pe prenderia
+    // a pessoa por tentar entrar numa conta que a coordenacao precisa liberar.
+    this.tentativas.registrarAcerto(identificador);
 
     // A conferencia de status vem depois da senha de proposito: assim o login
     // nao vira um consultor de contas para quem nao sabe a senha. Quem acertou
@@ -91,8 +129,12 @@ export class AuthUseCase {
       );
     }
 
+    // Aqui a senha ja conferiu, entao quem esta do outro lado e o dono da conta:
+    // dizer que ela esta inativa ou bloqueada nao entrega cadastro de ninguem, e
+    // evita que a pessoa fique tentando trocar a senha a toa. Mesmo texto do
+    // `validarSessao`, para as duas telas dizerem a mesma coisa.
     if (usuario.status !== "ativo") {
-      throw new UnauthorizedError("Credenciais inválidas.");
+      throw new UnauthorizedError(CONTA_NAO_ATIVA);
     }
 
     await this.authRepository.registrarUltimoLogin(usuario.id);

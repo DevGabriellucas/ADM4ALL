@@ -2,24 +2,13 @@
 
 import Link from "next/link";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
+import { getCursoStatusInfo } from "@/constants/cursoStatus";
 import type { Course } from "@/types/coordinator";
 
 interface CourseTableProps {
   courses: Course[];
   onDelete: (course: Course) => void;
 }
-
-const getCourseStatusInfo = (status: Course["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-
-  if (status === "em_planejamento") {
-    return { label: "Em planejamento", tone: "blue" as const };
-  }
-
-  return { label: "Desativado", tone: "slate" as const };
-};
 
 // Sem botao de editar: "Visualizar" abre a pagina do curso, e a edicao vive
 // la. Ter os dois lado a lado era o mesmo destino em dois botoes.
@@ -37,7 +26,8 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
           Cursos cadastrados
         </h2>
         <p className="mt-1 text-slate-500 text-xs">
-          Consulte a carga horária, as turmas e a situação de cada curso.
+          Consulte a carga horária, o período letivo, as turmas e a situação de
+          cada curso.
         </p>
       </div>
 
@@ -55,6 +45,9 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
                 Turmas
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
+                Período letivo
+              </th>
+              <th className="border-slate-200 border-b px-3 py-2 font-semibold">
                 Status
               </th>
               <th className="border-slate-200 border-b px-3 py-2 font-semibold">
@@ -65,7 +58,7 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
 
           <tbody>
             {courses.map((course) => {
-              const status = getCourseStatusInfo(course.status);
+              const status = getCursoStatusInfo(course.status);
 
               return (
                 <tr key={course.id}>
@@ -80,6 +73,9 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
                     {course.quantidadeTurmas}
+                  </td>
+                  <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
+                    {course.periodoLetivo || "-"}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <CoordinatorStatusBadge
@@ -111,7 +107,7 @@ export const CourseTable = ({ courses, onDelete }: CourseTableProps) => {
             {courses.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-3 py-8 text-center text-slate-500 text-sm"
                 >
                   Nenhum curso cadastrado.

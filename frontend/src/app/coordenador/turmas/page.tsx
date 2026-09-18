@@ -26,15 +26,12 @@ export default async function CoordinatorClassesPage({
     configService.obter().catch(() => null),
   ]);
 
+  // Sem status padrao: a turma nasce planejada e o sistema recalcula dali em
+  // diante, entao nao ha o que escolher aqui.
   const defaultClassValues = configs
     ? {
         periodoLetivo: configs.periodoLetivo.valor,
         capacidade: String(configs.preferencias.capacidadePadrao),
-        status: configs.preferencias.statusPadrao as
-          | "planejada"
-          | "em_andamento"
-          | "encerrada"
-          | undefined,
       }
     : undefined;
 

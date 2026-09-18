@@ -1,5 +1,3 @@
-import { PESO_FREQUENCIA_POR_AULA } from "../../../domain/regras-academicas";
-
 // Trechos de SQL da regra de frequencia. Existem para que a conta tenha UMA
 // escrita: ela ja esteve colada em catorze consultas e derivou em quatro
 // versoes diferentes, fazendo a mesma falta aparecer como 90% no painel do
@@ -77,16 +75,35 @@ export function chamadasLancadas(alias: string): string {
   return `COUNT(${alias}.id) FILTER (WHERE ${chamadaValida(alias)})`;
 }
 
-// A conta, a partir de contagens ja calculadas. Cada credito soma uma fatia,
-// cada falta subtrai uma. O piso em 0 e o teto em 100 valem porque o resultado
-// e apresentado como percentual: turma com mais de dez aulas passaria de 100.
+/**
+ * A conta, a partir de contagens ja calculadas: **creditos sobre chamadas**.
+ *
+ * Cinco presencas em dez chamadas sao 50%, que e como a frequencia se le em
+ * qualquer lugar e o que bate com a lista de presencas na tela do aluno.
+ *
+ * Ate 18/09 a conta era `(creditos - faltas) x 10`, e a falta custava dois
+ * passos: deixava de somar e ainda descontava. Aqueles mesmos cinco de dez
+ * davam 0%, um numero que ninguem conseguia explicar olhando a lista. A falta
+ * agora pesa uma vez so, por nao somar.
+ *
+ * O denominador sao as chamadas lancadas, e nao o cronograma inteiro: a
+ * frequencia passa a ser estavel desde a primeira aula (quem so tem presenca
+ * esta em 100%) em vez de subir devagar ate o fim do periodo, e quem entra na
+ * turma no meio nao carrega falta de aula que aconteceu antes dele.
+ *
+ * Sem chamada nenhuma o resultado e 0, e nao 100: a divisao nao existe, e as
+ * telas distinguem esse caso por `chamadasLancadas`, nunca pela frequencia.
+ */
 export function frequenciaDeChamadas(
   expressaoCreditos: string,
-  expressaoFaltas: string,
+  expressaoChamadas: string,
 ): string {
-  return `LEAST(100, GREATEST(0,
-    ((${expressaoCreditos}) - (${expressaoFaltas})) * ${PESO_FREQUENCIA_POR_AULA}
-  ))`;
+  return `(CASE
+    WHEN (${expressaoChamadas}) > 0 THEN LEAST(100, GREATEST(0,
+      ROUND(((${expressaoCreditos})::numeric * 100) / (${expressaoChamadas}))
+    ))
+    ELSE 0
+  END)::INTEGER`;
 }
 
 // Frequencia de UM aluno, para consultas agrupadas por matricula.
@@ -97,7 +114,7 @@ export function frequenciaDeChamadas(
 export function frequenciaPorMatricula(alias: string): string {
   return frequenciaDeChamadas(
     creditosDeFrequencia(alias),
-    faltasNaoJustificadas(alias),
+    chamadasLancadas(alias),
   );
 }
 

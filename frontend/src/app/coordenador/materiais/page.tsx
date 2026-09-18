@@ -3,6 +3,7 @@ import { ClassWorkspaceHeader } from "@/components/coordenador/ClassWorkspaceHea
 import { MateriaisPanel } from "@/components/instrutor/MateriaisPanel";
 import { BackButton } from "@/components/shared/BackButton";
 import { carregarWorkspaceDaTurma } from "@/services/coordinatorTurmaWorkspace";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 interface CoordinatorMateriaisPageProps {
   searchParams: Promise<{ turma?: string }>;
@@ -24,7 +25,7 @@ export default async function CoordinatorMateriaisPage({
         descricao="Publique arquivos e controle o que fica visível para o aluno em qualquer turma."
         turmas={turmas}
         turmaSelecionada={turmaSelecionada}
-        dataAula={painel?.aulaAtual?.data ?? null}
+        dataAula={dataDaAulaEmFoco(painel)}
       />
 
       {painel ? (

@@ -1,3 +1,4 @@
+import { gerarEmailAulaCancelada } from "../../infrastructure/email/emailTemplates";
 import { AppError } from "../../infrastructure/errors/AppError";
 import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { NotFoundError } from "../../infrastructure/errors/NotFoundError";
@@ -19,6 +20,7 @@ import {
   TipoMaterial,
   TurmaDashboard,
 } from "../../domain/repositories/InstrutorRepository";
+import { erroDeDiaDeAula } from "../../domain/regras-academicas";
 
 const STATUS_PRESENCA_VALIDOS: StatusPresenca[] = [
   "presente",
@@ -35,22 +37,6 @@ interface EmailSender {
   enviar(destinatario: string, assunto: string, html: string): Promise<void>;
 }
 
-const escaparHtml = (valor: string) =>
-  valor
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-const formatarDataPtBr = (data: string) => {
-  const [ano, mes, dia] = data.split("-");
-  if (!ano || !mes || !dia) {
-    return data;
-  }
-
-  return `${dia}/${mes}/${ano}`;
-};
 
 export class InstrutorUseCase {
   constructor(
@@ -214,6 +200,12 @@ export class InstrutorUseCase {
       throw new BadRequestError("Informe uma data valida (AAAA-MM-DD).");
     }
 
+    // As aulas do projeto acontecem aos sabados. Ver DIA_DA_SEMANA_DAS_AULAS.
+    const erroDoDia = erroDeDiaDeAula(input.data);
+    if (erroDoDia) {
+      throw new BadRequestError(erroDoDia);
+    }
+
     // O horario deixou de ser opcional: e o fim da aula que libera o "Realizada".
     if (!input.horaInicio || !input.horaFim) {
       throw new BadRequestError(
@@ -244,6 +236,15 @@ export class InstrutorUseCase {
 
     if (input.data !== undefined && !DATA_REGEX.test(input.data)) {
       throw new BadRequestError("Informe uma data valida (AAAA-MM-DD).");
+    }
+
+    // Remarcar tambem cai na regra do sabado. Sem isto, o cronograma entrava
+    // certo e saia de qualquer jeito na primeira edicao.
+    if (input.data !== undefined) {
+      const erroDoDia = erroDeDiaDeAula(input.data);
+      if (erroDoDia) {
+        throw new BadRequestError(erroDoDia);
+      }
     }
 
     if (input.status && !STATUS_AULA_VALIDOS.includes(input.status)) {
@@ -400,18 +401,14 @@ export class InstrutorUseCase {
     const titulo = aulaAtualizada.titulo || aulaAnterior.titulo;
     const data = aulaAtualizada.data || aulaAnterior.data;
     const assunto = `Aula cancelada - ${titulo}`;
-    const htmlPorAluno = (aluno: AlunoNotificacaoAula) => `
-      <p>Ola, ${escaparHtml(aluno.nome)}!</p>
-      <p>A aula abaixo foi cancelada:</p>
-      <ul>
-        <li><strong>Curso:</strong> ${escaparHtml(aulaAnterior.curso)}</li>
-        <li><strong>Turma:</strong> ${escaparHtml(aulaAnterior.turma)}</li>
-        <li><strong>Aula:</strong> ${escaparHtml(titulo)}</li>
-        <li><strong>Data:</strong> ${formatarDataPtBr(data)}</li>
-      </ul>
-      <p>Fique atento ao cronograma da turma para acompanhar novas atualizacoes.</p>
-      <p>ADM Para Todos</p>
-    `;
+    const htmlPorAluno = (aluno: AlunoNotificacaoAula) =>
+      gerarEmailAulaCancelada({
+        nome: aluno.nome,
+        curso: aulaAnterior.curso,
+        turma: aulaAnterior.turma,
+        aula: titulo,
+        data,
+      });
 
     const envios = await Promise.allSettled(
       alunos.map((aluno) =>

@@ -19,6 +19,7 @@ import {
   TurmaResumo,
 } from "../../domain/repositories/InstrutorRepository";
 import {
+  AULAS_POR_PERIODO,
   FREQUENCIA_MAXIMA_REPROVACAO,
   FREQUENCIA_MINIMA_APROVACAO,
 } from "../../domain/regras-academicas";
@@ -34,6 +35,12 @@ import {
 } from "./sql/turma";
 
 const CODIGO_VIOLACAO_UNICIDADE = "23505";
+
+// Marca das presencas que o sistema lanca sozinho na aula de encerramento.
+// Serve para reconhecer e desfazer o lancamento automatico se a aula voltar a
+// ser planejada, sem tocar em chamada que alguem fez a mao.
+const OBSERVACAO_PRESENCA_DE_ENCERRAMENTO =
+  "Presenca confirmada automaticamente na aula de encerramento.";
 
 // invalid_text_representation. O id da turma escolhida pela coordenacao chega
 // pela query string, entao um valor que nao e UUID e entrada invalida (404) e
@@ -348,10 +355,9 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         COALESCE(freq.justificadas, 0) AS justificadas,
         COALESCE(freq.faltas, 0) AS faltas,
         COALESCE(freq.aulas_registradas, 0) AS aulas_registradas,
-        -- Mesma conta do painel do aluno: comeca em zero, presenca e
-        -- justificada somam uma fatia, falta subtrai. Antes isso era uma
-        -- proporcao sobre as chamadas lancadas, e as duas telas mostravam
-        -- numeros diferentes para o mesmo aluno.
+        -- Mesma conta do painel do aluno, vinda do helper: creditos sobre
+        -- chamadas lancadas. Quando cada tela escrevia a sua, as duas
+        -- mostravam numeros diferentes para o mesmo aluno.
         COALESCE(freq.frequencia, 0) AS frequencia
       FROM matriculas m
       JOIN alunos a ON a.id = m.aluno_id
@@ -434,7 +440,7 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       await cliente.query("BEGIN");
 
       const aulaResultado = await cliente.query(
-        `SELECT to_char(data_aula, 'YYYY-MM-DD') AS data_aula
+        `SELECT to_char(data_aula, 'YYYY-MM-DD') AS data_aula, numero_aula
          FROM aulas
          WHERE id = $1 AND turma_id = $2`,
         [input.aulaId, input.turmaId],
@@ -443,6 +449,15 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       const aula = aulaResultado.rows[0];
       if (!aula) {
         throw new Error("Aula nao encontrada para esta turma.");
+      }
+
+      // A aula de encerramento nao tem chamada: a presenca dela e do sistema.
+      // Recusar aqui, e nao so esconder o botao, e o que impede uma chamada
+      // enviada direto na API de contradizer a regra.
+      if (Number(aula.numero_aula) === AULAS_POR_PERIODO) {
+        throw new BadRequestError(
+          `A aula ${AULAS_POR_PERIODO} e a de encerramento: a presenca dela e confirmada para toda a turma quando a aula e marcada como realizada, sem chamada.`,
+        );
       }
 
       // Upsert atomico pela identidade exata da chamada: (matricula, aula).
@@ -482,10 +497,39 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         ]);
       }
 
+      // Lancar a chamada JA DA A AULA POR REALIZADA (decisao da coordenacao em
+      // 18/09). Eram dois passos para a mesma coisa: quem lancou a chamada deu
+      // a aula, e quem esquecia o segundo passo deixava a turma sem fechar com
+      // o cronograma inteiro cumprido.
+      //
+      // Sem a trava de horario que o cronograma usa: ali ela protege contra
+      // clique errado numa aula futura; aqui a chamada e o proprio registro de
+      // quem esteve na sala.
+      await cliente.query(
+        `UPDATE aulas SET status = 'realizada'
+         WHERE id = $1 AND turma_id = $2 AND status = 'planejada'`,
+        [input.aulaId, input.turmaId],
+      );
+
+      // Com todas as outras aulas dadas, a de encerramento fecha junto — e ela
+      // que confirma a presenca da turma inteira e leva a turma a "encerrada".
+      await this.fecharAulaDeEncerramentoSePossivel(cliente, input.turmaId);
+
+      // A turma inteira e reavaliada, e nao so quem entrou nesta chamada: a
+      // aula que acabou de ser dada por realizada pode ter fechado o curso, e
+      // isso decide aprovacao e certificado de todo mundo.
+      const matriculasDaTurma = await cliente.query(
+        `SELECT id FROM matriculas
+         WHERE turma_id = $1 AND status <> 'cancelado'`,
+        [input.turmaId],
+      );
+
       await this.reavaliarSituacaoMatricula(
         cliente,
-        input.registros.map((registro) => registro.matriculaId),
+        matriculasDaTurma.rows.map((linha) => linha.id),
       );
+
+      await this.atualizarStatusAutomaticoDaTurma(cliente, input.turmaId);
 
       await cliente.query("COMMIT");
     } catch (error: any) {
@@ -831,18 +875,24 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
         );
       }
 
-      // Marcar a aula como realizada NAO lanca presenca para ninguem.
+      // Marcar uma aula COMUM como realizada nao lanca presenca para ninguem.
       //
-      // Ate 18/09 marcava: quem ficasse sem lancamento entrava como presente.
-      // Isso dava presenca de graca a turma inteira so por mexer no cronograma
-      // — o instrutor montava as aulas e os alunos ja apareciam com chamada
-      // que ninguem tinha feito. Presenca agora so existe quando alguem lanca
-      // a chamada e salva, que e o unico momento em que uma pessoa olhou para
-      // a turma e disse quem estava la.
+      // Ate 18/09 lancava em qualquer aula: quem ficasse sem chamada entrava
+      // como presente. Isso dava presenca de graca a turma inteira so por mexer
+      // no cronograma. Presenca de aula comum so existe quando alguem lanca a
+      // chamada e salva.
       //
-      // O que protege a aprovacao continua sendo o `registros > 0` da
-      // reavaliacao: turma que fecha sem chamada nao aprova ninguem. E o aviso
-      // de chamada pendente na tela de Presenca e que cobra o lancamento.
+      // A aula de encerramento (a decima, AULAS_POR_PERIODO) e a excecao, por
+      // decisao da coordenacao em 18/09: nela ninguem faz chamada e todo mundo
+      // conta presente. Por isso o lancamento e do sistema, e nao do instrutor.
+      if (Number(aula.numero_aula) === AULAS_POR_PERIODO) {
+        await this.sincronizarPresencaDeEncerramento(
+          input.turmaId,
+          input.aulaId,
+          aula.data_aula,
+          aula.status === "realizada",
+        );
+      }
 
       // Mudar o status da aula pode fechar (ou reabrir) o curso, e e o que
       // decide a aprovacao automatica da turma inteira.
@@ -857,6 +907,128 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
       }
       throw error;
     }
+  }
+
+  /**
+   * Marca a aula de encerramento como realizada quando todas as outras aulas da
+   * turma ja foram dadas.
+   *
+   * A aula 10 nao tem chamada, entao nada mais dispararia o "realizada" dela: a
+   * coordenacao teria de lembrar de marcar no cronograma para a turma fechar.
+   * Com as nove primeiras realizadas, a decima e consequencia — e junto com ela
+   * vem a presenca confirmada da turma inteira.
+   *
+   * Exige ao menos uma outra aula realizada de proposito: numa turma que so tem
+   * a aula de encerramento cadastrada, "todas as outras" seria verdade por
+   * vacuidade e a turma encerraria sem ter tido aula nenhuma.
+   */
+  private async fecharAulaDeEncerramentoSePossivel(
+    cliente: PoolClient,
+    turmaId: string,
+  ): Promise<void> {
+    const pendente = await cliente.query(
+      `
+      SELECT a.id, to_char(a.data_aula, 'YYYY-MM-DD') AS data_aula
+      FROM aulas a
+      WHERE a.turma_id = $1
+        AND a.numero_aula = $2
+        AND a.status = 'planejada'
+        AND EXISTS (
+          SELECT 1 FROM aulas outras
+          WHERE outras.turma_id = $1
+            AND outras.id <> a.id
+            AND outras.status = 'realizada'
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM aulas outras
+          WHERE outras.turma_id = $1
+            AND outras.id <> a.id
+            AND outras.status NOT IN ('realizada', 'cancelada')
+        )
+      LIMIT 1
+      `,
+      [turmaId, AULAS_POR_PERIODO],
+    );
+
+    const aula = pendente.rows[0];
+    if (!aula) {
+      return;
+    }
+
+    await cliente.query(
+      "UPDATE aulas SET status = 'realizada' WHERE id = $1",
+      [aula.id],
+    );
+
+    await this.confirmarPresencaDeEncerramento(
+      cliente,
+      turmaId,
+      aula.id,
+      aula.data_aula,
+    );
+  }
+
+  /**
+   * Lanca (ou desfaz) a presenca automatica da aula de encerramento.
+   *
+   * Realizada: todo aluno da turma fica presente, inclusive quem tem falta
+   * lancada ali — e a regra da aula 10, onde nao ha chamada a fazer.
+   *
+   * Voltou a planejada: so as linhas que o proprio sistema criou saem, que e
+   * para o que serve a observacao. Chamada feita a mao em outra aula nunca e
+   * tocada.
+   */
+  private async sincronizarPresencaDeEncerramento(
+    turmaId: string,
+    aulaId: string,
+    dataAula: string,
+    realizada: boolean,
+  ): Promise<void> {
+    if (!realizada) {
+      await this.db.query(
+        `DELETE FROM frequencias
+         WHERE aula_id = $1 AND observacao = $2`,
+        [aulaId, OBSERVACAO_PRESENCA_DE_ENCERRAMENTO],
+      );
+      return;
+    }
+
+    await this.confirmarPresencaDeEncerramento(
+      this.db,
+      turmaId,
+      aulaId,
+      dataAula,
+    );
+  }
+
+  /**
+   * O lancamento em si, separado para rodar tanto solto quanto dentro da
+   * transacao da chamada — e por isso recebe quem executa a consulta.
+   */
+  private async confirmarPresencaDeEncerramento(
+    executor: Pool | PoolClient,
+    turmaId: string,
+    aulaId: string,
+    dataAula: string,
+  ): Promise<void> {
+    await executor.query(
+      `
+      INSERT INTO frequencias (
+        matricula_id, aula_id, data_aula, presente, justificada, observacao
+      )
+      SELECT m.id, $1, $2::date, TRUE, FALSE, $3
+      FROM matriculas m
+      WHERE m.turma_id = $4 AND m.status <> 'cancelado'
+      ON CONFLICT (matricula_id, aula_id) WHERE aula_id IS NOT NULL
+      DO UPDATE SET
+        presente = TRUE,
+        justificada = FALSE,
+        observacao = EXCLUDED.observacao,
+        data_aula = EXCLUDED.data_aula,
+        data_registro = now()
+      `,
+      [aulaId, dataAula, OBSERVACAO_PRESENCA_DE_ENCERRAMENTO, turmaId],
+    );
   }
 
   async buscarPresencasPorAula(
@@ -933,13 +1105,13 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
    * - qualquer outro caso volta para "em andamento", o que faz justificar uma
    *   falta desfazer a reprovacao.
    *
-   * A frequencia e a MESMA conta das telas, vinda do helper: comeca em zero,
-   * presenca e justificada somam, falta subtrai.
+   * A frequencia e a MESMA conta das telas, vinda do helper: creditos
+   * (presenca e justificada) sobre chamadas lancadas.
    *
    * OS DOIS desfechos exigem o curso concluido. Para a reprovacao isso nao e
-   * detalhe: como a contagem parte do zero, no comeco do periodo a turma
-   * inteira esta abaixo do limite de reprovacao, e sem esta guarda todo aluno
-   * novo nasceria reprovado por falta.
+   * detalhe: com poucas chamadas lancadas, uma unica falta ja derruba a
+   * proporcao abaixo do limite, e sem esta guarda o aluno seria reprovado na
+   * primeira semana.
    *
    * `registros > 0` guarda a aprovacao contra a turma que fecha sem nenhuma
    * chamada lancada.
@@ -1094,6 +1266,11 @@ export class PostgresInstrutorRepository implements InstrutorRepository {
 
     try {
       await cliente.query("BEGIN");
+
+      // Vem primeiro: marcar a ultima aula comum como realizada fecha tambem a
+      // de encerramento, e e essa que confirma a presenca da turma e decide a
+      // aprovacao logo abaixo.
+      await this.fecharAulaDeEncerramentoSePossivel(cliente, turmaId);
 
       const matriculas = await cliente.query(
         `SELECT id FROM matriculas

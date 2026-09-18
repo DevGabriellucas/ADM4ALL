@@ -27,7 +27,6 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
-  const [senhaFocada, setSenhaFocada] = useState(false);
 
   const {
     register,
@@ -36,6 +35,11 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordData>({
     resolver: zodResolver(resetPasswordDataSchema),
+    // Confere a cada tecla, e nao so no envio. Com a lista de requisitos fora
+    // da tela, a mensagem de erro do campo virou a unica coisa que explica o
+    // que falta na senha — esperar o envio deixaria quem digita sem retorno
+    // nenhum. Sao dois campos, entao o custo de revalidar e irrelevante.
+    mode: "onChange",
   });
   const novaSenhaField = register("novaSenha");
 
@@ -97,11 +101,6 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
               autoComplete="new-password"
               disabled={isSuccess || isSubmitting}
               {...novaSenhaField}
-              onFocus={() => setSenhaFocada(true)}
-              onBlur={(evento) => {
-                setSenhaFocada(false);
-                return novaSenhaField.onBlur(evento);
-              }}
               error={errors.novaSenha?.message}
             />
             <BotaoVerSenha
@@ -111,9 +110,11 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
               onClick={() => setMostrarSenha((atual) => !atual)}
               descricao="nova senha"
             />
+            {/* Sem a lista de requisitos: quem diz o que falta na senha e a
+                mensagem de erro do proprio campo, igual ao login e ao
+                cadastro. */}
             <MedidorForcaSenha
               senha={watch("novaSenha") ?? ""}
-              mostrarRequisitos={senhaFocada}
               className="mt-2"
             />
           </div>
@@ -136,6 +137,13 @@ export const RedefinirSenhaForm = ({ token }: RedefinirSenhaFormProps) => {
               disabled={isSuccess || isSubmitting}
               onClick={() => setMostrarConfirmarSenha((atual) => !atual)}
               descricao="confirmação de senha"
+            />
+            {/* A mesma barrinha da nova senha acima: quem repete a senha
+                enxerga o mesmo nivel subindo, em vez de um campo sem retorno
+                nenhum. */}
+            <MedidorForcaSenha
+              senha={watch("confirmarSenha") ?? ""}
+              className="mt-2"
             />
           </div>
 

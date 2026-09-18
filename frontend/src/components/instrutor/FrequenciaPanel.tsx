@@ -40,10 +40,10 @@ const situacaoAluno = (aluno: AlunoPresenca) => {
     };
   }
 
-  // Classifica por falta, nao por faixa de frequencia. A frequencia se acumula
-  // ao longo do periodo, entao no meio do curso ate quem nunca faltou esta
-  // abaixo de 80% — as faixas antigas diziam "Risco" para a turma inteira na
-  // primeira semana. Falta ja e definitiva no dia em que acontece.
+  // Classifica por falta, nao por faixa de frequencia: a proporcao oscila
+  // muito no comeco do periodo (uma falta em duas chamadas ja sao 50%) e as
+  // faixas diziam "Risco" para quem ainda tinha o curso inteiro pela frente.
+  // Falta ja e definitiva no dia em que acontece.
   if (aluno.faltas > FALTAS_TOLERADAS) {
     return {
       texto: "Risco: não alcança mais 80%",

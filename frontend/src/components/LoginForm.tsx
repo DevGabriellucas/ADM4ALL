@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/Input";
 import { BotaoVerSenha } from "@/components/shared/BotaoVerSenha";
@@ -11,7 +11,11 @@ import { Notificacao } from "@/components/shared/Notificacao";
 import { type LoginFormData, loginFormDataSchema } from "@/schemas/loginSchema";
 import { login } from "@/services/authService";
 import type { SessionProfile } from "@/services/sessionService";
-import { formatarCpf, pareceCpf } from "@/utils/cpf";
+import {
+  formatarCpf,
+  pareceCpfEmDigitacao,
+  somenteDigitosCpf,
+} from "@/utils/cpf";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Button } from "./Button";
 
@@ -88,6 +92,32 @@ export const LoginForm = ({
 
   const identifierField = register("identifier");
 
+  // Guarda o ultimo valor que ESTE campo mascarou. Sem isso nao da para saber,
+  // quando aparece a primeira letra, se os pontos no texto sao mascara nossa
+  // ou algo que a pessoa digitou.
+  const cpfMascarado = useRef<string | null>(null);
+
+  // Enquanto so ha numero, o campo mostra o CPF formatado e para nos 11
+  // digitos. Quando chega letra ou @, ele desfaz a propria mascara e volta a
+  // ser um campo de e-mail — e o que salva o e-mail institucional que comeca
+  // por matricula (20231234@aluno.unipe.br).
+  const aoDigitarIdentificador = (valor: string) => {
+    if (pareceCpfEmDigitacao(valor)) {
+      const formatado = formatarCpf(valor);
+      cpfMascarado.current = formatado;
+      return formatado;
+    }
+
+    const anterior = cpfMascarado.current;
+    cpfMascarado.current = null;
+
+    if (anterior && valor.startsWith(anterior)) {
+      return somenteDigitosCpf(anterior) + valor.slice(anterior.length);
+    }
+
+    return valor;
+  };
+
   const loginSubmit = async (data: LoginFormData) => {
     setMessage(null);
 
@@ -125,29 +155,12 @@ export const LoginForm = ({
         spellCheck={false}
         {...identifierField}
         onChange={(event) => {
-          // O valor vai cru para o estado, sem mascara e sem minuscula
-          // forcada.
-          //
-          // Mascara tecla a tecla reescrevia o comeco de e-mail institucional
-          // com matricula numerica e cortava tudo depois do 11o digito.
-          // Minuscula forcada impedia quem digita com maiuscula — e o e-mail e
-          // normalizado no envio, que e onde de fato importa.
-          setValue("identifier", event.target.value, {
+          // Minuscula nao e forcada aqui: quem digita o e-mail com maiuscula
+          // continua entrando, porque a comparacao no banco ja ignora caixa.
+          setValue("identifier", aoDigitarIdentificador(event.target.value), {
             shouldDirty: true,
             shouldValidate: true,
           });
-        }}
-        onBlur={(event) => {
-          const valor = event.target.value;
-
-          if (pareceCpf(valor)) {
-            setValue("identifier", formatarCpf(valor), {
-              shouldDirty: true,
-              shouldValidate: true,
-            });
-          }
-
-          identifierField.onBlur(event);
         }}
         error={errors.identifier?.message}
       />

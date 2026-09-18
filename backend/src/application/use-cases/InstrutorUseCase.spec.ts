@@ -102,7 +102,75 @@ describe("InstrutorUseCase", () => {
     });
   });
 
+  // 2026-09-12 e um sabado; 2026-09-10, uma quinta. Ver DIA_DA_SEMANA_DAS_AULAS.
+  describe("adicionarAula", () => {
+    const aulaValida = {
+      turmaId: "turma-1",
+      titulo: "Aula 1",
+      data: "2026-09-12",
+      horaInicio: "08:00",
+      horaFim: "12:00",
+    };
+
+    it("aceita aula marcada num sabado", async () => {
+      mockInstrutorRepository.adicionarAula.mockResolvedValue({
+        id: "aula-1",
+        numero: 1,
+        titulo: "Aula 1",
+        data: "2026-09-12",
+        horaInicio: "08:00",
+        horaFim: "12:00",
+        status: "planejada",
+      });
+
+      await instrutorUseCase.adicionarAula(aulaValida);
+
+      expect(mockInstrutorRepository.adicionarAula).toHaveBeenCalled();
+    });
+
+    it("recusa aula marcada fora de sabado e diz em que dia caiu", async () => {
+      await expect(
+        instrutorUseCase.adicionarAula({ ...aulaValida, data: "2026-09-10" }),
+      ).rejects.toThrow("As aulas acontecem aos sabados. 2026-09-10 cai numa quinta-feira.");
+      expect(mockInstrutorRepository.adicionarAula).not.toHaveBeenCalled();
+    });
+
+    // O fuso e a armadilha: lido no horario local de UTC-3, um sabado em UTC
+    // vira a sexta anterior e a regra recusaria toda data valida.
+    it("nao deixa o fuso do servidor mover o dia da semana", async () => {
+      const tz = process.env.TZ;
+      process.env.TZ = "America/Sao_Paulo";
+
+      mockInstrutorRepository.adicionarAula.mockResolvedValue({
+        id: "aula-1",
+        numero: 1,
+        titulo: "Aula 1",
+        data: "2026-09-12",
+        horaInicio: "08:00",
+        horaFim: "12:00",
+        status: "planejada",
+      });
+
+      await expect(
+        instrutorUseCase.adicionarAula(aulaValida),
+      ).resolves.toBeDefined();
+
+      process.env.TZ = tz;
+    });
+  });
+
   describe("atualizarAula", () => {
+    it("recusa remarcar uma aula para fora de sabado", async () => {
+      await expect(
+        instrutorUseCase.atualizarAula({
+          turmaId: "turma-1",
+          aulaId: "aula-1",
+          data: "2026-09-10",
+        }),
+      ).rejects.toThrow(BadRequestError);
+      expect(mockInstrutorRepository.atualizarAula).not.toHaveBeenCalled();
+    });
+
     it("deve notificar alunos ativos quando uma aula for cancelada", async () => {
       mockInstrutorRepository.buscarAulaParaNotificacao.mockResolvedValue({
         id: "aula-1",

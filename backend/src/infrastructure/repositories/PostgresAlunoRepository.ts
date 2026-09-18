@@ -4,6 +4,7 @@ import {
   AlunoDashboard,
   AlunoRepository,
   CertificadoEmitidoDoAluno,
+  DadosPessoaisDoAluno,
   MaterialAluno,
   MaterialAlunoDownload,
   MaterialVisivelAluno,
@@ -21,6 +22,8 @@ import {
   frequenciaPorMatricula,
   presencasEfetivas,
 } from "./sql/frequencia";
+import { hashCpf } from "../security/hashCpf";
+import { periodoDoCronograma } from "./sql/turma";
 
 export class PostgresAlunoRepository implements AlunoRepository {
   constructor(private db: Pool) {}
@@ -60,24 +63,15 @@ export class PostgresAlunoRepository implements AlunoRepository {
     });
   }
 
-  async buscarPorEmailOuCpf(identificador: string): Promise<Aluno | null> {
-    const query = `
-      ${this.selecionarAluno}
-      WHERE lower(u.email) = lower($1) OR u.cpf = $1
-      LIMIT 1
-    `;
-    const resultado = await this.db.query(query, [identificador]);
-
-    if (resultado.rows.length === 0) return null;
-    return this.mapearLinhaParaAluno(resultado.rows[0]);
-  }
-
   // O bloqueio vale so para o cadastro publico. A coordenacao continua podendo
   // cadastrar o mesmo CPF, e esse cadastro tira o CPF da lista.
+  //
+  // A tabela guarda o hash do CPF, nao o CPF: o valor digitado no cadastro e
+  // hasheado aqui e comparado com o que esta gravado. Ver hashCpf.ts.
   async cpfBloqueado(cpf: string): Promise<boolean> {
     const resultado = await this.db.query(
-      "SELECT 1 FROM cpfs_bloqueados WHERE cpf = $1 LIMIT 1",
-      [cpf],
+      "SELECT 1 FROM cpfs_bloqueados WHERE cpf_hash = $1 LIMIT 1",
+      [hashCpf(cpf)],
     );
 
     return resultado.rows.length > 0;
@@ -111,14 +105,135 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return resultado.rows[0]?.usuario_id ?? null;
   }
 
+  /**
+   * Tudo que o sistema guarda sobre este aluno, para ele mesmo baixar.
+   *
+   * Sao quatro consultas em vez de uma so com JOIN: juntar matriculas,
+   * frequencias e certificados na mesma linha multiplicaria os resultados entre
+   * si, e a lista de frequencias sairia repetida uma vez por certificado.
+   *
+   * Hash de senha, token de recuperacao e ids internos ficam de fora: o aluno
+   * pediu os dados dele, nao o conteudo das tabelas.
+   */
+  async buscarDadosPessoaisDoAluno(
+    alunoId: string,
+  ): Promise<DadosPessoaisDoAluno | null> {
+    const cadastro = await this.db.query(
+      `SELECT u.nome, u.email, u.cpf, u.status,
+              a.telefone, a.rgm, a.curso_unipe, a.is_aluno_unipe,
+              to_char(a.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
+              to_char(a.data_cadastro, 'YYYY-MM-DD') AS data_cadastro,
+              to_char(u.ultimo_login, 'YYYY-MM-DD"T"HH24:MI:SSOF') AS ultimo_login
+       FROM alunos a
+       JOIN usuarios u ON u.id = a.usuario_id
+       WHERE a.id = $1
+       LIMIT 1`,
+      [alunoId],
+    );
+    const linha = cadastro.rows[0];
+    if (!linha) return null;
+
+    const matriculas = await this.db.query(
+      `SELECT tr.nome AS curso, tu.nome AS turma, tu.periodo_letivo, m.status,
+              to_char(m.data_matricula, 'YYYY-MM-DD') AS data_matricula,
+              to_char(m.data_conclusao, 'YYYY-MM-DD') AS data_conclusao
+       FROM matriculas m
+       LEFT JOIN treinamentos tr ON tr.id = m.treinamento_id
+       LEFT JOIN turmas tu ON tu.id = m.turma_id
+       WHERE m.aluno_id = $1
+       ORDER BY m.data_matricula DESC, m.id`,
+      [alunoId],
+    );
+
+    const frequencias = await this.db.query(
+      `SELECT tu.nome AS turma, au.titulo AS aula, f.presente, f.justificada,
+              f.observacao,
+              to_char(f.data_aula, 'YYYY-MM-DD') AS data_aula
+       FROM frequencias f
+       JOIN matriculas m ON m.id = f.matricula_id
+       LEFT JOIN turmas tu ON tu.id = m.turma_id
+       LEFT JOIN aulas au ON au.id = f.aula_id
+       WHERE m.aluno_id = $1
+       ORDER BY f.data_aula, au.numero_aula`,
+      [alunoId],
+    );
+
+    const certificados = await this.db.query(
+      `SELECT c.codigo, c.status, tr.nome AS curso,
+              to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao
+       FROM certificados c
+       JOIN matriculas m ON m.id = c.matricula_id
+       LEFT JOIN treinamentos tr ON tr.id = m.treinamento_id
+       WHERE m.aluno_id = $1
+       ORDER BY c.data_emissao DESC`,
+      [alunoId],
+    );
+
+    return {
+      geradoEm: new Date().toISOString(),
+      cadastro: {
+        nome: linha.nome,
+        email: linha.email,
+        cpf: linha.cpf,
+        telefone: linha.telefone ?? null,
+        dataNascimento: linha.data_nascimento ?? null,
+        rgm: linha.rgm ?? null,
+        cursoUnipe: linha.curso_unipe ?? null,
+        alunoDaUnipe: Boolean(linha.is_aluno_unipe),
+        statusDaConta: linha.status,
+        dataDeCadastro: linha.data_cadastro ?? null,
+        ultimoLogin: linha.ultimo_login ?? null,
+      },
+      matriculas: matriculas.rows.map((m) => ({
+        curso: m.curso ?? null,
+        turma: m.turma ?? null,
+        periodoLetivo: m.periodo_letivo ?? null,
+        status: m.status,
+        dataMatricula: m.data_matricula ?? null,
+        dataConclusao: m.data_conclusao ?? null,
+      })),
+      frequencias: frequencias.rows.map((f) => ({
+        turma: f.turma ?? null,
+        aula: f.aula ?? null,
+        data: f.data_aula,
+        presente: Boolean(f.presente),
+        justificada: Boolean(f.justificada),
+        observacao: f.observacao ?? null,
+      })),
+      certificados: certificados.rows.map((c) => ({
+        codigo: c.codigo ?? null,
+        curso: c.curso ?? null,
+        status: c.status,
+        dataEmissao: c.data_emissao ?? null,
+      })),
+    };
+  }
+
   async buscarDashboardPorAlunoId(
     alunoId: string,
   ): Promise<AlunoDashboard | null> {
     const query = `
+      -- O painel mostra UMA matricula, e esta CTE escolhe qual.
+      --
+      -- A escolha precisa ser estavel. Enquanto o desempate era so
+      -- data_matricula DESC, duas matriculas do mesmo dia empatavam e o
+      -- Postgres devolvia qualquer uma das duas: o aluno matriculado em duas
+      -- turmas via o andamento de uma turma que nao era a dele — 10 de 10 na
+      -- turma antiga enquanto a nova tinha uma aula so. A regra de uma turma
+      -- por periodo (CoordenadorUseCase.vincularAlunoTurma) impede o caso de
+      -- se repetir, mas o painel nao pode depender disso para os cadastros
+      -- que ja existem.
+      --
+      -- 'cancelado' sai fora: e o status que a coordenacao grava ao
+      -- desvincular o aluno, e ate 18/09 o painel continuava mostrando a turma
+      -- de onde ele acabara de sair. Sem nenhuma matricula valida o painel cai
+      -- no mesmo caminho do aluno recem-cadastrado (sem_matricula).
       WITH matricula_selecionada AS (
         SELECT m.*
         FROM matriculas m
+        LEFT JOIN turmas tu_sel ON tu_sel.id = m.turma_id
         WHERE m.aluno_id = $1
+          AND m.status <> 'cancelado'
         ORDER BY
           CASE m.status
             WHEN 'em_andamento' THEN 0
@@ -126,7 +241,9 @@ export class PostgresAlunoRepository implements AlunoRepository {
             WHEN 'reprovado_falta' THEN 2
             ELSE 3
           END,
-          m.data_matricula DESC
+          tu_sel.periodo_letivo DESC NULLS LAST,
+          m.data_matricula DESC,
+          m.id
         LIMIT 1
       ),
       -- As duas CTEs abaixo sao agregacoes sem GROUP BY, entao devolvem uma
@@ -149,9 +266,8 @@ export class PostgresAlunoRepository implements AlunoRepository {
           -- tela nao tem como distinguir "0% porque faltou a tudo" de "0%
           -- porque a primeira chamada ainda nao foi lancada".
           ${chamadasLancadas("f")}::INTEGER AS chamadas,
-          -- A MESMA conta das outras telas, vinda do helper: comeca em zero,
-          -- presenca e justificada somam, falta subtrai. Aqui ja foi a
-          -- proporcao de presencas sobre as chamadas, uma quarta formula
+          -- A MESMA conta das outras telas, vinda do helper: creditos sobre
+          -- chamadas. Escrever a formula aqui ja produziu uma versao
           -- divergente — o aluno que faltasse na primeira aula via 0% e
           -- "Reprovado por falta" enquanto o instrutor via 90%.
           ${frequenciaPorMatricula("f")}::INTEGER AS frequencia
@@ -199,22 +315,48 @@ export class PostgresAlunoRepository implements AlunoRepository {
         CASE WHEN c.status = 'emitido' THEN c.url_arquivo ELSE NULL END
         AS certificado_url,
         p.frequencia,
-        (
-        SELECT json_build_object(
-          'titulo', proxima.titulo,
-          'data', to_char(proxima.data_aula, 'YYYY-MM-DD'),
-          'horaInicio', to_char(proxima.hora_inicio, 'HH24:MI'),
-          'horaFim', to_char(proxima.hora_fim, 'HH24:MI')
-        )
-        FROM aulas proxima
-        JOIN matricula_selecionada mp ON mp.turma_id = proxima.turma_id
-        WHERE proxima.status = 'planejada'
-          AND proxima.data_aula >= CURRENT_DATE
-        ORDER BY proxima.data_aula, proxima.hora_inicio NULLS LAST
-        LIMIT 1
+        -- A aula que o aluno precisa ver no cartao. Primeiro a proxima
+        -- planejada; quando o cronograma acabou, a ultima que aconteceu.
+        --
+        -- So a primeira metade existia, e o cartao ficava vazio com o curso
+        -- inteiro cadastrado — a turma que terminou nao tem aula futura, e a
+        -- tela dizia "nenhuma aula publicada" para quem tinha dez.
+        COALESCE(
+          (
+          SELECT json_build_object(
+            'titulo', proxima.titulo,
+            'data', to_char(proxima.data_aula, 'YYYY-MM-DD'),
+            'horaInicio', to_char(proxima.hora_inicio, 'HH24:MI'),
+            'horaFim', to_char(proxima.hora_fim, 'HH24:MI'),
+            'momento', 'proxima'
+          )
+          FROM aulas proxima
+          JOIN matricula_selecionada mp ON mp.turma_id = proxima.turma_id
+          WHERE proxima.status = 'planejada'
+            AND proxima.data_aula >= CURRENT_DATE
+          ORDER BY proxima.data_aula, proxima.hora_inicio NULLS LAST
+          LIMIT 1
+          ),
+          (
+          SELECT json_build_object(
+            'titulo', ultima.titulo,
+            'data', to_char(ultima.data_aula, 'YYYY-MM-DD'),
+            'horaInicio', to_char(ultima.hora_inicio, 'HH24:MI'),
+            'horaFim', to_char(ultima.hora_fim, 'HH24:MI'),
+            'momento', 'ultima'
+          )
+          FROM aulas ultima
+          JOIN matricula_selecionada mu ON mu.turma_id = ultima.turma_id
+          WHERE ultima.status <> 'cancelada'
+          ORDER BY ultima.data_aula DESC, ultima.hora_inicio DESC NULLS LAST
+          LIMIT 1
+          )
         ) AS proxima_aula
         ,(
-          SELECT COALESCE(json_agg(historico ORDER BY historico.data DESC), '[]'::json)
+          -- Crescente, como o calendario da turma logo ao lado: as duas listas
+          -- mostram as mesmas aulas e liam em sentidos opostos. O LIMIT de
+          -- dentro continua pegando as dez mais recentes.
+          SELECT COALESCE(json_agg(historico ORDER BY historico.data ASC), '[]'::json)
           FROM (
             SELECT
               au.titulo AS aula,
@@ -424,12 +566,15 @@ export class PostgresAlunoRepository implements AlunoRepository {
   async buscarRecuperacaoValidaPorTokenHash(
     tokenHash: string,
   ): Promise<RecuperacaoSenhaValida | null> {
+    // A senha atual vem junto para que a redefinicao consiga recusar quem
+    // digita a mesma senha de novo. Ver AlunoUseCase.redefinirSenha.
     const query = `
-      SELECT id, usuario_id
-      FROM recuperacoes_senha
-      WHERE token_hash = $1
-        AND usado_em IS NULL
-        AND expira_em > now()
+      SELECT r.id, r.usuario_id, u.senha
+      FROM recuperacoes_senha r
+      JOIN usuarios u ON u.id = r.usuario_id
+      WHERE r.token_hash = $1
+        AND r.usado_em IS NULL
+        AND r.expira_em > now()
       LIMIT 1
     `;
     const resultado = await this.db.query(query, [tokenHash]);
@@ -440,6 +585,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
     return {
       recuperacaoId: linha.id,
       usuarioId: linha.usuario_id,
+      senhaHashAtual: linha.senha ?? null,
     };
   }
 
@@ -784,6 +930,7 @@ export class PostgresAlunoRepository implements AlunoRepository {
   async buscarCertificadoEmitidoPorAlunoId(
     alunoId: string,
   ): Promise<CertificadoEmitidoDoAluno | null> {
+    const periodo = periodoDoCronograma("tu");
     const resultado = await this.db.query(
       `
       SELECT
@@ -794,9 +941,14 @@ export class PostgresAlunoRepository implements AlunoRepository {
         u.cpf AS cpf_aluno,
         tr.nome AS nome_curso,
         tr.carga_horaria,
-        to_char(tu.data_inicio, 'YYYY-MM-DD') AS data_inicio,
+        -- Periodo pelo cronograma; a data da turma so entra se nao houver aula
+        -- lancada. Ver periodoDoCronograma em sql/turma.ts.
         to_char(
-          COALESCE(tu.data_fim, m.data_conclusao, tu.data_inicio),
+          COALESCE(${periodo.inicio}, tu.data_inicio),
+          'YYYY-MM-DD'
+        ) AS data_inicio,
+        to_char(
+          COALESCE(${periodo.fim}, tu.data_fim, m.data_conclusao, tu.data_inicio),
           'YYYY-MM-DD'
         ) AS data_fim,
         to_char(c.data_emissao, 'YYYY-MM-DD') AS data_emissao,
@@ -823,7 +975,27 @@ export class PostgresAlunoRepository implements AlunoRepository {
       LEFT JOIN usuarios emissor ON emissor.id = c.emitido_por_id
       WHERE c.status = 'emitido'
         AND a.id = $1
-      ORDER BY c.data_emissao DESC
+        -- Matricula desvinculada nao rende certificado para baixar. O status
+        -- 'cancelado' e o que a coordenacao grava ao tirar o aluno da turma.
+        AND m.status <> 'cancelado'
+      -- O desempate precisa ser total.
+      --
+      -- Com ORDER BY c.data_emissao DESC sozinho, o aluno que tinha dois
+      -- certificados emitidos no MESMO dia recebia qualquer um dos dois: quem
+      -- concluiu o curso de RH baixava o certificado de Assistente
+      -- Administrativo, com o nome do outro curso impresso. A regra de uma
+      -- turma por periodo (CoordenadorUseCase.vincularAlunoTurma) impede o
+      -- caso de nascer de novo, mas o download nao pode depender disso para os
+      -- cadastros que ja existem.
+      --
+      -- A ultima chave e m.id, a mesma que desempata a escolha da matricula no
+      -- painel (buscarDashboardPorAlunoId): assim a tela e o PDF concordam
+      -- sobre qual curso e o do aluno.
+      ORDER BY
+        tu.periodo_letivo DESC NULLS LAST,
+        c.data_emissao DESC,
+        m.data_matricula DESC,
+        m.id
       LIMIT 1
       `,
       [alunoId],

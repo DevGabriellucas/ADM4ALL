@@ -3,6 +3,7 @@ import { ClassWorkspaceHeader } from "@/components/coordenador/ClassWorkspaceHea
 import { FrequenciaPanel } from "@/components/instrutor/FrequenciaPanel";
 import { BackButton } from "@/components/shared/BackButton";
 import { carregarWorkspaceDaTurma } from "@/services/coordinatorTurmaWorkspace";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 interface CoordinatorFrequenciaPageProps {
   searchParams: Promise<{ turma?: string }>;
@@ -24,7 +25,7 @@ export default async function CoordinatorFrequenciaPage({
         descricao="Presenças, justificativas e faltas por aluno na turma escolhida."
         turmas={turmas}
         turmaSelecionada={turmaSelecionada}
-        dataAula={painel?.aulaAtual?.data ?? null}
+        dataAula={dataDaAulaEmFoco(painel)}
       />
 
       {painel ? (

@@ -60,9 +60,15 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   return (
     <AuthShell
-      eyebrow="Administração para Todos"
-      tituloPainel="Formação em rotinas administrativas, aberta à comunidade."
-      descricaoPainel="Curso de extensão presencial da UNIPE. É por aqui que você acompanha as aulas, a sua frequência e o seu certificado."
+      eyebrow="Projeto de extensão · UNIPÊ"
+      tituloPainel="Administração para Todos: formação gratuita em rotinas administrativas."
+      descricaoPainel="Um projeto de extensão do UNIPÊ, aberto a quem estuda na instituição e a quem é da comunidade. As aulas são presenciais e é por aqui que você acompanha o cronograma, a sua frequência, os materiais e o seu certificado."
+      destaques={[
+        "Gratuito e sem pré-requisito: basta se inscrever.",
+        "Aulas presenciais, com instrutores do projeto.",
+        "Certificado de extensão para quem cumpre a frequência.",
+        "Cronograma, presença e materiais no seu painel.",
+      ]}
       tituloCartao="Entrar na plataforma"
       descricaoCartao="Use o e-mail ou o CPF que você cadastrou."
     >

@@ -5,8 +5,9 @@ interface AlunoDashboardErrorProps {
   reset: () => void;
 }
 
+//  chega pelo contrato do Next e nao e usado nesta tela: a mensagem e
+// fixa. Fica fora da desestruturacao para nao virar variavel morta.
 export default function AlunoDashboardError({
-  error,
   reset,
 }: AlunoDashboardErrorProps) {
   return (

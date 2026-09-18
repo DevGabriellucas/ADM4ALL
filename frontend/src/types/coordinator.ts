@@ -26,6 +26,7 @@ export interface PaginaDeCertificados extends Pagina<CertificateRecord> {
 
 export interface ResumoDeCursos {
   ativos: number;
+  encerrados: number;
   desativados: number;
   emPlanejamento: number;
   semTurma: number;
@@ -56,7 +57,11 @@ export interface PaginaDeInstrutores extends Pagina<Instructor> {
   resumo: ResumoDeInstrutores;
 }
 
-export type CourseStatus = "ativo" | "em_planejamento" | "desativado";
+export type CourseStatus =
+  | "ativo"
+  | "em_planejamento"
+  | "encerrado"
+  | "desativado";
 
 export type ClassStatus =
   | "planejada"
@@ -158,7 +163,13 @@ export interface Student {
   statusMatricula: MatriculaStatus | null;
   statusTurma: ClassGroup["status"] | null;
   dataCriacao: string;
-  matriculaId?: string;
+  /**
+   * A matricula e a turma que a linha mostra. A coluna Ações usa as duas para
+   * desvincular o aluno sem abrir a ficha. Vem nulo quando o aluno nao esta em
+   * turma nenhuma.
+   */
+  matriculaId?: string | null;
+  turmaId?: string | null;
 }
 
 export interface StudentEnrollment {
@@ -178,14 +189,6 @@ export interface StudentEnrollmentCreated {
   treinamentoId: string;
   status: MatriculaStatus;
   dataMatricula: string;
-}
-
-export type EditableEnrollmentStatus = Exclude<MatriculaStatus, "cancelado">;
-
-export interface StudentEnrollmentStatusUpdated {
-  id: string;
-  status: MatriculaStatus;
-  dataConclusao: string | null;
 }
 
 export interface EnrollmentClassOption {
@@ -214,6 +217,13 @@ export interface Course {
   nome: string;
   descricao: string;
   cargaHoraria: number;
+  /** Formato AAAA.P (ex.: 2026.1). Vazio em curso cadastrado antes do campo. */
+  periodoLetivo: string;
+  /**
+   * Calculado pelo servidor a partir das turmas, nao escolhido pela
+   * coordenacao: em planejamento enquanto nao ha turma com aluno, ativo quando
+   * ha, e desativado quando todas as turmas do curso estao canceladas.
+   */
   status: CourseStatus;
   quantidadeTurmas: number;
 }
@@ -266,6 +276,8 @@ export interface ClassMaterial {
 export interface AttendanceSummary {
   aluno: string;
   turma: string;
+  /** Status da turma do aluno, para separar pendência de histórico. */
+  statusTurma: ClassStatus;
   presencas: number;
   faltas: number;
   frequencia: number;

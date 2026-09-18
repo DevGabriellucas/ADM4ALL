@@ -22,6 +22,18 @@ const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
 const TEXT_COLOR = "#111111";
 
+// Retangulo que apaga o paragrafo final impresso no PNG ("...voltados para a
+// area de administracao..."). A area de atuacao esta escrita no fundo, mas o
+// projeto oferece varios cursos, entao o paragrafo e redesenhado logo abaixo
+// com o nome do curso do proprio certificado.
+//
+// As medidas saem da caixa do texto no template (3509x2481 px, escala
+// 841.89/3509 = 0.2399): x 298..3221 -> 71.5..772.8 pt, y 1368..1497 ->
+// 328.2..359.2 pt. A folga em volta e branca no template, conferida pixel a
+// pixel, entao a tarja nao come nada que va ficar visivel.
+const PARAGRAPH_PATCH = { x: 54, y: 318, width: 734, height: 54 };
+const PARAGRAPH_TOP = 330;
+
 const formatDate = (value: string | null): string =>
   value
     ? new Intl.DateTimeFormat("pt-BR", {
@@ -101,6 +113,15 @@ const gerarCertificadoAlunoPdf = (
         lineBreak: false,
       });
 
+    document
+      .rect(
+        PARAGRAPH_PATCH.x,
+        PARAGRAPH_PATCH.y,
+        PARAGRAPH_PATCH.width,
+        PARAGRAPH_PATCH.height,
+      )
+      .fill("#FFFFFF");
+
     const completionText =
       `CPF ${formatCpf(certificate.cpfAluno)}, concluiu o Curso de ` +
       `${certificate.nomeCurso}, com carga horária de ` +
@@ -108,13 +129,37 @@ const gerarCertificadoAlunoPdf = (
       `${formatDate(certificate.dataInicio)} a ` +
       `${formatDate(certificate.dataFim)}.`;
 
+    const textWidth = PAGE_WIDTH - 144;
+
     document
       .font("Helvetica")
       .fontSize(13.5)
       .fillColor(TEXT_COLOR)
       .text(completionText, 72, 272, {
         align: "center",
-        width: PAGE_WIDTH - 144,
+        width: textWidth,
+        lineGap: 2,
+      });
+
+    // Reposicao do paragrafo apagado, agora com o curso do certificado no
+    // lugar do "administracao" fixo do template.
+    const areaText =
+      `Este curso proporcionou ao participante o desenvolvimento de ` +
+      `habilidades e conhecimentos voltados para a área de ` +
+      `${certificate.nomeCurso}, capacitando-o(a) a aplicar conceitos e ` +
+      `práticas relevantes no contexto organizacional.`;
+
+    // O bloco de cima cresce para tres linhas com nome de curso comprido. Sem
+    // o piso do y, os dois paragrafos se sobrepunham.
+    const areaTop = Math.max(PARAGRAPH_TOP, document.y + 6);
+
+    document
+      .font("Helvetica")
+      .fontSize(13.5)
+      .fillColor(TEXT_COLOR)
+      .text(areaText, 72, areaTop, {
+        align: "center",
+        width: textWidth,
         lineGap: 2,
       });
 

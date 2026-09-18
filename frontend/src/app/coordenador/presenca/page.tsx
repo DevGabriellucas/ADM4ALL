@@ -4,6 +4,7 @@ import { PresencaPanel } from "@/components/instrutor/PresencaPanel";
 import { BackButton } from "@/components/shared/BackButton";
 import { carregarWorkspaceDaTurma } from "@/services/coordinatorTurmaWorkspace";
 import { resolverChamadaAberta } from "@/services/instrutorService";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 interface CoordinatorPresencaPageProps {
   searchParams: Promise<{ turma?: string }>;
@@ -26,7 +27,7 @@ export default async function CoordinatorPresencaPage({
         descricao="Lance a chamada de qualquer turma, com as mesmas regras do instrutor."
         turmas={turmas}
         turmaSelecionada={turmaSelecionada}
-        dataAula={painel?.aulaAtual?.data ?? null}
+        dataAula={dataDaAulaEmFoco(painel)}
       />
 
       {painel && chamada ? (

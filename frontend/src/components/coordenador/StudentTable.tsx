@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   atualizarStatusContaAction,
+  cancelarMatriculaAction,
   excluirAlunoAction,
   reenviarAtivacaoAction,
 } from "@/app/coordenador/actions";
@@ -15,6 +16,7 @@ import {
   Notificacao,
   PRAZO_PARA_LIMPAR_AVISO,
 } from "@/components/shared/Notificacao";
+import { getContaStatusInfo } from "@/constants/contaStatus";
 import { getMatriculaStatusInfo } from "@/constants/matriculaStatus";
 import type { Student, UserStatus } from "@/types/coordinator";
 
@@ -30,17 +32,12 @@ interface StatusChangeRequest {
   confirmLabel: string;
 }
 
+// A coluna mostra o acesso quando ele impede o aluno de estudar (convite
+// pendente, conta desativada ou bloqueada) e, so depois disso, a situacao da
+// matricula.
 const getStudentStatusInfo = (student: Student) => {
-  if (student.statusConta === "pendente_ativacao") {
-    return { label: "Pendente de ativação", tone: "amber" as const };
-  }
-
-  if (student.statusConta === "inativo") {
-    return { label: "Inativo", tone: "slate" as const };
-  }
-
-  if (student.statusConta === "bloqueado") {
-    return { label: "Bloqueado", tone: "red" as const };
+  if (student.statusConta && student.statusConta !== "ativo") {
+    return getContaStatusInfo(student.statusConta);
   }
 
   if (student.statusMatricula) {
@@ -70,6 +67,9 @@ export const StudentTable = ({ students }: StudentTableProps) => {
   const [studentPendingDeletion, setStudentPendingDeletion] =
     useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [studentPendingUnlink, setStudentPendingUnlink] =
+    useState<Student | null>(null);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
   useEffect(() => {
     if (
@@ -102,6 +102,38 @@ export const StudentTable = ({ students }: StudentTableProps) => {
 
     setIsDeleting(false);
     setStudentPendingDeletion(null);
+
+    if (!result.sucesso) {
+      setStatusError(result.mensagem);
+      return;
+    }
+
+    setStatusMessage(result.mensagem);
+  };
+
+  // Desvincular mora aqui, e nao na ficha do aluno: e a mesma coluna de Ações
+  // que ja tem Visualizar, Bloquear e Excluir, e a lista ja mostra em que turma
+  // o aluno esta. A ficha ficou so com o historico das matriculas.
+  const handleUnlink = async () => {
+    const turmaId = studentPendingUnlink?.turmaId;
+    const matriculaId = studentPendingUnlink?.matriculaId;
+
+    if (!studentPendingUnlink || !turmaId || !matriculaId) {
+      return;
+    }
+
+    setIsUnlinking(true);
+    setStatusMessage(null);
+    setStatusError(null);
+
+    const result = await cancelarMatriculaAction(
+      studentPendingUnlink.id,
+      turmaId,
+      matriculaId,
+    );
+
+    setIsUnlinking(false);
+    setStudentPendingUnlink(null);
 
     if (!result.sucesso) {
       setStatusError(result.mensagem);
@@ -230,9 +262,9 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     {/* Vermelho so no desfecho ja decidido. Pintar por faixa
-                        ("abaixo de 75%") marcava a lista inteira no comeco do
-                        periodo, porque a frequencia se acumula e todo mundo
-                        comeca baixo. */}
+                        ("abaixo de 75%") marcava quem faltou uma vez logo na
+                        primeira aula, quando a proporcao ainda se decide com
+                        pouquissimas chamadas. */}
                     <span
                       className={
                         student.statusMatricula === "reprovado_falta"
@@ -345,6 +377,21 @@ export const StudentTable = ({ students }: StudentTableProps) => {
                           Reativar
                         </button>
                       )}
+                      {/* So aparece com matricula ativa: sem turma nao ha de
+                          onde desvincular. */}
+                      {student.turmaId &&
+                        student.matriculaId &&
+                        student.statusMatricula &&
+                        student.statusMatricula !== "cancelado" && (
+                          <button
+                            type="button"
+                            disabled={isUnlinking}
+                            onClick={() => setStudentPendingUnlink(student)}
+                            className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Desvincular da turma
+                          </button>
+                        )}
                       <button
                         type="button"
                         onClick={() => setStudentPendingDeletion(student)}
@@ -382,6 +429,19 @@ export const StudentTable = ({ students }: StudentTableProps) => {
           isLoading={isDeleting}
           onCancel={() => setStudentPendingDeletion(null)}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {studentPendingUnlink && (
+        <ConfirmDialog
+          title="Desvincular da turma?"
+          description={`${studentPendingUnlink.nome} sai da turma ${studentPendingUnlink.turma}. A matrícula fica marcada como cancelada — o histórico de presenças continua guardado. Como cada aluno participa de apenas uma turma por período letivo, é isto que libera a vaga dele para você vinculá-lo a outra turma em Visualizar > “Vincular à turma”.`}
+          confirmLabel={isUnlinking ? "Desvinculando..." : "Desvincular"}
+          cancelLabel="Cancelar"
+          tone="danger"
+          isLoading={isUnlinking}
+          onCancel={() => setStudentPendingUnlink(null)}
+          onConfirm={handleUnlink}
         />
       )}
 

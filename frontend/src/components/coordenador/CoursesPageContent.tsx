@@ -16,9 +16,13 @@ import type { Course, PaginaDeCursos } from "@/types/coordinator";
 
 interface CoursesPageContentProps {
   pagina: PaginaDeCursos;
+  periodoLetivoPadrao?: string;
 }
 
-export const CoursesPageContent = ({ pagina }: CoursesPageContentProps) => {
+export const CoursesPageContent = ({
+  pagina,
+  periodoLetivoPadrao,
+}: CoursesPageContentProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,6 +82,7 @@ export const CoursesPageContent = ({ pagina }: CoursesPageContentProps) => {
       <NewCourseForm
         isOpen={isFormOpen}
         onCancel={() => setIsFormOpen(false)}
+        periodoLetivoPadrao={periodoLetivoPadrao}
       />
 
       {deletingCourse && (
@@ -100,7 +105,7 @@ export const CoursesPageContent = ({ pagina }: CoursesPageContentProps) => {
 
       <section
         aria-label="Indicadores de cursos"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
       >
         <CoordinatorStatCard
           title="Total de cursos"
@@ -111,20 +116,26 @@ export const CoursesPageContent = ({ pagina }: CoursesPageContentProps) => {
         <CoordinatorStatCard
           title="Cursos ativos"
           value={resumo.ativos}
-          subtitle="Disponíveis no período"
+          subtitle="Com turma e aluno"
           variant="green"
         />
         <CoordinatorStatCard
           title="Em planejamento"
           value={resumo.emPlanejamento}
-          subtitle="Ainda não abertos"
+          subtitle="Ainda sem turma com aluno"
           variant="amber"
+        />
+        <CoordinatorStatCard
+          title="Cursos encerrados"
+          value={resumo.encerrados}
+          subtitle="Turmas no fim do cronograma"
+          variant="red"
         />
         <CoordinatorStatCard
           title="Cursos desativados"
           value={resumo.desativados}
-          subtitle="Fora de oferta"
-          variant="neutral"
+          subtitle="Turmas canceladas"
+          variant="red"
         />
         <CoordinatorStatCard
           title="Cursos sem turma"

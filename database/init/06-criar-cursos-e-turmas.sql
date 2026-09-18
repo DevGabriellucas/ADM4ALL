@@ -6,7 +6,11 @@ CREATE TABLE IF NOT EXISTS treinamentos (
     descricao       TEXT,
     carga_horaria   INTEGER      NOT NULL,
     ativo           BOOLEAN      NOT NULL DEFAULT TRUE,
+    -- Legado: o status que a tela mostra e derivado das turmas do curso na
+    -- consulta (sem turma ou sem aluno = em planejamento, com aluno = ativo,
+    -- todas as turmas canceladas = desativado). Nenhuma consulta le esta coluna.
     status          VARCHAR(20)  NOT NULL DEFAULT 'em_planejamento',
+    periodo_letivo  VARCHAR(6),
     data_criacao    TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_treinamentos_nome_nao_vazio
@@ -14,7 +18,10 @@ CREATE TABLE IF NOT EXISTS treinamentos (
     CONSTRAINT chk_treinamentos_carga_horaria_positiva
         CHECK (carga_horaria > 0),
     CONSTRAINT chk_treinamentos_status
-        CHECK (status IN ('ativo', 'em_planejamento', 'desativado'))
+        CHECK (status IN ('ativo', 'em_planejamento', 'desativado')),
+    -- Aceita NULL: curso cadastrado antes do campo existir nao tem periodo.
+    CONSTRAINT chk_treinamentos_periodo_letivo
+        CHECK (periodo_letivo IS NULL OR periodo_letivo ~ '^[0-9]{4}\.[12]$')
 );
 
 CREATE TABLE IF NOT EXISTS turmas (

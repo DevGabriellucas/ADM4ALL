@@ -1,6 +1,7 @@
 import { AvatarUploadPanel } from "@/components/instrutor/AvatarUploadPanel";
 import { InstrutorShell } from "@/components/instrutor/InstrutorShell";
 import { getInstrutorDashboard } from "@/services/instrutorService";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 export default async function InstrutorPerfilPage() {
   const dashboard = await getInstrutorDashboard();
@@ -10,7 +11,7 @@ export default async function InstrutorPerfilPage() {
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={dashboard.aulaAtual?.data ?? null}
+      dataAula={dataDaAulaEmFoco(dashboard)}
     >
       <div className="flex flex-col gap-6">
         <AvatarUploadPanel

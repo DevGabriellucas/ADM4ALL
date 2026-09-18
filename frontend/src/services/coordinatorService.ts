@@ -20,7 +20,6 @@ import type {
   CoordinatorReportFilters,
   CoordinatorReportType,
   Course,
-  EditableEnrollmentStatus,
   EnrollmentClassOption,
   GeneratedReport,
   Instructor,
@@ -37,7 +36,6 @@ import type {
   Student,
   StudentDetail,
   StudentEnrollmentCreated,
-  StudentEnrollmentStatusUpdated,
   UserStatus,
 } from "@/types/coordinator";
 import type { ArquivoUpload } from "@/types/instrutor";
@@ -55,6 +53,7 @@ interface CursoApi {
   nome: string;
   descricao: string | null;
   cargaHoraria: number;
+  periodoLetivo: string | null;
   status: Course["status"];
   quantidadeTurmas: number;
 }
@@ -99,6 +98,8 @@ interface AlunoListagemApi {
   statusMatricula: string | null;
   statusTurma: Student["statusTurma"];
   dataCriacao: string;
+  matriculaId: string | null;
+  turmaId: string | null;
 }
 
 interface TurmaApi {
@@ -173,6 +174,7 @@ const mapearCurso = (curso: CursoApi): Course => ({
   nome: curso.nome,
   descricao: curso.descricao ?? "",
   cargaHoraria: curso.cargaHoraria,
+  periodoLetivo: curso.periodoLetivo ?? "",
   status: curso.status,
   quantidadeTurmas: curso.quantidadeTurmas,
 });
@@ -219,8 +221,6 @@ const normalizeClassStatus = (status: string): ClassGroup["status"] => {
 
   throw new Error(`Status de turma inválido recebido: ${status}.`);
 };
-
-const serializeClassStatus = (status: ClassGroup["status"]): string => status;
 
 const mapearTurma = (turma: TurmaApi): ClassGroup => ({
   id: turma.id,
@@ -331,7 +331,7 @@ export const updateCourse = async (
     nome: string;
     descricao: string;
     cargaHoraria: number;
-    status: Course["status"];
+    periodoLetivo: string;
   },
 ): Promise<Course> => {
   const curso = await authenticatedRequest<CursoApi>(`/cursos/${id}`, {
@@ -401,25 +401,11 @@ export const deleteStudent = async (id: string): Promise<void> => {
   });
 };
 
-export const deactivateCourse = async (id: string): Promise<Course | null> => {
-  const curso = await getCourseById(id);
-  if (!curso) {
-    return null;
-  }
-
-  return await updateCourse(id, {
-    nome: curso.nome,
-    descricao: curso.descricao,
-    cargaHoraria: curso.cargaHoraria,
-    status: "desativado",
-  });
-};
-
 export const createCourse = async (input: {
   nome: string;
   descricao: string;
   cargaHoraria: number;
-  status: Course["status"];
+  periodoLetivo: string;
 }): Promise<Course> => {
   const curso = await authenticatedRequest<CursoApi>("/cursos", {
     method: "POST",
@@ -578,6 +564,8 @@ export const getClasses = async (): Promise<ClassGroup[]> => {
   return turmas.map(mapearTurma);
 };
 
+// Sem `status`: a turma nasce planejada e o servidor recalcula a situacao dela
+// a partir dos alunos e das aulas.
 export const createClass = async (input: {
   curso: string;
   nome: string;
@@ -585,7 +573,6 @@ export const createClass = async (input: {
   periodoLetivo: string;
   horarios: string;
   capacidade: number;
-  status: ClassGroup["status"];
 }): Promise<ClassGroup> => {
   const turma = await authenticatedRequest<TurmaApi>("/turmas", {
     method: "POST",
@@ -596,7 +583,6 @@ export const createClass = async (input: {
       periodoLetivo: input.periodoLetivo,
       horarios: input.horarios,
       limiteAlunos: input.capacidade,
-      status: serializeClassStatus(input.status),
     }),
     fallbackError: "Falha ao cadastrar a turma.",
   });
@@ -612,7 +598,6 @@ export const updateClass = async (
     instrutores: string[];
     periodoLetivo: string;
     capacidade: number;
-    status: ClassGroup["status"];
   },
 ): Promise<ClassGroup> => {
   const turma = await authenticatedRequest<TurmaApi>(`/turmas/${id}`, {
@@ -623,7 +608,6 @@ export const updateClass = async (
       instrutores: input.instrutores,
       periodoLetivo: input.periodoLetivo,
       capacidade: input.capacidade,
-      status: serializeClassStatus(input.status),
     }),
     fallbackError: "Falha ao atualizar a turma.",
   });
@@ -631,22 +615,24 @@ export const updateClass = async (
   return mapearTurma(turma);
 };
 
-export const closeClass = async (id: string): Promise<ClassGroup | null> => {
-  const detalhe = await buscarTurmaDetalheApi(id);
-  if (!detalhe) {
-    return null;
-  }
+// Cancelar (e desfazer) e a unica mudanca de status que parte da coordenacao.
+// Ao reativar, o servidor devolve a turma para a regra automatica.
+export const setClassCancelled = async (
+  id: string,
+  cancelada: boolean,
+): Promise<ClassGroup> => {
+  const turma = await authenticatedRequest<TurmaApi>(
+    `/turmas/${id}/cancelamento`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ cancelada }),
+      fallbackError: cancelada
+        ? "Falha ao cancelar a turma."
+        : "Falha ao reativar a turma.",
+    },
+  );
 
-  const turma = detalhe.turma;
-
-  return await updateClass(id, {
-    nome: turma.nome,
-    curso: turma.curso,
-    instrutores: turma.instrutores.split(", ").filter(Boolean),
-    periodoLetivo: turma.periodoLetivo ?? "2026.1",
-    capacidade: turma.capacidade > 0 ? turma.capacidade : 30,
-    status: "encerrada",
-  });
+  return mapearTurma(turma);
 };
 
 const buscarTurmaDetalheApi = async (
@@ -737,6 +723,8 @@ const mapearAluno = (aluno: AlunoListagemApi): Student => {
     statusMatricula: aluno.statusMatricula,
     statusTurma: aluno.statusTurma,
     dataCriacao: aluno.dataCriacao,
+    matriculaId: aluno.matriculaId ?? null,
+    turmaId: aluno.turmaId ?? null,
   };
 };
 
@@ -785,13 +773,6 @@ export const getStudentById = async (
 
     throw error;
   }
-};
-
-export const getUsers = async (): Promise<BaseUser[]> => {
-  return await authenticatedRequest<BaseUser[]>("/coordenador/usuarios", {
-    cache: "no-store",
-    fallbackError: "Falha ao carregar os usuarios.",
-  });
 };
 
 export const updateUserStatus = async (
@@ -888,20 +869,6 @@ export const cancelStudentEnrollment = async (
     {
       method: "DELETE",
       fallbackError: "Falha ao cancelar a matrícula.",
-    },
-  );
-};
-
-export const updateMatriculaStatus = async (
-  matriculaId: string,
-  status: EditableEnrollmentStatus,
-): Promise<StudentEnrollmentStatusUpdated> => {
-  return await authenticatedRequest<StudentEnrollmentStatusUpdated>(
-    `/coordenador/matriculas/${matriculaId}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-      fallbackError: "Falha ao atualizar o status da matrícula.",
     },
   );
 };

@@ -124,35 +124,10 @@ export const PreferenciasCard = ({
             )}
           />
 
-          <Controller
-            name="statusPadrao"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <label htmlFor="default-status" className={settingsLabelClass}>
-                  Status padrão de turma
-                </label>
-                <select
-                  {...field}
-                  id="default-status"
-                  disabled={isSubmitting}
-                  className={getSettingsFieldClass(
-                    Boolean(errors.statusPadrao),
-                  )}
-                >
-                  <option value="">Selecione um status</option>
-                  <option value="planejada">Planejada</option>
-                  <option value="em_andamento">Em andamento</option>
-                  <option value="encerrada">Encerrada</option>
-                </select>
-                {errors.statusPadrao && (
-                  <p className={settingsErrorClass}>
-                    {errors.statusPadrao.message}
-                  </p>
-                )}
-              </div>
-            )}
-          />
+          {/* "Status padrão de turma" saiu da tela: a turma nasce planejada e o
+              status passou a ser calculado pelos alunos e pelas aulas, entao o
+              campo prometia uma escolha que nao tinha mais efeito. O valor
+              guardado continua indo no envio, para nao mudar a API. */}
 
           <Controller
             name="nomeExibido"

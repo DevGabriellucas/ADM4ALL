@@ -50,7 +50,7 @@ const ROLE_FILTER_OPTIONS: { label: string; value: UserRole | "" }[] = [
 const STATUS_FILTER_OPTIONS: { label: string; value: UserStatus | "" }[] = [
   { label: "Todos os status", value: "" },
   { label: "Ativo", value: "ativo" },
-  { label: "Inativo", value: "inativo" },
+  { label: "Desativado", value: "inativo" },
   { label: "Pendente de ativação", value: "pendente_ativacao" },
   { label: "Bloqueado", value: "bloqueado" },
 ];

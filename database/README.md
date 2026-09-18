@@ -37,6 +37,12 @@ database/
     20260910_cpfs_bloqueados.sql
     20260910_encerrar_turmas_concluidas.sql
     20260916_presenca_justificada_como_presente.sql
+    20260918_curso_periodo_letivo_e_status.sql
+    20260918_turma_encerrada_e_aula_de_encerramento.sql
+    20260918_frequencia_proporcional.sql
+    20260918_remover_tabelas_sem_uso.sql
+    20260918_cpf_bloqueado_em_hash.sql
+    20260918_excluir_nao_bloqueia_cpf.sql
 ```
 
 ## Como subir
@@ -79,12 +85,27 @@ Get-Content .\database\migrations\20260908_frequencia_justificada.sql | docker c
 Get-Content .\database\migrations\20260910_cpfs_bloqueados.sql | docker compose exec -T db psql -U adm4all -d adm4all
 Get-Content .\database\migrations\20260910_encerrar_turmas_concluidas.sql | docker compose exec -T db psql -U adm4all -d adm4all
 Get-Content .\database\migrations\20260916_presenca_justificada_como_presente.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260918_curso_periodo_letivo_e_status.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260918_turma_encerrada_e_aula_de_encerramento.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260918_frequencia_proporcional.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260918_remover_tabelas_sem_uso.sql | docker compose exec -T db psql -U adm4all -d adm4all
+Get-Content .\database\migrations\20260918_cpf_bloqueado_em_hash.sql | docker compose exec -T db psql -U adm4all -d adm4all -v pepper="$env:CPF_HASH_SECRET"
+Get-Content .\database\migrations\20260918_excluir_nao_bloqueia_cpf.sql | docker compose exec -T db psql -U adm4all -d adm4all
 ```
 
 Todas sao idempotentes (`IF EXISTS` / `IF NOT EXISTS`), entao rodar de novo nao
 quebra nada.
 
-A ordem entre as duas ultimas importa: `20260908_frequencia_justificada.sql`
+**`20260918_cpf_bloqueado_em_hash.sql` e a unica que precisa de argumento.** O
+`-v pepper=` tem que trazer exatamente o mesmo valor de `CPF_HASH_SECRET` que o
+backend usa, senao os bloqueios ja gravados param de bater e quem estava
+bloqueado consegue se cadastrar de novo. Sem a variavel o psql para em "pepper
+is not defined", de proposito: rodar sem o segredo certo apagaria os bloqueios
+em silencio. Como o CPF de origem deixa de existir depois da migration, nao ha
+como recalcular o hash — trocar o segredo depois significa aceitar zerar a
+lista.
+
+A ordem entre estas duas importa: `20260908_frequencia_justificada.sql`
 cria a constraint que impede presenca marcada como justificada, e
 `20260916_presenca_justificada_como_presente.sql` e quem a remove. Um banco que
 receba so a primeira recusa a chamada com falta justificada — o sistema avisa
@@ -96,9 +117,15 @@ enquanto isso nao for corrigido.
 | `20260708_turma_instrutores.sql` | Vinculo de instrutores por turma |
 | `20260908_avatar_coordenador_aluno.sql` | Foto de perfil de coordenacao e aluno |
 | `20260908_frequencia_justificada.sql` | Coluna `justificada` em `frequencias` |
-| `20260910_cpfs_bloqueados.sql` | Bloqueio de CPF apos exclusao de aluno |
+| `20260910_cpfs_bloqueados.sql` | Cria a lista de CPFs bloqueados (naquela data, alimentada pela exclusao de aluno) |
 | `20260910_encerrar_turmas_concluidas.sql` | Encerramento automatico de turma |
 | `20260916_presenca_justificada_como_presente.sql` | Libera justificada com credito de presenca |
+| `20260918_curso_periodo_letivo_e_status.sql` | Periodo letivo do curso; status do curso passa a sair das turmas |
+| `20260918_turma_encerrada_e_aula_de_encerramento.sql` | Turma passa a "encerrada" no fim do cronograma; presenca automatica na aula 10 |
+| `20260918_frequencia_proporcional.sql` | Frequencia vira creditos/chamadas; reavalia matriculas e certificados ja gravados |
+| `20260918_remover_tabelas_sem_uso.sql` | Derruba `avaliacoes` e `documentos_aluno`, que nenhum codigo lia ou escrevia |
+| `20260918_cpf_bloqueado_em_hash.sql` | `cpfs_bloqueados` passa a guardar so o HMAC do CPF; nome e e-mail saem (**precisa de `-v pepper=`**) |
+| `20260918_excluir_nao_bloqueia_cpf.sql` | Tira da lista os CPFs que entraram por exclusao: agora so o botao "Bloquear" bloqueia |
 
 ## Resetar o banco local
 

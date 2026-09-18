@@ -46,9 +46,14 @@ export default async function CoordinatorDashboardPage() {
   // sem nenhuma chamada registrada nao entra: 0% ali significa "ainda nao teve
   // aula", nao "faltou a todas" — era o que fazia todo aluno recem-cadastrado
   // aparecer como risco de reprovacao.
+  // So turma EM ANDAMENTO entra (decisao dele em 18/09). Em turma encerrada a
+  // falta virou historico: nao ha mais o que a coordenacao faca a respeito, e
+  // a lista so escondia quem ainda da para ajudar.
   const attentionStudents = attendanceSummary.filter(
     (student) =>
-      student.situacao !== "regular" && student.situacao !== "sem_registro",
+      student.statusTurma === "em_andamento" &&
+      student.situacao !== "regular" &&
+      student.situacao !== "sem_registro",
   );
 
   return (

@@ -12,11 +12,13 @@ import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStat
 import { InstructorEditForm } from "@/components/coordenador/InstructorEditForm";
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { Notificacao } from "@/components/shared/Notificacao";
+import { getContaStatusInfo } from "@/constants/contaStatus";
 import type {
   ClassStatus,
   InstructorDetail,
   UserStatus,
 } from "@/types/coordinator";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface InstructorDetailContentProps {
   instructor: InstructorDetail;
@@ -29,19 +31,6 @@ interface StatusChangeRequest {
   description: string;
   confirmLabel: string;
 }
-
-const accountStatusInfo: Record<
-  UserStatus,
-  {
-    label: string;
-    tone: "green" | "amber" | "slate" | "red";
-  }
-> = {
-  ativo: { label: "Ativo", tone: "green" },
-  pendente_ativacao: { label: "Pendente de ativacao", tone: "amber" },
-  inativo: { label: "Inativo", tone: "slate" },
-  bloqueado: { label: "Bloqueado", tone: "red" },
-};
 
 const classStatusInfo: Record<
   ClassStatus,
@@ -83,7 +72,7 @@ export const InstructorDetailContent = ({
   const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const accountStatus = accountStatusInfo[instructor.status];
+  const accountStatus = getContaStatusInfo(instructor.status);
 
   const handleResendActivation = async () => {
     setIsResendingActivation(true);
@@ -260,7 +249,9 @@ export const InstructorDetailContent = ({
             <div>
               <dt className="font-medium text-slate-500 text-xs">Telefone</dt>
               <dd className="mt-1 text-slate-900 text-sm">
-                {instructor.telefone ?? "Não informado"}
+                {instructor.telefone
+                  ? formatarTelefone(instructor.telefone)
+                  : "Não informado"}
               </dd>
             </div>
             <div>

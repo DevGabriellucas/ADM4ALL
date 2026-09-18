@@ -12,7 +12,9 @@ import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStat
 import { ResendActivationConfirmModal } from "@/components/coordenador/ResendActivationConfirmModal";
 import { StatusChangeConfirmModal } from "@/components/coordenador/StatusChangeConfirmModal";
 import { Notificacao } from "@/components/shared/Notificacao";
+import { getContaStatusInfo } from "@/constants/contaStatus";
 import type { Instructor, UserStatus } from "@/types/coordinator";
+import { formatarTelefone } from "@/utils/telefone";
 
 interface InstructorTableProps {
   instructors: Instructor[];
@@ -26,21 +28,22 @@ interface StatusChangeRequest {
   confirmLabel: string;
 }
 
-const getInstructorStatusInfo = (status: Instructor["status"]) => {
-  if (status === "ativo") {
-    return { label: "Ativo", tone: "green" as const };
-  }
-
-  if (status === "pendente_ativacao") {
-    return { label: "Pendente de ativacao", tone: "amber" as const };
-  }
-
-  if (status === "bloqueado") {
-    return { label: "Bloqueado", tone: "red" as const };
-  }
-
-  return { label: "Inativo", tone: "slate" as const };
-};
+// Desativar um convite ainda pendente e desativar um instrutor com acesso
+// terminam no mesmo status, mas quem le a confirmacao precisa reconhecer o que
+// vai perder.
+const pedidoDeDesativacao = (instructor: Instructor): StatusChangeRequest => ({
+  instructorId: instructor.id,
+  targetStatus: "inativo",
+  title:
+    instructor.status === "pendente_ativacao"
+      ? "Desativar convite?"
+      : "Desativar instrutor?",
+  description:
+    instructor.status === "pendente_ativacao"
+      ? "O convite deixará de liberar acesso para este instrutor."
+      : "O instrutor perderá o acesso e não poderá ser selecionado em novas turmas. As turmas atuais dele continuam existindo.",
+  confirmLabel: "Desativar",
+});
 
 export const InstructorTable = ({ instructors }: InstructorTableProps) => {
   const [resendingInstructorId, setResendingInstructorId] = useState<
@@ -199,7 +202,7 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
 
           <tbody>
             {instructors.map((instructor) => {
-              const status = getInstructorStatusInfo(instructor.status);
+              const status = getContaStatusInfo(instructor.status);
 
               return (
                 <tr key={instructor.id}>
@@ -210,7 +213,9 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                     {instructor.email}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3 text-slate-700">
-                    {instructor.telefone ?? "Não informado"}
+                    {instructor.telefone
+                      ? formatarTelefone(instructor.telefone)
+                      : "Não informado"}
                   </td>
                   <td className="border-slate-100 border-b px-3 py-3">
                     <CoordinatorStatusBadge
@@ -242,6 +247,18 @@ export const InstructorTable = ({ instructors }: InstructorTableProps) => {
                           {resendingInstructorId === instructor.id
                             ? "Reenviando..."
                             : "Reenviar ativacao"}
+                        </button>
+                      )}
+                      {(instructor.status === "ativo" ||
+                        instructor.status === "pendente_ativacao") && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setStatusChange(pedidoDeDesativacao(instructor))
+                          }
+                          className="font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                        >
+                          Desativar
                         </button>
                       )}
                       {(instructor.status === "inativo" ||

@@ -1,14 +1,16 @@
 "use client";
 
-import { avaliarSenha, type NivelSenha, REQUISITOS_SENHA } from "@/utils/senha";
+import { avaliarSenha, type NivelSenha } from "@/utils/senha";
 
+/**
+ * Barra de forca da senha: tres segmentos que vao de vermelho a verde.
+ *
+ * So a barra. A lista de requisitos que abria embaixo do campo saiu de todas as
+ * telas em 18/09 — quem diz o que falta na senha e a mensagem de erro do
+ * proprio campo, que todos os formularios de senha mostram a cada tecla.
+ */
 interface MedidorForcaSenhaProps {
   senha: string;
-  /**
-   * Lista de requisitos. Fica escondida ate o usuario entrar no campo de senha,
-   * para o formulario nao abrir com um bloco de texto que ninguem pediu.
-   */
-  mostrarRequisitos?: boolean;
   className?: string;
 }
 
@@ -28,7 +30,6 @@ const COR_DA_BARRA: Record<NivelSenha, string> = {
 
 export const MedidorForcaSenha = ({
   senha,
-  mostrarRequisitos = false,
   className,
 }: MedidorForcaSenhaProps) => {
   const forca = avaliarSenha(senha);
@@ -56,26 +57,6 @@ export const MedidorForcaSenha = ({
           ? ""
           : `Nível de segurança da senha: ${forca.rotulo}`}
       </output>
-
-      {mostrarRequisitos && (
-        <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[0.7rem] text-slate-700">
-          {REQUISITOS_SENHA.map((requisito) => {
-            const atende = forca.idsAtendidos.includes(requisito.id);
-
-            return (
-              <li
-                key={requisito.id}
-                className={`flex items-center gap-1 ${
-                  atende ? "text-emerald-800" : "text-slate-700"
-                }`}
-              >
-                <span aria-hidden="true">{atende ? "✓" : "•"}</span>
-                {requisito.texto}
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </div>
   );
 };

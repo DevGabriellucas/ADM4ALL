@@ -3,9 +3,13 @@ import { AlunoDashboardActivity } from "@/components/aluno/AlunoDashboardActivit
 import { AlunoDashboardExtras } from "@/components/aluno/AlunoDashboardExtras";
 import { AlunoHeader } from "@/components/aluno/AlunoHeader";
 import { AlunoMateriaisPanel } from "@/components/aluno/AlunoMateriaisPanel";
+import { AlunoMeusDados } from "@/components/aluno/AlunoMeusDados";
 import { AlunoStatusPanel } from "@/components/aluno/AlunoStatusPanel";
 import { Notificacao } from "@/components/shared/Notificacao";
-import { MATRICULA_STATUS } from "@/constants/matriculaStatus";
+import {
+  FALTAS_TOLERADAS,
+  MATRICULA_STATUS,
+} from "@/constants/matriculaStatus";
 import {
   getAlunoDashboard,
   getMateriaisVisiveisAluno,
@@ -44,13 +48,14 @@ export default async function AlunoDashboardPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F6F8FC] font-poppins text-slate-950">
       <div className="flex min-h-screen w-full flex-col gap-y-7">
-        {/* A reprovacao e estado, nao recado: abre a pagina e nao sai dela.
-            Como aviso flutuante de 7s ela sumiria e o aluno nao teria como
-            traze-la de volta. */}
+        {/* Aviso flutuante de 7s, centralizado, como o resto do sistema
+            (decisao dele em 18/09). O estado em si nao se perde quando ele
+            some: a reprovacao continua no cartao "Status do aluno" e no de
+            certificado, que explicam o motivo e ficam na tela. */}
         {aluno.status === MATRICULA_STATUS.REPROVADO_FALTA && (
-          <Notificacao posicao="inline" tipo="erro">
-            Você foi reprovado por falta. O limite máximo permitido é de 2
-            faltas.
+          <Notificacao tipo="erro">
+            Você foi reprovado por falta. O limite máximo permitido é de{" "}
+            {FALTAS_TOLERADAS} faltas.
           </Notificacao>
         )}
 
@@ -110,11 +115,15 @@ export default async function AlunoDashboardPage() {
               <AlunoDashboardActivity aluno={aluno} />
             </div>
 
-            <div className="px-4 pb-6 sm:px-6 lg:px-8">
+            <div className="px-4 sm:px-6 lg:px-8">
               <AlunoMateriaisPanel
                 materiais={materiais}
                 erroCarregamento={materiaisErro}
               />
+            </div>
+
+            <div className="px-4 pb-6 sm:px-6 lg:px-8">
+              <AlunoMeusDados />
             </div>
           </>
         )}

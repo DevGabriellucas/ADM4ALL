@@ -10,6 +10,7 @@ import {
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Notificacao } from "@/components/shared/Notificacao";
 import type { AtualizarAulaInput, AulaResumo } from "@/types/instrutor";
+import { avisoDeDiaDeAula } from "@/utils/cronograma";
 import { formatData } from "@/utils/format";
 import { agoraNaInstituicao } from "@/utils/fusoInstituicao";
 
@@ -271,6 +272,11 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
               onChange={(evento) => setData(evento.target.value)}
               className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
             />
+            {/* O backend recusa a data que nao cai num sabado; o aviso aparece
+                antes de salvar para o instrutor nao descobrir pelo erro. */}
+            {avisoDeDiaDeAula(data) && (
+              <span className="text-amber-700">{avisoDeDiaDeAula(data)}</span>
+            )}
           </label>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -498,6 +504,11 @@ export const CronogramaList = ({ turmaId, aulas }: CronogramaListProps) => {
                   onChange={(evento) => setEdicaoData(evento.target.value)}
                   className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium"
                 />
+                {avisoDeDiaDeAula(edicaoData) && (
+                  <span className="text-amber-700">
+                    {avisoDeDiaDeAula(edicaoData)}
+                  </span>
+                )}
               </label>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

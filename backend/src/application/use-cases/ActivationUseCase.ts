@@ -10,7 +10,10 @@ import { BadRequestError } from "../../infrastructure/errors/BadRequestError";
 import { validarSenhaForte } from "../utils/validarSenha";
 
 const SALT_ROUNDS = 10;
-const ATIVACAO_DIAS = 3;
+
+// Exportado porque os e-mails de ativacao anunciam este prazo: escrito "3 dias"
+// a mao em cada um deles, bastava mudar aqui para os quatro textos mentirem.
+export const ATIVACAO_DIAS = 3;
 
 export interface ConfirmarAtivacaoDados {
   senha?: string;

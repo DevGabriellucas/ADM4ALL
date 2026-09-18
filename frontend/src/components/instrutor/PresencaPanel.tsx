@@ -6,12 +6,14 @@ import {
   buscarPresencasPorAulaAction,
   salvarPresencasAction,
 } from "@/app/instrutor/actions";
+import { CoordinatorStatCard } from "@/components/coordenador/CoordinatorStatCard";
 import { Notificacao } from "@/components/shared/Notificacao";
 import type {
   AlunoPresenca,
   AulaResumo,
   StatusPresenca,
 } from "@/types/instrutor";
+import { AULAS_POR_PERIODO } from "@/utils/cronograma";
 import { formatData } from "@/utils/format";
 import { dataDeHoje } from "@/utils/fusoInstituicao";
 
@@ -41,6 +43,12 @@ const OPCOES: { valor: StatusPresenca; label: string; classes: string }[] = [
     classes: "border-amber-500 bg-amber-500 text-white",
   },
 ];
+
+// A ultima aula do periodo nao tem chamada: a presenca dela vale para a turma
+// inteira quando o cronograma marca a aula como realizada. Decisao da
+// coordenacao em 18/09.
+const ehAulaDeEncerramento = (aula: AulaResumo | undefined | null) =>
+  aula?.numero === AULAS_POR_PERIODO;
 
 const paraStatuses = (alunos: AlunoPresenca[]) =>
   Object.fromEntries(
@@ -216,11 +224,38 @@ export const PresencaPanel = ({
           ? { tipo: "ok", texto: resultado.mensagem }
           : { tipo: "erro", texto: resultado.erro },
       );
-      if (resultado.ok) {
-        router.refresh();
+
+      if (!resultado.ok) {
+        return;
       }
+
+      // Os cartoes contam o que esta GRAVADO, e isso mora em `alunosAtuais`.
+      // So o `router.refresh()` nao bastava: ele traz props novas do servidor,
+      // mas o estado local ja montado continua com os totais velhos, e por isso
+      // a contagem so mudava depois de recarregar a pagina na mao. Relendo a
+      // chamada aqui, os numeros sobem no mesmo clique.
+      const atualizados = await buscarPresencasPorAulaAction(
+        turmaId,
+        aulaSelecionadaId,
+      );
+
+      if (atualizados.ok && Array.isArray(atualizados.alunos)) {
+        setAlunosAtuais(atualizados.alunos);
+        setStatuses(paraStatuses(atualizados.alunos));
+      }
+
+      // Continua valendo para o resto da tela (topo do painel do instrutor,
+      // cartoes do dashboard e da coordenacao).
+      router.refresh();
     });
   };
+
+  const aulaSelecionada =
+    cronogramaSeguro.find((aula) => aula.id === aulaSelecionadaId) ?? null;
+
+  // Na aula de encerramento nao ha o que marcar: o sistema confirma a presenca
+  // da turma inteira quando a aula e dada como realizada no cronograma.
+  const chamadaAutomatica = ehAulaDeEncerramento(aulaSelecionada);
 
   const desabilitado = isSalvando || isTrocandoAula;
 
@@ -230,219 +265,238 @@ export const PresencaPanel = ({
   const exibirTotal = (valor: number) => (isTrocandoAula ? "—" : valor);
 
   return (
-    <section
-      id="presenca"
-      aria-labelledby="presenca-heading"
-      className="rounded-lg bg-white p-5 shadow-sm"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2
-          id="presenca-heading"
-          className="font-semibold text-base text-slate-900"
-        >
-          Presença - Alunos
-        </h2>
-
-        <div className="flex items-center gap-x-4 text-xs">
-          <span className="flex items-center gap-x-1">
-            <span className="size-2.5 rounded-full bg-emerald-500" /> Presente
-          </span>
-          <span className="flex items-center gap-x-1">
-            <span className="size-2.5 rounded-full bg-red-500" /> Falta
-          </span>
-          <span className="flex items-center gap-x-1">
-            <span className="size-2.5 rounded-full bg-amber-500" /> Justificada
-          </span>
-        </div>
-      </div>
-
-      {cronogramaSeguro.length > 0 && (
-        <label className="mt-4 flex flex-col gap-y-1 text-slate-600 text-xs">
-          Aula
-          <select
-            value={aulaSelecionadaId ?? ""}
-            onChange={(evento) => trocarAula(evento.target.value)}
-            disabled={desabilitado}
-            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {cronogramaSeguro.map((aula) => (
-              <option key={aula.id} value={aula.id}>
-                Aula {aula.numero} - {aula.titulo} ({formatData(aula.data)})
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <div className="relative mt-4">
-        <svg
-          viewBox="0 0 24 24"
-          className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 size-4 text-slate-400"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        >
-          <title>Buscar</title>
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-
-        <input
-          type="search"
-          value={busca}
-          onChange={(evento) => setBusca(evento.target.value)}
-          placeholder="Buscar alunos"
-          disabled={isTrocandoAula}
-          className="w-full rounded-md border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+    <>
+      {/* Os cartoes ficam FORA do painel branco, logo abaixo de "Curso" e
+          "Data da Aula", no mesmo formato dos cartoes da tela de Turmas: a
+          contagem e a primeira coisa que se procura ao abrir a chamada, e
+          dentro do painel ela ficava no meio da lista de alunos. */}
+      <section
+        aria-label="Resumo da presença da turma"
+        className="grid grid-cols-2 gap-4 xl:grid-cols-4"
+      >
+        <CoordinatorStatCard
+          title="Presenças"
+          value={exibirTotal(resumoPresenca.presentes)}
+          subtitle="Todas as aulas"
+          variant="green"
         />
-      </div>
-
-      <section aria-labelledby="resumo-turma-heading" className="mt-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h3
-            id="resumo-turma-heading"
-            className="font-semibold text-slate-900 text-sm"
-          >
-            Resumo da turma
-          </h3>
-          <span className="text-slate-500 text-xs">
-            Todas as aulas ({resumoPresenca.aulasPrevistas}{" "}
-            {resumoPresenca.aulasPrevistas === 1
+        <CoordinatorStatCard
+          title="Faltas"
+          value={exibirTotal(resumoPresenca.faltas)}
+          subtitle="Não justificadas"
+          variant="red"
+        />
+        <CoordinatorStatCard
+          title="Justificadas"
+          value={exibirTotal(resumoPresenca.justificadas)}
+          subtitle="Não contam como falta"
+          variant="amber"
+        />
+        <CoordinatorStatCard
+          title="Pendentes"
+          value={exibirTotal(resumoPresenca.pendentes)}
+          subtitle={`${resumoPresenca.aulasPrevistas} ${
+            resumoPresenca.aulasPrevistas === 1
               ? "chamada prevista"
-              : "chamadas previstas"}
-            )
-          </span>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <div className="font-medium text-emerald-600 text-xs">
-              Presentes
-            </div>
-            <div className="mt-1 font-bold text-2xl text-emerald-700">
-              {exibirTotal(resumoPresenca.presentes)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-            <div className="font-medium text-red-600 text-xs">Faltas</div>
-            <div className="mt-1 font-bold text-2xl text-red-700">
-              {exibirTotal(resumoPresenca.faltas)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <div className="font-medium text-amber-600 text-xs">
-              Justificadas
-            </div>
-            <div className="mt-1 font-bold text-2xl text-amber-700">
-              {exibirTotal(resumoPresenca.justificadas)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="font-medium text-slate-600 text-xs">Pendentes</div>
-            <div className="mt-1 font-bold text-2xl text-slate-700">
-              {exibirTotal(resumoPresenca.pendentes)}
-            </div>
-          </div>
-        </div>
+              : "chamadas previstas"
+          }`}
+          variant="neutral"
+        />
       </section>
 
-      {/* Chamada esquecida so aparecia como um numero no card "Pendentes", que
+      <section
+        id="presenca"
+        aria-labelledby="presenca-heading"
+        className="rounded-lg bg-white p-5 shadow-sm"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2
+            id="presenca-heading"
+            className="font-semibold text-base text-slate-900"
+          >
+            Presença - Alunos
+          </h2>
+
+          <div className="flex items-center gap-x-4 text-xs">
+            <span className="flex items-center gap-x-1">
+              <span className="size-2.5 rounded-full bg-emerald-500" /> Presente
+            </span>
+            <span className="flex items-center gap-x-1">
+              <span className="size-2.5 rounded-full bg-red-500" /> Falta
+            </span>
+            <span className="flex items-center gap-x-1">
+              <span className="size-2.5 rounded-full bg-amber-500" />{" "}
+              Justificada
+            </span>
+            {/* Pendente tambem e uma situacao da chamada, e era a unica sem
+                legenda: o cinza aparecia no cartao sem nada que o explicasse. */}
+            <span className="flex items-center gap-x-1">
+              <span className="size-2.5 rounded-full bg-slate-400" /> Pendentes
+            </span>
+          </div>
+        </div>
+
+        {cronogramaSeguro.length > 0 && (
+          <label className="mt-4 flex flex-col gap-y-1 text-slate-600 text-xs">
+            Aula
+            <select
+              value={aulaSelecionadaId ?? ""}
+              onChange={(evento) => trocarAula(evento.target.value)}
+              disabled={desabilitado}
+              className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {cronogramaSeguro.map((aula) => (
+                <option key={aula.id} value={aula.id}>
+                  Aula {aula.numero} - {aula.titulo} ({formatData(aula.data)})
+                  {ehAulaDeEncerramento(aula) ? " - encerramento" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div className="relative mt-4">
+          <svg
+            viewBox="0 0 24 24"
+            className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 size-4 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          >
+            <title>Buscar</title>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+
+          <input
+            type="search"
+            value={busca}
+            onChange={(evento) => setBusca(evento.target.value)}
+            placeholder="Buscar alunos"
+            disabled={isTrocandoAula}
+            className="w-full rounded-md border border-slate-300 py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </div>
+
+        {/* O aviso completo passa e sai de cena em 7s, como o resto do
+            sistema. O que fica e a linha curta abaixo, presa ao seletor: sem
+            ela, o instrutor voltaria a essa aula sem entender por que os
+            botoes estao apagados. */}
+        {chamadaAutomatica && (
+          <>
+            <Notificacao tipo="aviso">
+              A aula {AULAS_POR_PERIODO} é a de encerramento e não tem chamada:
+              a presença é confirmada para todos os alunos da turma quando ela é
+              dada por realizada.
+            </Notificacao>
+            <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-xs leading-5">
+              Aula de encerramento: presença confirmada automaticamente para a
+              turma inteira.
+            </p>
+          </>
+        )}
+
+        {/* Chamada esquecida so aparecia como um numero no card "Pendentes", que
           e facil de passar batido. O aviso diz o que faltou e onde: o que esta
           aberto na tela (resolve aqui) e o que ficou para tras (troque a aula
           no seletor). Vale para o instrutor e para a coordenacao, que usam
           este mesmo painel. */}
-      {!isTrocandoAula && resumoPresenca.pendentes > 0 && (
-        <Notificacao posicao="inline" tipo="aviso" className="mt-4">
-          {pendentesDaAula > 0 && (
-            <>
-              Presença não marcada para {pendentesDaAula}{" "}
-              {pendentesDaAula === 1 ? "aluno" : "alunos"} nesta aula.
-            </>
-          )}
-          {pendentesDaAula > 0 && pendentesDeOutrasAulas > 0 && " "}
-          {pendentesDeOutrasAulas > 0 && (
-            <>
-              {pendentesDeOutrasAulas}{" "}
-              {pendentesDeOutrasAulas === 1
-                ? "chamada de outra aula continua"
-                : "chamadas de outras aulas continuam"}{" "}
-              em aberto — selecione a aula no campo acima para lançar.
-            </>
-          )}
-        </Notificacao>
-      )}
-
-      <ul className="mt-4 flex flex-col divide-y divide-slate-100">
-        {isTrocandoAula ? (
-          <li className="py-4 text-slate-500 text-sm">
-            Carregando presença da aula...
-          </li>
-        ) : alunosFiltrados.length === 0 ? (
-          <li className="py-4 text-slate-500 text-sm">
-            Nenhum aluno encontrado.
-          </li>
-        ) : (
-          alunosFiltrados.map((aluno, indice) => (
-            <li
-              key={aluno.matriculaId}
-              className="flex flex-wrap items-center justify-between gap-3 py-3"
-            >
-              <div className="flex items-center gap-x-3">
-                <span className="w-5 text-slate-400 text-xs">{indice + 1}</span>
-                <span className="font-medium text-slate-800 text-sm">
-                  {aluno.nome}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {OPCOES.map((opcao) => {
-                  const selecionado =
-                    statuses[aluno.matriculaId] === opcao.valor;
-                  return (
-                    <button
-                      key={opcao.valor}
-                      type="button"
-                      onClick={() =>
-                        definirStatus(aluno.matriculaId, opcao.valor)
-                      }
-                      aria-pressed={selecionado}
-                      className={`cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors ${
-                        selecionado
-                          ? opcao.classes
-                          : "border-slate-300 bg-white text-slate-600 hover:border-brand-medium"
-                      }`}
-                    >
-                      {opcao.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </li>
-          ))
+        {!isTrocandoAula && resumoPresenca.pendentes > 0 && (
+          <Notificacao posicao="inline" tipo="aviso" className="mt-4">
+            {pendentesDaAula > 0 && (
+              <>
+                Presença não marcada para {pendentesDaAula}{" "}
+                {pendentesDaAula === 1 ? "aluno" : "alunos"} nesta aula.
+              </>
+            )}
+            {pendentesDaAula > 0 && pendentesDeOutrasAulas > 0 && " "}
+            {pendentesDeOutrasAulas > 0 && (
+              <>
+                {pendentesDeOutrasAulas}{" "}
+                {pendentesDeOutrasAulas === 1
+                  ? "chamada de outra aula continua"
+                  : "chamadas de outras aulas continuam"}{" "}
+                em aberto — selecione a aula no campo acima para lançar.
+              </>
+            )}
+          </Notificacao>
         )}
-      </ul>
 
-      {feedback && (
-        <Notificacao
-          tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
-          className="mt-5"
-        >
-          {feedback.texto}
-        </Notificacao>
-      )}
+        <ul className="mt-4 flex flex-col divide-y divide-slate-100">
+          {isTrocandoAula ? (
+            <li className="py-4 text-slate-500 text-sm">
+              Carregando presença da aula...
+            </li>
+          ) : alunosFiltrados.length === 0 ? (
+            <li className="py-4 text-slate-500 text-sm">
+              Nenhum aluno encontrado.
+            </li>
+          ) : (
+            alunosFiltrados.map((aluno, indice) => (
+              <li
+                key={aluno.matriculaId}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div className="flex items-center gap-x-3">
+                  <span className="w-5 text-slate-400 text-xs">
+                    {indice + 1}
+                  </span>
+                  <span className="font-medium text-slate-800 text-sm">
+                    {aluno.nome}
+                  </span>
+                </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={desabilitado}
-          className="cursor-pointer rounded-md bg-brand-dark px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSalvando ? "Salvando..." : "Salvar Presença"}
-        </button>
-      </div>
-    </section>
+                <div className="flex flex-wrap gap-2">
+                  {OPCOES.map((opcao) => {
+                    const selecionado =
+                      statuses[aluno.matriculaId] === opcao.valor;
+                    return (
+                      <button
+                        key={opcao.valor}
+                        type="button"
+                        disabled={chamadaAutomatica}
+                        onClick={() =>
+                          definirStatus(aluno.matriculaId, opcao.valor)
+                        }
+                        aria-pressed={selecionado}
+                        className={`rounded-full border px-3 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                          selecionado
+                            ? opcao.classes
+                            : "cursor-pointer border-slate-300 bg-white text-slate-600 hover:border-brand-medium"
+                        }`}
+                      >
+                        {opcao.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+
+        {feedback && (
+          <Notificacao
+            tipo={feedback.tipo === "ok" ? "sucesso" : "erro"}
+            className="mt-5"
+          >
+            {feedback.texto}
+          </Notificacao>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={salvar}
+            disabled={desabilitado || chamadaAutomatica}
+            className="cursor-pointer rounded-md bg-brand-dark px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-brand-medium disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSalvando ? "Salvando..." : "Salvar Presença"}
+          </button>
+        </div>
+      </section>
+    </>
   );
 };

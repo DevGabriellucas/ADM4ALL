@@ -20,11 +20,8 @@ import type { PeriodoLetivoResponse } from "@/services/periodoLetivoService";
 import { atualizarPeriodoLetivo } from "@/services/periodoLetivoService";
 import type {
   CertificateDetail,
-  ClassGroup,
   CoordinatorReportFilters,
   CoordinatorReportType,
-  Course,
-  EditableEnrollmentStatus,
   EnrollmentClassOption,
   GeneratedReport,
   Student,
@@ -70,7 +67,7 @@ export async function criarCursoAction(input: {
   nome: string;
   descricao: string;
   cargaHoraria: number;
-  status: Course["status"];
+  periodoLetivo: string;
 }): Promise<ResultadoAction> {
   try {
     const curso = await coordinatorService.createCourse(input);
@@ -94,7 +91,7 @@ export async function atualizarCursoAction(
     nome: string;
     descricao: string;
     cargaHoraria: number;
-    status: Course["status"];
+    periodoLetivo: string;
   },
 ): Promise<ResultadoAction> {
   try {
@@ -110,29 +107,6 @@ export async function atualizarCursoAction(
     return {
       sucesso: false,
       mensagem: mensagemDeErroDeAction(error, "Falha ao atualizar o curso."),
-    };
-  }
-}
-
-export async function desativarCursoAction(
-  id: string,
-): Promise<ResultadoAction> {
-  try {
-    const curso = await coordinatorService.deactivateCourse(id);
-    if (!curso) {
-      return { sucesso: false, mensagem: "Curso nao encontrado." };
-    }
-    revalidatePath("/coordenador/cursos");
-    revalidatePath(`/coordenador/cursos/${id}`);
-    revalidatePath("/coordenador/dashboard");
-    return {
-      sucesso: true,
-      mensagem: `Curso "${curso.nome}" desativado com sucesso.`,
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      mensagem: mensagemDeErroDeAction(error, "Falha ao desativar o curso."),
     };
   }
 }
@@ -526,35 +500,15 @@ export async function cancelarMatriculaAction(
     revalidatePath(`/coordenador/turmas/${turmaId}`);
     return {
       sucesso: true,
-      mensagem: "Matrícula cancelada com sucesso.",
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      mensagem: mensagemDeErroDeAction(error, "Falha ao cancelar a matrícula."),
-    };
-  }
-}
-
-export async function atualizarStatusMatriculaAction(
-  alunoId: string,
-  matriculaId: string,
-  status: EditableEnrollmentStatus,
-): Promise<ResultadoAction> {
-  try {
-    await coordinatorService.updateMatriculaStatus(matriculaId, status);
-    revalidatePath("/coordenador/alunos");
-    revalidatePath(`/coordenador/alunos/${alunoId}`);
-    return {
-      sucesso: true,
-      mensagem: "Status da matrícula atualizado com sucesso.",
+      mensagem:
+        "Aluno desvinculado da turma. Ele já pode ser vinculado a outra turma deste período.",
     };
   } catch (error) {
     return {
       sucesso: false,
       mensagem: mensagemDeErroDeAction(
         error,
-        "Falha ao atualizar o status da matrícula.",
+        "Falha ao desvincular o aluno da turma.",
       ),
     };
   }
@@ -776,7 +730,6 @@ export async function criarTurmaAction(input: {
   periodoLetivo: string;
   horarios: string;
   capacidade: number;
-  status: ClassGroup["status"];
   cursoId?: string;
 }): Promise<ResultadoAction> {
   try {
@@ -806,7 +759,6 @@ export async function atualizarTurmaAction(
     instrutores: string[];
     periodoLetivo: string;
     capacidade: number;
-    status: ClassGroup["status"];
   },
 ): Promise<ResultadoAction> {
   try {
@@ -826,25 +778,29 @@ export async function atualizarTurmaAction(
   }
 }
 
-export async function encerrarTurmaAction(
+export async function definirCancelamentoDaTurmaAction(
   id: string,
+  cancelada: boolean,
 ): Promise<ResultadoAction> {
   try {
-    const turma = await coordinatorService.closeClass(id);
-    if (!turma) {
-      return { sucesso: false, mensagem: "Turma nao encontrada." };
-    }
+    const turma = await coordinatorService.setClassCancelled(id, cancelada);
     revalidatePath("/coordenador/turmas");
     revalidatePath(`/coordenador/turmas/${id}`);
+    revalidatePath("/coordenador/cursos");
     revalidatePath("/coordenador/dashboard");
     return {
       sucesso: true,
-      mensagem: `Turma "${turma.nome}" encerrada com sucesso.`,
+      mensagem: cancelada
+        ? `Turma "${turma.nome}" cancelada.`
+        : `Turma "${turma.nome}" reativada. O status volta a ser calculado pelo sistema.`,
     };
   } catch (error) {
     return {
       sucesso: false,
-      mensagem: mensagemDeErroDeAction(error, "Falha ao encerrar a turma."),
+      mensagem: mensagemDeErroDeAction(
+        error,
+        cancelada ? "Falha ao cancelar a turma." : "Falha ao reativar a turma.",
+      ),
     };
   }
 }

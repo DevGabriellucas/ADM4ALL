@@ -1,6 +1,7 @@
 import { InstrutorShell } from "@/components/instrutor/InstrutorShell";
 import { MateriaisPanel } from "@/components/instrutor/MateriaisPanel";
 import { getInstrutorDashboard } from "@/services/instrutorService";
+import { dataDaAulaEmFoco } from "@/utils/cronograma";
 
 export default async function InstrutorMateriaisPage() {
   const dashboard = await getInstrutorDashboard();
@@ -16,7 +17,7 @@ export default async function InstrutorMateriaisPage() {
     <InstrutorShell
       instrutor={instrutor}
       curso={turma?.curso ?? "Sem turma vinculada"}
-      dataAula={dashboard.aulaAtual?.data ?? null}
+      dataAula={dataDaAulaEmFoco(dashboard)}
     >
       {turma ? (
         <MateriaisPanel

@@ -6,7 +6,8 @@ import { useState } from "react";
 import { atualizarCursoAction } from "@/app/coordenador/actions";
 import { CoordinatorFormActions } from "@/components/coordenador/CoordinatorFormActions";
 import { Notificacao } from "@/components/shared/Notificacao";
-import type { Course, CourseStatus } from "@/types/coordinator";
+import type { Course } from "@/types/coordinator";
+import { somenteDigitos } from "@/utils/numeros";
 
 interface EditCourseFormProps {
   course: Course;
@@ -18,9 +19,11 @@ interface CourseFormData {
   nome: string;
   descricao: string;
   cargaHoraria: string;
-  status: CourseStatus;
+  periodoLetivo: string;
 }
 
+// Sem campo de status: quem decide o status do curso sao as turmas dele, e a
+// tela so exibe o resultado.
 export const EditCourseForm = ({
   course,
   onCancel,
@@ -31,7 +34,7 @@ export const EditCourseForm = ({
     nome: course.nome,
     descricao: course.descricao,
     cargaHoraria: String(course.cargaHoraria),
-    status: course.status,
+    periodoLetivo: course.periodoLetivo,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +53,7 @@ export const EditCourseForm = ({
       nome: formData.nome,
       descricao: formData.descricao,
       cargaHoraria: Number(formData.cargaHoraria),
-      status: formData.status,
+      periodoLetivo: formData.periodoLetivo,
     });
 
     setIsSubmitting(false);
@@ -114,13 +117,14 @@ export const EditCourseForm = ({
               Carga horária
               <input
                 required
-                min="1"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 value={formData.cargaHoraria}
                 onChange={(event) =>
                   setFormData({
                     ...formData,
-                    cargaHoraria: event.target.value,
+                    cargaHoraria: somenteDigitos(event.target.value),
                   })
                 }
                 placeholder="Ex.: 40"
@@ -138,26 +142,28 @@ export const EditCourseForm = ({
                   setFormData({ ...formData, descricao: event.target.value })
                 }
                 placeholder="Descreva o objetivo e o conteúdo do curso"
-                className="resize-y rounded-lg border border-slate-300 bg-white px-3 py-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+                className="resize-none rounded-lg border border-slate-300 bg-white px-3 py-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
               />
             </label>
 
             <label className="flex flex-col gap-y-2 font-medium text-slate-700 text-sm">
-              Status
-              <select
-                value={formData.status}
+              Período letivo
+              <input
+                required
+                type="text"
+                value={formData.periodoLetivo}
                 onChange={(event) =>
                   setFormData({
                     ...formData,
-                    status: event.target.value as CourseStatus,
+                    periodoLetivo: event.target.value,
                   })
                 }
-                className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
-              >
-                <option value="em_planejamento">Em planejamento</option>
-                <option value="ativo">Ativo</option>
-                <option value="desativado">Desativado</option>
-              </select>
+                placeholder="2026.1"
+                className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-medium focus:ring-2 focus:ring-brand-light/30"
+              />
+              <span className="font-normal text-slate-400 text-xs">
+                Use o formato ano.semestre, por exemplo 2026.1 ou 2026.2.
+              </span>
             </label>
           </div>
 

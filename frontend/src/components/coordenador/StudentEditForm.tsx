@@ -21,7 +21,12 @@ export const StudentEditForm = ({
   const router = useRouter();
   const [nome, setNome] = useState(student.nome);
   const [email, setEmail] = useState(student.email);
-  const [telefone, setTelefone] = useState(student.telefone ?? "");
+  // O telefone e guardado so com digitos (83981286597). Sem formatar na
+  // abertura, o campo exibia os 11 digitos crus ate alguem digitar nele —
+  // formatarTelefone so rodava no onChange.
+  const [telefone, setTelefone] = useState(
+    formatarTelefone(student.telefone ?? ""),
+  );
   const [statusConta, setStatusConta] = useState<UserStatus>(
     student.statusConta,
   );

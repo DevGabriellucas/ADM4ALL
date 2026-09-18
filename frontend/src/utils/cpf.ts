@@ -5,9 +5,10 @@
  * 11 numeros — e o CPF e um dos identificadores de login, entao um valor
  * invalido so aparece quando o aluno tenta entrar e nao consegue.
  *
- * O login continua exigindo apenas os 11 digitos: cobrar o digito verificador
- * ali nao acrescenta seguranca e impediria de tentar entrar quem ja foi
- * cadastrado antes desta regra.
+ * O login tambem confere o digito verificador desde 18/09: digitado errado, o
+ * CPF nao bate com conta nenhuma, e a mensagem "CPF inválido" no proprio campo
+ * explica melhor do que "Credenciais inválidas" depois de enviar. Toda conta do
+ * sistema nasce com CPF validado no cadastro, entao ninguem fica de fora.
  */
 
 const calcularDigito = (base: number[]): number => {
@@ -30,15 +31,6 @@ export const formatarCpf = (valor: string) =>
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 
-// Num campo que aceita e-mail OU CPF, diz se o valor INTEIRO e um CPF.
-//
-// Precisa olhar o valor completo, nunca o que foi digitado ate agora: decidindo
-// tecla a tecla, um e-mail institucional que comeca por matricula numerica
-// (20231234@aluno.unipe.br) era mascarado como CPF antes do @ chegar, virava
-// 202.312.34@aluno.unipe.br e nao batia com conta nenhuma.
-export const pareceCpf = (valor: string) =>
-  /^[\d.\s-]+$/.test(valor.trim()) && somenteDigitosCpf(valor).length === 11;
-
 export const isCpfValido = (valor: string): boolean => {
   const cpf = somenteDigitosCpf(valor);
 
@@ -53,4 +45,13 @@ export const isCpfValido = (valor: string): boolean => {
   const segundoDigito = calcularDigito([...base, primeiroDigito]);
 
   return segundoDigito === Number(cpf[10]);
+};
+
+// Mesma pergunta, mas no meio da digitacao: o que esta no campo AINDA pode
+// virar um CPF? Serve para a mascara aparecer a partir do primeiro numero sem
+// estragar e-mail institucional que comeca por matricula (20231234@...): assim
+// que a primeira letra ou o @ chegam, o campo sai do modo CPF.
+export const pareceCpfEmDigitacao = (valor: string) => {
+  const limpo = valor.trim();
+  return limpo !== "" && /^[\d.\s-]+$/.test(limpo);
 };

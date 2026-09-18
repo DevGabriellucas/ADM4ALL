@@ -36,13 +36,52 @@ export function cursoConcluido(aliasAula: string): string {
 }
 
 /**
+ * Periodo do curso segundo o CRONOGRAMA: a primeira e a ultima aula nao
+ * cancelada da turma.
+ *
+ * E o que o certificado precisa imprimir. `turmas.data_inicio` e
+ * `turmas.data_fim` sao a previsao digitada quando a turma foi criada, e a
+ * turma so encerra quando o cronograma acaba (ver cursoConcluido). Com as duas
+ * datas vindas da previsao, um aluno que terminou em outubro recebia um
+ * certificado dizendo "ate 15 de dezembro de 2026".
+ *
+ * Aulas canceladas ficam de fora pelo mesmo motivo que ficam de fora do
+ * progresso: elas nao aconteceram, entao nao abrem nem fecham o periodo.
+ *
+ * Devolve subconsultas escalares — podem dar NULL quando a turma ainda nao tem
+ * cronograma, e quem chama faz o COALESCE para as datas previstas da turma.
+ *
+ * O apelido e literal escrito na propria consulta, nunca entrada de usuario.
+ */
+export function periodoDoCronograma(aliasTurma: string): {
+  inicio: string;
+  fim: string;
+} {
+  const agregado = (funcao: "MIN" | "MAX") => `(
+    SELECT ${funcao}(aula_cronograma.data_aula)
+    FROM aulas aula_cronograma
+    WHERE aula_cronograma.turma_id = ${aliasTurma}.id
+      AND aula_cronograma.status <> 'cancelada'
+  )`;
+
+  return { inicio: agregado("MIN"), fim: agregado("MAX") };
+}
+
+/**
  * UPDATE que reaplica o status derivado de UMA turma, recebida em `$1`.
  *
  * O status da turma nao e digitado, e calculado. A regra, em ordem:
  *
- * 1. Todas as aulas nao canceladas realizadas -> "concluida".
+ * 1. Todas as aulas nao canceladas realizadas (progresso em 100%)
+ *    -> "encerrada".
  * 2. Senao, com pelo menos um aluno matriculado -> "em_andamento".
  * 3. Senao (turma vazia) -> "planejada".
+ *
+ * O destino do passo 1 era "concluida" ate 18/09. As duas palavras significavam
+ * a mesma coisa no sistema — o proprio backend ja as tratava como sinonimos em
+ * certificado e relatorio — e a coordenacao escolheu ficar com "Encerrada", que
+ * e como a turma aparece na tela. "concluida" segue no CHECK da tabela por
+ * causa das turmas antigas, mas nenhuma turma nova chega nele.
  *
  * "cancelada" fica de fora: e a unica decisao que continua sendo da
  * coordenacao, entao o automatico nunca sobrescreve nem tira a turma dela.
@@ -75,7 +114,7 @@ export function atualizarStatusDerivadoDaTurma(): string {
     destino AS (
       SELECT
         CASE
-          WHEN s.concluida THEN 'concluida'
+          WHEN s.concluida THEN 'encerrada'
           WHEN s.alunos > 0 THEN 'em_andamento'
           ELSE 'planejada'
         END AS status

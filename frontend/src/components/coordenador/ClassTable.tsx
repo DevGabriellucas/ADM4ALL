@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { excluirTurmaAction } from "@/app/coordenador/actions";
+import {
+  definirCancelamentoDaTurmaAction,
+  excluirTurmaAction,
+} from "@/app/coordenador/actions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CoordinatorStatusBadge } from "@/components/coordenador/CoordinatorStatusBadge";
 import {
@@ -29,9 +32,21 @@ const classStatusInfo: Record<
   cancelada: { label: "Cancelada", tone: "red" },
 };
 
+// O status da turma e calculado (sem aluno = Planejada, com aluno = Em
+// andamento, cronograma cumprido = Concluída). Cancelar e a unica decisao que
+// continua sendo da coordenacao, e por isso e um botao na linha, ao lado de
+// Excluir, em vez de uma opcao no formulario de edicao.
+interface PedidoDeCancelamento {
+  turma: ClassGroup;
+  cancelar: boolean;
+}
+
 export const ClassTable = ({ classes }: ClassTableProps) => {
   const [deletingClass, setDeletingClass] = useState<ClassGroup | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pedidoDeCancelamento, setPedidoDeCancelamento] =
+    useState<PedidoDeCancelamento | null>(null);
+  const [isMudandoCancelamento, setIsMudandoCancelamento] = useState(false);
   const [feedback, setFeedback] = useState<{
     tipo: "sucesso" | "erro";
     mensagem: string;
@@ -45,6 +60,23 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
     );
     return () => window.clearTimeout(timeout);
   }, [feedback]);
+
+  const handleCancelamento = async () => {
+    if (!pedidoDeCancelamento) return;
+
+    const { turma, cancelar } = pedidoDeCancelamento;
+    setIsMudandoCancelamento(true);
+    const resultado = await definirCancelamentoDaTurmaAction(
+      turma.id,
+      cancelar,
+    );
+    setIsMudandoCancelamento(false);
+    setPedidoDeCancelamento(null);
+    setFeedback({
+      tipo: resultado.sucesso ? "sucesso" : "erro",
+      mensagem: resultado.mensagem,
+    });
+  };
 
   const handleDelete = async () => {
     if (!deletingClass) return;
@@ -62,6 +94,32 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
     <>
       {feedback && (
         <Notificacao tipo={feedback.tipo}>{feedback.mensagem}</Notificacao>
+      )}
+      {pedidoDeCancelamento && (
+        <ConfirmDialog
+          title={
+            pedidoDeCancelamento.cancelar
+              ? "Cancelar turma?"
+              : "Reativar turma?"
+          }
+          description={
+            pedidoDeCancelamento.cancelar
+              ? `A turma "${pedidoDeCancelamento.turma.nome}" fica marcada como cancelada e sai da contagem do curso. As aulas, as matrículas e a frequência continuam guardadas, e a turma pode ser reativada depois.`
+              : `A turma "${pedidoDeCancelamento.turma.nome}" volta a valer, e o status dela passa a ser calculado de novo pelos alunos e pelas aulas.`
+          }
+          confirmLabel={
+            isMudandoCancelamento
+              ? "Salvando..."
+              : pedidoDeCancelamento.cancelar
+                ? "Cancelar turma"
+                : "Reativar"
+          }
+          cancelLabel="Voltar"
+          tone={pedidoDeCancelamento.cancelar ? "danger" : "neutral"}
+          isLoading={isMudandoCancelamento}
+          onCancel={() => setPedidoDeCancelamento(null)}
+          onConfirm={handleCancelamento}
+        />
       )}
       {deletingClass && (
         <ConfirmDialog
@@ -161,6 +219,33 @@ export const ClassTable = ({ classes }: ClassTableProps) => {
                         >
                           Visualizar
                         </Link>
+                        {classGroup.status === "cancelada" ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPedidoDeCancelamento({
+                                turma: classGroup,
+                                cancelar: false,
+                              })
+                            }
+                            className="cursor-pointer font-semibold text-emerald-700 text-xs transition-colors hover:text-emerald-900"
+                          >
+                            Reativar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPedidoDeCancelamento({
+                                turma: classGroup,
+                                cancelar: true,
+                              })
+                            }
+                            className="cursor-pointer font-semibold text-red-700 text-xs transition-colors hover:text-red-900"
+                          >
+                            Cancelar
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setDeletingClass(classGroup)}
