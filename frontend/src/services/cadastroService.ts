@@ -1,5 +1,6 @@
 import type { CadastroFormData } from "@/schemas/cadastroSchema";
 import { getPublicApiUrl } from "@/services/apiUrl";
+import { SERVER_UNAVAILABLE_MESSAGE } from "@/utils/getErrorMessage";
 
 export interface TreinamentoPublico {
   id: string;
@@ -40,9 +41,9 @@ export const listarTreinamentosPublicos = async (): Promise<
       cache: "no-store",
     });
   } catch {
-    throw new Error(
-      "Nao foi possivel conectar a API para carregar os treinamentos. Verifique se o backend esta rodando.",
-    );
+    // Quem le esta tela e um candidato, nao quem mantem o sistema: "verifique
+    // se o backend esta rodando" nao e instrucao que ele possa seguir.
+    throw new Error(SERVER_UNAVAILABLE_MESSAGE);
   }
 
   if (!response.ok) {
@@ -80,9 +81,7 @@ export const cadastrarAluno = async (
       }),
     });
   } catch {
-    throw new Error(
-      "Nao foi possivel conectar a API para realizar o cadastro. Verifique se o backend esta rodando.",
-    );
+    throw new Error(SERVER_UNAVAILABLE_MESSAGE);
   }
 
   if (!response.ok) {

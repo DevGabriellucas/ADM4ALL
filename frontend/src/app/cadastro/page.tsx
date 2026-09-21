@@ -89,6 +89,13 @@ export default function Cadastro() {
     [treinamentoSelecionado, treinamentos],
   );
 
+  // Lista vazia NAO e erro: a API responde 200 com `[]` enquanto a coordenacao
+  // nao cadastrou nenhum curso. Sem distinguir os dois, a tela mostrava um
+  // combo vazio sem explicacao e deixava enviar um formulario que o schema
+  // recusaria na frente, sem a pessoa entender por que.
+  const semTreinamentos =
+    !carregandoTreinamentos && !erroTreinamentos && treinamentos.length === 0;
+
   const carregarTreinamentos = useCallback(async () => {
     setCarregandoTreinamentos(true);
     setErroTreinamentos(null);
@@ -332,13 +339,15 @@ export default function Cadastro() {
             Treinamento
             <select
               className={selectClass}
-              disabled={carregandoTreinamentos}
+              disabled={carregandoTreinamentos || semTreinamentos}
               {...register("treinamento")}
             >
               <option value="">
                 {carregandoTreinamentos
                   ? "Carregando treinamentos..."
-                  : "Selecione um treinamento"}
+                  : semTreinamentos
+                    ? "Nenhum treinamento disponível"
+                    : "Selecione um treinamento"}
               </option>
               {treinamentos.map((treinamento) => (
                 <option key={treinamento.id} value={treinamento.nome}>
@@ -374,6 +383,16 @@ export default function Cadastro() {
                     : ""}
                 </span>
               </div>
+            )}
+            {semTreinamentos && (
+              <p
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 text-xs leading-5"
+                aria-live="polite"
+              >
+                As inscrições ainda não estão abertas: nenhum treinamento foi
+                publicado até agora. Assim que a coordenação divulgar uma nova
+                turma, o curso aparece aqui e você poderá concluir o cadastro.
+              </p>
             )}
             {erroTreinamentos && (
               <div className="flex flex-wrap items-center gap-2">
@@ -465,7 +484,7 @@ export default function Cadastro() {
           </Link>
           <Button
             type="submit"
-            disabled={isSubmitting || carregandoTreinamentos}
+            disabled={isSubmitting || carregandoTreinamentos || semTreinamentos}
             className="sm:w-auto sm:min-w-44"
           >
             {isSubmitting ? "Enviando..." : "Criar cadastro"}

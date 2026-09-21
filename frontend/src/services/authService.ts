@@ -4,6 +4,7 @@ import type {
   ActivateAccountResponse,
   ActivationTokenResponse,
 } from "@/types/auth";
+import { SERVER_UNAVAILABLE_MESSAGE } from "@/utils/getErrorMessage";
 
 interface LoginPayload {
   identifier: string;
@@ -94,24 +95,33 @@ export const activateAccount = async (
 };
 
 export const login = async (data: LoginPayload): Promise<LoginResponse> => {
-  const response = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      identifier: data.identifier,
-      password: data.password,
-    }),
-  });
+  let response: Response;
+
+  // Mesma forma dos outros servicos (`cadastroService`): navegador sem rede ou
+  // servidor do Next fora do ar falham aqui, antes de existir resposta para
+  // ler.
+  try {
+    response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        identifier: data.identifier,
+        password: data.password,
+      }),
+    });
+  } catch {
+    throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+  }
 
   if (!response.ok) {
     throw new Error(
-      await readApiError(
-        response,
-        // Reserva: o texto normal vem do backend (AuthUseCase).
-        "E-mail, CPF ou senha incorretos. Confira os dados e tente de novo.",
-      ),
+      // A recusa legitima ("E-mail, CPF ou senha incorretos...", "Muitas
+      // tentativas...", "Sua conta nao esta ativa...") vem do backend e e lida
+      // aqui pelo campo `erro`. Esta reserva cobre apenas resposta sem JSON
+      // legivel, que e servidor com problema — nunca credencial errada.
+      await readApiError(response, SERVER_UNAVAILABLE_MESSAGE),
     );
   }
 

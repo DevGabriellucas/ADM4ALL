@@ -5,6 +5,7 @@ import {
   SESSION_COOKIE_NAMES,
   SESSION_MAX_AGE_IN_SECONDS,
 } from "@/services/sessionService";
+import { SERVER_UNAVAILABLE_MESSAGE } from "@/utils/getErrorMessage";
 
 interface BackendLoginResponse extends LoginResponse {
   token: string;
@@ -48,21 +49,38 @@ export async function POST(request: NextRequest) {
     typeof body?.identifier === "string" ? body.identifier : "";
   const password = typeof body?.password === "string" ? body.password : "";
 
-  const apiResponse = await fetch(`${getApiUrl()}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier, password }),
-    cache: "no-store",
-  });
+  // Backend fora do ar faz o `fetch` lancar. Sem este try o erro subia, o Next
+  // devolvia 500 com uma pagina HTML, o `readApiError` do cliente nao
+  // conseguia ler JSON nenhum e caia na reserva dele — que era o texto de
+  // credencial errada. A tela acusava a senha de quem digitou tudo certo.
+  let apiResponse: Response;
+
+  try {
+    apiResponse = await fetch(`${getApiUrl()}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password }),
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json(
+      { erro: SERVER_UNAVAILABLE_MESSAGE },
+      { status: 503 },
+    );
+  }
 
   if (!apiResponse.ok) {
     return NextResponse.json(
       {
         erro: await readApiError(
           apiResponse,
-          // So aparece se a API responder sem corpo de erro; o texto normal vem
-          // do backend (AuthUseCase). Os dois precisam dizer a mesma coisa.
-          "E-mail, CPF ou senha incorretos. Confira os dados e tente de novo.",
+          // O texto que a pessoa le quando a recusa e legitima vem do backend
+          // (`AuthUseCase`), e passa por aqui intacto. Esta reserva so aparece
+          // quando a API respondeu SEM corpo de erro legivel — o que nunca e
+          // uma credencial recusada, e sim o servidor com problema. Dizer
+          // "senha incorreta" aqui mandava a pessoa trocar uma senha que
+          // estava certa.
+          SERVER_UNAVAILABLE_MESSAGE,
         ),
       },
       { status: apiResponse.status },
