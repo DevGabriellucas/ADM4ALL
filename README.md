@@ -121,7 +121,7 @@ docker compose up -d --build
 
 Isso inicia:
 - PostgreSQL 16 (porta 5432)
-- PgAdmin (porta 5050) — opcional para gerenciar o banco
+- Adminer (porta 8080) — opcional para gerenciar o banco
 
 ### 4️⃣ Backend
 
@@ -138,7 +138,7 @@ npm run start:dev
 npm run build && npm run start
 ```
 
-O backend estará disponível em `http://localhost:3000`
+O backend estará disponível em `http://localhost:8000`
 
 ### 5️⃣ Frontend
 
@@ -156,7 +156,7 @@ npm run build
 npm run start
 ```
 
-O frontend estará disponível em `http://localhost:3001`
+O frontend estará disponível em `http://localhost:3000`
 
 ---
 
@@ -205,9 +205,11 @@ Consulte `.env.example` para a lista completa. As principais são:
 # Backend
 DATABASE_URL=postgresql://user:password@db:5432/adm4all
 JWT_SECRET=seu_secret_aqui
+BACKEND_PORT=8000
 
 # Frontend
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:8000
+FRONTEND_PORT=3000
 ```
 
 ### Docker Compose em Produção
